@@ -1,0 +1,63 @@
+services:
+  auth-service:
+    build: ./backend/services/auth-service
+    ports:
+      - "5001:5000"
+    depends_on:
+      - db
+    
+  request-service:
+    build: ./backend/services/request-service
+    ports:
+      - "5002:5000"
+    depends_on:
+      - db
+  
+  matching-service:
+    build: ./backend/services/matching-service
+    ports:
+      - "5003:5000"
+    depends_on:
+      - db 
+
+  notification-service:
+    build: ./backend/services/notification-service
+    ports:
+      - "5004:5000"
+    depends_on:
+      - db
+
+  priority-router-service:
+    build: ./backend/services/priority-router-service
+    ports:
+      - "5005:5000"
+    depends_on:
+      - db
+
+  rating-service:
+    build: ./backend/services/rating-service
+    ports:
+      - "5006:5000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kampungconnect
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - auth-service
+      - request-service
+      - matching-service
+      - notification-service
