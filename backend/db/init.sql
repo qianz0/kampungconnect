@@ -1,14 +1,25 @@
--- Users table: seniors + helpers in one place
+-- Users table: Supports both OAuth and email/password authentication
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL,
+    provider_id VARCHAR(255) UNIQUE, -- NULL for email/password users
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255), -- NULL for OAuth users
+    picture VARCHAR(500),
+    provider VARCHAR(50) NOT NULL DEFAULT 'email', -- email, google, azure, auth0
     role VARCHAR(20) CHECK (role IN ('senior', 'helper')) DEFAULT 'senior',
     rating DECIMAL(3,2) DEFAULT 5.0, -- average rating out of 5
     location VARCHAR(100), -- can be a postal code or simple text area
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    email_verified BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_provider ON users(provider);
+CREATE INDEX IF NOT EXISTS idx_users_provider_id ON users(provider_id);
 
 -- Help requests (normal or urgent)
 CREATE TABLE IF NOT EXISTS requests (

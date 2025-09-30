@@ -3,43 +3,122 @@ services:
     build: ./backend/services/auth-service
     ports:
       - "5001:5000"
+    environment:
+      - OIDC_PROVIDER=${OIDC_PROVIDER}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
+      - AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/shared:/app/shared
     
   request-service:
     build: ./backend/services/request-service
     ports:
       - "5002:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
     depends_on:
       - db
+      - auth-service
+    volumes:
+      - ./backend/shared:/app/shared
   
   matching-service:
     build: ./backend/services/matching-service
     ports:
       - "5003:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
     depends_on:
-      - db 
+      - db
+      - auth-service
+    volumes:
+      - ./backend/shared:/app/shared
 
   notification-service:
     build: ./backend/services/notification-service
     ports:
       - "5004:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
     depends_on:
       - db
+      - auth-service
+    volumes:
+      - ./backend/shared:/app/shared
 
   priority-router-service:
     build: ./backend/services/priority-router-service
     ports:
       - "5005:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
     depends_on:
       - db
+      - auth-service
+    volumes:
+      - ./backend/shared:/app/shared
 
   rating-service:
     build: ./backend/services/rating-service
     ports:
       - "5006:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
     depends_on:
       - db
+      - auth-service
+    volumes:
+      - ./backend/shared:/app/shared
 
   db:
     image: postgres:14
@@ -51,6 +130,12 @@ services:
       - "5432:5432"
     volumes:
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d kampungconnect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build: ./frontend
@@ -61,3 +146,6 @@ services:
       - request-service
       - matching-service
       - notification-service
+
+volumes:
+  postgres_data:
