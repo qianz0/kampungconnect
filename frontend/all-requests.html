@@ -4,135 +4,634 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requests - KampungConnect</title>
+    <title>All Requests - KampungConnect</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+        }
+        .request-card {
+            transition: all 0.3s ease;
+            border: 1px solid #dee2e6;
+            height: 100%;
+        }
+        .request-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .category-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .filter-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+        .stats-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        .view-toggle {
+            background: white;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+        .view-toggle .btn {
+            border: none;
+            background: transparent;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+        .view-toggle .btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .requester-info {
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .requester-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .list-view .request-item {
+            border: 1px solid #dee2e6;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .list-view .request-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+        .list-view .category-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+        }
+        .help-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .help-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+            color: white;
+        }
+    </style>
 </head>
 
-<body class="container py-5">
-    <h2 class="mb-4">
-        <i class="fas fa-list me-2"></i>All Requests
-    </h2>
-
-    <!-- Back to Dashboard -->
-    <a href="dashboard.html" class="btn btn-secondary mb-3">
-        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
-    </a>
-
-    <!-- Requests Table -->
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Category</th>
-                            <th>Title</th>
-                            <th>Description</th>
-                            <th>Urgency</th>
-                            <th>Status</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody id="requestsTableBody">
-                        <tr>
-                            <td colspan="6" class="text-center">Loading requests...</td>
-                        </tr>
-                    </tbody>
-                </table>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
+            <p class="mt-2">Loading requests...</p>
         </div>
     </div>
 
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">
+                <i class="fas fa-home me-2"></i>KampungConnect
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                       role="button" data-bs-toggle="dropdown">
+                        <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar">
+                        <span id="userName">Loading...</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-    <div id="output" class="mt-3"></div>
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-2">
+                            <i class="fas fa-list me-2"></i>All Requests
+                        </h2>
+                        <p class="mb-0 opacity-75">Browse and manage community requests</p>
+                    </div>
+                    <a href="dashboard.html" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
 
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <i class="fas fa-list-alt text-primary mb-2"></i>
+                    <div class="stats-number" id="totalRequests">0</div>
+                    <div class="text-muted small">Total Requests</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <i class="fas fa-clock text-warning mb-2"></i>
+                    <div class="stats-number" id="pendingRequests">0</div>
+                    <div class="text-muted small">Pending</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <i class="fas fa-check-circle text-success mb-2"></i>
+                    <div class="stats-number" id="fulfilledRequests">0</div>
+                    <div class="text-muted small">Fulfilled</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <i class="fas fa-exclamation-triangle text-danger mb-2"></i>
+                    <div class="stats-number" id="urgentRequests">0</div>
+                    <div class="text-muted small">Urgent</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">
+                        <i class="fas fa-filter me-1"></i>Category
+                    </label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">All Categories</option>
+                        <option value="Household">Household Tasks</option>
+                        <option value="Shopping">Shopping/Errands</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Medical">Medical Assistance</option>
+                        <option value="Technology">Technology Help</option>
+                        <option value="Social">Social/Companionship</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">
+                        <i class="fas fa-circle me-1"></i>Status
+                    </label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="fulfilled">Fulfilled</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">
+                        <i class="fas fa-exclamation me-1"></i>Urgency
+                    </label>
+                    <select class="form-select" id="urgencyFilter">
+                        <option value="">All Urgency</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">
+                        <i class="fas fa-search me-1"></i>Search
+                    </label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search requests...">
+                </div>
+                <div class="col-md-2">
+                    <div class="view-toggle d-flex">
+                        <button class="btn flex-fill active" id="gridViewBtn" onclick="switchView('grid')">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button class="btn flex-fill" id="listViewBtn" onclick="switchView('list')">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <button class="btn btn-secondary btn-sm" id="clearFilters">
+                    <i class="fas fa-times me-1"></i>Clear Filters
+                </button>
+                <button class="btn btn-primary btn-sm" id="myRequestsBtn">
+                    <i class="fas fa-user me-1"></i>My Requests
+                </button>
+            </div>
+        </div>
+
+        <!-- Requests Grid -->
+        <div id="requestsContainer" class="row g-3">
+            <!-- Cards will be populated here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="fas fa-inbox"></i>
+            <h4>No Requests Found</h4>
+            <p>Try adjusting your filters or check back later for new requests.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
-
     <script>
-    // Wait for AuthManager instance
-    function waitForAuthManager() {
-      return new Promise((resolve, reject) => {
-        let attempts = 0;
-        const maxAttempts = 50;
-        function check() {
-          attempts++;
-          if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
-            resolve(window.AuthManager);
-          } else if (attempts >= maxAttempts) {
-            reject(new Error("AuthManager not available"));
-          } else {
-            setTimeout(check, 100);
-          }
-        }
-        check();
-      });
-    }
+        let allRequests = [];
+        let currentUser = null;
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const authManager = await waitForAuthManager();
-        await authManager.initialize();
-
-        const isAuthenticated = await authManager.checkAuthentication();
-        if (!isAuthenticated) {
-          window.location.href = "login.html";
-          return;
+        // Wait for AuthManager
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50;
+                function check() {
+                    attempts++;
+                    if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error("AuthManager not available"));
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                }
+                check();
+            });
         }
 
-        const response = await authManager.authenticatedFetch("http://localhost:5002/requests");
-        const data = await response.json();
-        console.log("Requests API response:", data);
-
-        const tableBody = document.getElementById("requestsTableBody");
-        tableBody.innerHTML = '';
-
-        if (!data.requests || data.requests.length === 0) {
-          tableBody.innerHTML = `
-            <tr>
-              <td colspan="6" class="text-center">No requests found.</td>
-            </tr>
-          `;
-          return;
-        }
-
-        data.requests.forEach(req => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${req.category}</td>
-            <td>${req.title}</td>
-            <td>
-              <a href="request-details.html?id=${req.id}">${req.description}</a>
-            </td>
-            <td>
-              <span class="badge bg-${req.urgency === 'high' ? 'danger' : req.urgency === 'medium' ? 'warning' : 'info'}">
-                ${req.urgency}
-              </span>
-            </td>
-            <td>
-              <span class="badge bg-${req.status === 'fulfilled' ? 'success' : 'secondary'}">
-                ${req.status}
-              </span>
-            </td>
-            <td>${new Date(req.created_at).toLocaleString()}</td>
-          `;
-          tableBody.appendChild(row);
+        document.getElementById("myRequestsBtn").addEventListener("click", function() {
+            window.location.href = "my-requests.html";
         });
 
-      } catch (error) {
-        console.error("Error loading requests:", error);
-        document.getElementById("requestsTableBody").innerHTML = `
-          <tr>
-            <td colspan="6" class="text-center text-danger">
-              Failed to load requests. Please try again later.
-            </td>
-          </tr>
-        `;
-      }
-    });
-  </script>
+        // Get category icon
+        function getCategoryIcon(category) {
+            const icons = {
+                'Household': { icon: 'fa-home', color: '#28a745' },
+                'Shopping': { icon: 'fa-shopping-cart', color: '#007bff' },
+                'Transportation': { icon: 'fa-car', color: '#6f42c1' },
+                'Medical': { icon: 'fa-medkit', color: '#dc3545' },
+                'Technology': { icon: 'fa-laptop', color: '#17a2b8' },
+                'Social': { icon: 'fa-users', color: '#fd7e14' },
+                'Other': { icon: 'fa-ellipsis-h', color: '#6c757d' }
+            };
+            return icons[category] || icons['Other'];
+        }
 
+        // Create request card
+        function createRequestCard(req) {
+            const categoryInfo = getCategoryIcon(req.category);
+            
+            const card = document.createElement('div');
+            card.className = 'col-md-6 col-lg-4';
+            card.innerHTML = `
+                <div class="card request-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="category-icon" style="background-color: ${categoryInfo.color}20;">
+                                <i class="fas ${categoryInfo.icon}" style="color: ${categoryInfo.color};"></i>
+                            </div>
+                            <div class="ms-auto">
+                                <span class="badge bg-${getUrgencyColor(req.urgency)}">
+                                    <i class="fas fa-${getUrgencyIcon(req.urgency)} me-1"></i>${req.urgency}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <h5 class="card-title mb-2">${req.title}</h5>
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-tag me-1"></i>${req.category}
+                        </p>
+                        <p class="card-text text-muted mb-3" style="min-height: 60px;">
+                            ${req.description.length > 100 ? req.description.substring(0, 100) + '...' : req.description}
+                        </p>
+                        <div class="stats-badge">
+                            <i class="fas fa-reply text-success me-1"></i>
+                            0 Offers Made
+                        </div>
+                        <div class="requester-info mb-3">
+                            <div class="d-flex align-items-center">
+                                <img src="${req.requester_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.requester_name || 'User')}&background=667eea&color=fff`}" 
+                                     class="requester-avatar me-2" alt="${req.requester_name}">
+                                <div class="flex-grow-1">
+                                    <small class="d-block fw-bold">${req.requester_name || 'Anonymous'}</small>
+                                    <small class="text-muted">${req.requester_role || 'Member'}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge bg-${req.status === 'fulfilled' ? 'success' : 'secondary'}">
+                                <i class="fas fa-${req.status === 'fulfilled' ? 'check-circle' : 'clock'} me-1"></i>
+                                ${req.status}
+                            </span>
+                            <small class="text-muted">
+                                <i class="far fa-calendar me-1"></i>
+                                ${new Date(req.created_at).toLocaleDateString()}
+                            </small>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            ${req.status === 'pending' ? `
+                                <button class="btn help-btn btn-sm" onclick="offerHelp(${req.id})">
+                                    <i class="fas fa-hands-helping me-2"></i>Offer to Help
+                                </button>
+                            ` : ''}
+                            <a href="request-details.html?id=${req.id}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye me-1"></i>View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        // Create list view item
+        function createListItem(req) {
+            const categoryInfo = getCategoryIcon(req.category);
+            
+            const item = document.createElement('div');
+            item.className = 'request-item';
+            item.innerHTML = `
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <div class="category-icon" style="background-color: ${categoryInfo.color}20;">
+                            <i class="fas ${categoryInfo.icon}" style="color: ${categoryInfo.color};"></i>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="mb-1">${req.title}</h5>
+                                <div class="mb-2">
+                                    <span class="category-badge me-2" style="background-color: ${categoryInfo.color}20; color: ${categoryInfo.color};">
+                                        <i class="fas fa-tag me-1"></i>${req.category}
+                                    </span>
+                                    <span class="badge bg-${getUrgencyColor(req.urgency)} me-2">
+                                        <i class="fas fa-${getUrgencyIcon(req.urgency)} me-1"></i>${req.urgency}
+                                    </span>
+                                    <span class="badge bg-${req.status === 'fulfilled' ? 'success' : 'secondary'}">
+                                        <i class="fas fa-${req.status === 'fulfilled' ? 'check-circle' : 'clock'} me-1"></i>${req.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                <i class="far fa-calendar me-1"></i>${new Date(req.created_at).toLocaleDateString()}
+                            </small>
+                        </div>
+                        <p class="text-muted mb-2">${req.description.length > 200 ? req.description.substring(0, 200) + '...' : req.description}</p>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <img src="${req.requester_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.requester_name || 'User')}&background=667eea&color=fff`}" 
+                                     class="requester-avatar me-2" alt="${req.requester_name}">
+                                <div>
+                                    <small class="d-block fw-bold">${req.requester_name || 'Anonymous'}</small>
+                                    <small class="text-muted">${req.requester_role || 'Member'}</small>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                ${req.status === 'pending' ? `
+                                    <button class="btn help-btn btn-sm" onclick="offerHelp(${req.id})">
+                                        <i class="fas fa-hands-helping me-2"></i>Offer to Help
+                                    </button>
+                                ` : ''}
+                                <a href="request-details.html?id=${req.id}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return item;
+        }
+
+        // Get urgency color
+        function getUrgencyColor(urgency) {
+            const colors = {
+                'low': 'info',
+                'medium': 'warning',
+                'high': 'danger',
+                'urgent': 'danger'
+            };
+            return colors[urgency] || 'info';
+        }
+
+        // Get urgency icon
+        function getUrgencyIcon(urgency) {
+            const icons = {
+                'low': 'circle',
+                'medium': 'exclamation-circle',
+                'high': 'exclamation-triangle',
+                'urgent': 'fire'
+            };
+            return icons[urgency] || 'circle';
+        }
+
+        // Update statistics
+        function updateStatistics(requests) {
+            document.getElementById('totalRequests').textContent = requests.length;
+            document.getElementById('pendingRequests').textContent = 
+                requests.filter(r => r.status === 'pending').length;
+            document.getElementById('fulfilledRequests').textContent = 
+                requests.filter(r => r.status === 'fulfilled').length;
+            document.getElementById('urgentRequests').textContent = 
+                requests.filter(r => r.urgency === 'high').length;
+        }
+
+        // Filter and display requests
+        function filterAndDisplayRequests() {
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('statusFilter').value.toLowerCase();
+            const urgency = document.getElementById('urgencyFilter').value.toLowerCase();
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = allRequests.filter(req => {
+                const matchCategory = !category || req.category === category;
+                const matchStatus = !status || req.status.toLowerCase() === status;
+                const matchUrgency = !urgency || req.urgency.toLowerCase() === urgency;
+                const matchSearch = !search || 
+                    req.title.toLowerCase().includes(search) || 
+                    req.description.toLowerCase().includes(search);
+                
+                return matchCategory && matchStatus && matchUrgency && matchSearch;
+            });
+
+            displayRequests(filtered);
+        }
+
+        // Display requests
+        function displayRequests(requests) {
+            const container = document.getElementById('requestsContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            container.innerHTML = '';
+            
+            if (requests.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+            } else {
+                container.style.display = 'flex';
+                emptyState.style.display = 'none';
+                
+                requests.forEach(req => {
+                    container.appendChild(createRequestCard(req));
+                });
+            }
+        }
+
+        // Populate user info
+        function populateUserInfo(user) {
+            if (!user) return;
+            document.getElementById('userName').textContent = user.name || 'User';
+            const avatar = document.getElementById('userAvatar');
+            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const authManager = await waitForAuthManager();
+                await authManager.initialize();
+
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                // Get and populate user info
+                currentUser = authManager.getCurrentUser();
+                populateUserInfo(currentUser);
+
+                // Fetch requests
+                const response = await authManager.authenticatedFetch("http://localhost:5002/requests/all");
+                const data = await response.json();
+
+                allRequests = data.requests || [];
+                updateStatistics(allRequests);
+                displayRequests(allRequests);
+
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+                // Setup filter listeners
+                ['categoryFilter', 'statusFilter', 'urgencyFilter', 'searchInput'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', filterAndDisplayRequests);
+                    document.getElementById(id).addEventListener('keyup', filterAndDisplayRequests);
+                });
+
+                // Clear filters
+                document.getElementById('clearFilters').addEventListener('click', () => {
+                    document.getElementById('categoryFilter').value = '';
+                    document.getElementById('statusFilter').value = '';
+                    document.getElementById('urgencyFilter').value = '';
+                    document.getElementById('searchInput').value = '';
+                    filterAndDisplayRequests();
+                });
+
+                // Logout handler
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (confirm('Are you sure you want to logout?')) {
+                        await authManager.logout();
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error loading requests:", error);
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div class="text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <h4>Failed to Load Requests</h4>
+                        <p>Please try again later.</p>
+                        <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+                    </div>
+                `;
+            }
+        });
+    </script>
 </body>
 
 </html>

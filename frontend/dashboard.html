@@ -123,9 +123,9 @@
                         <i class="fas fa-hands-helping fa-3x text-primary mb-3"></i>
                         <h5 class="card-title">Make Requests</h5>
                         <p class="card-text">Request help from your community members for various needs.</p>
-                        <a href="/requests.html" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>New Request
-                        </a>
+                        
+                        <div id="newRequestBtnContainer"></div>
+
                     </div>
                 </div>
             </div>
@@ -283,6 +283,7 @@
                 }
                 
                 populateUserInfo(currentUser);
+                showNewRequestButton(currentUser);
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -395,13 +396,39 @@
             document.body.appendChild(alert);
         }
 
+        function showNewRequestButton(user) {
+            const container = document.getElementById("newRequestBtnContainer");
+
+            if (user.role === "senior") {
+                // Seniors can create requests
+                container.innerHTML = `
+                    <a href="/requests.html" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>New Request
+                    </a>
+                `;
+            } else {
+                // Helpers see disabled button with tooltip
+                container.innerHTML = `
+                    <span data-bs-toggle="tooltip" title="Only seniors can post requests">
+                        <button class="btn btn-primary" disabled>
+                            <i class="fas fa-plus me-1"></i>New Request
+                        </button>
+                    </span>
+                `;
+
+                // Activate Bootstrap tooltips
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async() => {
             try {
                 const authManager = await waitForAuthManager();
                 const isAuthenticated = await authManager.checkAuthentication();
                 if (!isAuthenticated) return;
                 
-                const response = await authManager.authenticatedFetch('http://localhost:5002/requests');
+                const response = await authManager.authenticatedFetch('http://localhost:5002/requests/latest3/all');
                 const data = await response.json();
 
                 const requestContainer = document.getElementById('recentRequests');
@@ -418,7 +445,10 @@
                                 ${req.title}</h6>
                             </a>
                         </h6>
-                        <small>${new Date(req.created_at).toLocaleString()}</small>
+                        <td>
+                            <small class="text-muted">Posted by ${req.requester_name} (${req.requester_role})</small>
+                            <small>${new Date(req.created_at).toLocaleString()}</small>
+                        </td>
                         </div>
                         <p class="mb-1">Category: ${req.category}</p>
                         <p class="mb-1">${req.description}</p>

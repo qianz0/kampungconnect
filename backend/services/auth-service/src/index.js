@@ -68,7 +68,8 @@ if (authRoutes) {
                     id: dbUser.id,
                     email: dbUser.email,
                     name: dbUser.name,
-                    provider: dbUser.provider
+                    provider: dbUser.provider,
+                    role: dbUser.role
                 };
                 
                 const token = jwtUtils.generateToken(tokenPayload);
@@ -320,7 +321,8 @@ app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
             email: user.email,
             name: user.name,
             picture: user.picture,
-            provider: user.provider
+            provider: user.provider,
+            role: user.role,
         });
     } catch (error) {
         console.error('Get user error:', error);
