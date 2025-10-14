@@ -156,6 +156,27 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Recent Requests Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Recent Requests
+                    </h5>
+                    <a href="/all-requests.html" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right me-1"></i>View More
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="recentRequests" class="list-group">
+                    <!-- Requests will be populated here -->
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
 
         <!-- User Info Section -->
         <div class="row mt-4">
@@ -373,6 +394,53 @@
             `;
             document.body.appendChild(alert);
         }
+
+        document.addEventListener('DOMContentLoaded', async() => {
+            try {
+                const authManager = await waitForAuthManager();
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) return;
+                
+                const response = await authManager.authenticatedFetch('http://localhost:5002/requests');
+                const data = await response.json();
+
+                const requestContainer = document.getElementById('recentRequests');
+                requestContainer.innerHTML = '';
+
+                if (response.ok && data.requests && data.requests.length > 0) {
+                    data.requests.forEach(req => {
+                    const item = document.createElement("div");
+                    item.className = "list-group-item";
+                    item.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">
+                            <a href="request-details.html?id=${req.id}" style="text-decoration: none;">
+                                ${req.title}</h6>
+                            </a>
+                        </h6>
+                        <small>${new Date(req.created_at).toLocaleString()}</small>
+                        </div>
+                        <p class="mb-1">Category: ${req.category}</p>
+                        <p class="mb-1">${req.description}</p>
+                        <small>Status: <span class="badge bg-${req.status === 'fulfilled' ? 'success' : 'secondary'}">
+                        ${req.status}
+                        </span> | Urgency: <span class="badge bg-${req.urgency === 'high' ? 'danger' : 'info'}">
+                        ${req.urgency}
+                        </span></small>
+                    `;
+                    requestContainer.appendChild(item);
+                    });
+                } else {
+                    requestContainer.innerHTML = `<div class="alert alert-info mb-0">No requests found.</div>`;
+                }
+
+            } catch (error) {
+                console.error('Fail to load requests:', error);
+                document.getElementById('recentRequests').innerHTML = `<div class="alert alert-danger mb-0">
+                    Failed to load requests. Please try again later.
+                </div>`;
+            }
+        });
     </script>
 </body>
 
