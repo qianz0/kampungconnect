@@ -115,7 +115,48 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
     }
 });
 
-// Get user's requests
+// Get all community requests (everyone can see)
+app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const results = await db.query(
+            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
+             FROM requests r
+             JOIN users u ON r.user_id = u.id
+             ORDER BY r.created_at DESC`
+        );
+
+        res.json({ 
+            requests: results.rows,
+            total: results.rowCount
+        });
+    } catch (error) {
+        console.error('Get all requests error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get latest 3 community requests (everyone can see)
+app.get('/requests/latest3/all', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const results = await db.query(
+            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
+             FROM requests r
+             JOIN users u ON r.user_id = u.id
+             ORDER BY r.created_at DESC
+             LIMIT 3`
+        );
+
+        res.json({
+            requests: results.rows,
+            total: results.rowCount
+        });
+    } catch (error) {
+        console.error('Get latest 3 community requests error:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get user's requests only
 app.get('/requests', authMiddleware.authenticateToken, async(req, res) => {
     try {
         const userId = req.user.id;
@@ -135,31 +176,149 @@ app.get('/requests', authMiddleware.authenticateToken, async(req, res) => {
     }
 });
 
+// Get latest 3 requests
+app.get('/requests/latest3', authMiddleware.authenticateToken, async(req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        const results = await db.query(
+            "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 3",
+            [userId]
+        );
+
+        res.json({
+            requests: results.rows,
+            total: results.rowCount
+        });
+    } catch (error) {
+        console.error('Get latest 3 requests error:', error.message);
+        console.error(error.stack);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Get specific request details
 app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const requestId = req.params.id;
-        const userId = req.user.id;
-       
+
         const result = await db.query(
-            `SELECT r.*, u.name as fulfilled_by_name, u.rating as fulfilled_by_rating
-            FROM requests r
-            LEFT JOIN matches m ON r.id = m.request_id
-            LEFT JOIN users u ON m.helper_id = u.id
-            WHERE r.id = $1`,
+            `SELECT r.*,
+                    poster.name   AS requester_name,
+                    poster.role   AS requester_role,
+                    helper.name   AS fulfilled_by_name,
+                    helper.rating AS fulfilled_by_rating
+             FROM requests r
+             JOIN users poster ON r.user_id = poster.id
+             LEFT JOIN matches m ON r.id = m.request_id
+             LEFT JOIN users helper ON m.helper_id = helper.id
+             WHERE r.id = $1`,
             [requestId]
         );
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Request not found' });
         }
-        
+
         res.json({ request: result.rows[0] });
     } catch (error) {
         console.error('Get request details error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// Respond to a request
+app.post('/requests/:id/respond', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    const { message } = req.body;
+    const requestId = req.params.id;
+
+    if (userRole !== 'helper') {
+      return res.status(403).json({ error: 'Only helpers can respond to requests' });
+    }
+
+    if (!message) {
+      return res.status(400).json({ error: 'Response message is required' });
+    }
+
+    // Save response in DB
+    const result = await db.query(
+      `INSERT INTO responses (request_id, user_id, message, created_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING id, request_id, user_id, message, created_at`,
+      [requestId, userId, message]
+    );
+
+    res.json({ message: 'Response added successfully', response: result.rows[0] });
+  } catch (error) {
+    console.error('Respond to request error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+// Reply to a response
+app.post('/responses/:id/reply', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const responseId = req.params.id;  // ID of the response being replied to
+        const { message } = req.body;
+        const userId = req.user.id;
+
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
+
+        // Find the request that this response belongs to
+        const parentRes = await db.query("SELECT request_id FROM responses WHERE id = $1", [responseId]);
+
+        if (parentRes.rowCount === 0) {
+            return res.status(404).json({ error: "Parent response not found" });
+        }
+
+        const requestId = parentRes.rows[0].request_id;
+
+        // Insert reply correctly
+        const result = await db.query(
+            `INSERT INTO responses (request_id, user_id, message, parent_id, created_at)
+             VALUES ($1, $2, $3, $4, NOW())
+             RETURNING id, request_id, user_id, message, parent_id, created_at`,
+            [requestId, userId, message, responseId]
+        );
+
+        res.json({ reply: result.rows[0] });
+    } catch (error) {
+        console.error("Reply error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+// Get responses and their replies for a request
+// Get responses for a request
+app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+
+        const result = await db.query(
+            `SELECT r.id, r.message, r.created_at, r.parent_id,
+                    u.name AS responder_name, u.role as responder_role
+             FROM responses r
+             JOIN users u ON r.user_id = u.id
+             WHERE r.request_id = $1
+             ORDER BY r.created_at ASC`,
+            [requestId]
+        );
+
+        res.json({ responses: result.rows });
+    } catch (error) {
+        console.error('Get responses error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 // Error handling middleware
 app.use((error, req, res, next) => {
