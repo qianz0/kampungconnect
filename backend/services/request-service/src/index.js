@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const db = require('./db');
 
 // Import authentication middleware
 const AuthMiddleware = require('/app/shared/auth-middleware');
@@ -42,35 +43,29 @@ app.get('/info', (req, res) => {
 });
 
 // Protected endpoints - require authentication
-app.post('/postRequest', authMiddleware.authenticateToken, (req, res) => {
+app.post('/postRequest', authMiddleware.authenticateToken, async(req, res) => {
     try {
-        const { category, description, type, urgency } = req.body;
+        const { title, category, description, urgency } = req.body;
         const userId = req.user.id; // Get from authenticated user
         
         // Validate required fields
-        if (!category || !description || !type) {
-            return res.status(400).json({ 
-                error: 'Missing required fields: category, description, type' 
+        if (!title || !category || !description || !urgency) {
+            return res.status(400).json({
+                error: 'Missing required fields: title, category, description, urgency'
             });
         }
         
-        // Here you would typically save to database
-        const requestData = {
-            id: Math.floor(Math.random() * 10000), // Mock ID
-            userId: userId,
-            userEmail: req.user.email,
-            userName: req.user.name,
-            category,
-            description,
-            type,
-            urgency: urgency || 'normal',
-            status: 'pending',
-            createdAt: new Date().toISOString()
-        };
+        // Database insertion
+        const result = await db.query(
+            `INSERT INTO requests (user_id, title, category, description, urgency, status, created_at)
+             VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+             RETURNING id, user_id, title, category, description, urgency, status, created_at`,
+            [userId, title, category, description, urgency]
+        );
         
         res.json({ 
             message: "Request posted successfully", 
-            request: requestData
+            request: result.rows[0]
         });
     } catch (error) {
         console.error('Post request error:', error);
@@ -121,35 +116,18 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
 });
 
 // Get user's requests
-app.get('/requests', authMiddleware.authenticateToken, (req, res) => {
+app.get('/requests', authMiddleware.authenticateToken, async(req, res) => {
     try {
         const userId = req.user.id;
         
-        // Mock data - in production, fetch from database
-        const userRequests = [
-            {
-                id: 1,
-                category: 'transportation',
-                description: 'Need a ride to the hospital',
-                type: 'help',
-                urgency: 'high',
-                status: 'fulfilled',
-                createdAt: '2025-09-25T10:30:00Z'
-            },
-            {
-                id: 2,
-                category: 'food',
-                description: 'Looking for someone to share grocery shopping',
-                type: 'collaboration',
-                urgency: 'normal',
-                status: 'pending',
-                createdAt: '2025-09-29T14:15:00Z'
-            }
-        ];
-        
+        const results = await db.query(
+            "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC",
+            [userId]
+        );
+    
         res.json({ 
-            requests: userRequests,
-            total: userRequests.length
+            requests: results.rows,
+            total: results.rowCount
         });
     } catch (error) {
         console.error('Get requests error:', error);
@@ -158,37 +136,25 @@ app.get('/requests', authMiddleware.authenticateToken, (req, res) => {
 });
 
 // Get specific request details
-app.get('/requests/:id', authMiddleware.authenticateToken, (req, res) => {
+app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const requestId = req.params.id;
         const userId = req.user.id;
+       
+        const result = await db.query(
+            `SELECT r.*, u.name as fulfilled_by_name, u.rating as fulfilled_by_rating
+            FROM requests r
+            LEFT JOIN matches m ON r.id = m.request_id
+            LEFT JOIN users u ON m.helper_id = u.id
+            WHERE r.id = $1`,
+            [requestId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
         
-        // Mock data - verify user owns this request or has permission to view
-        const requestDetails = {
-            id: requestId,
-            userId: userId,
-            category: 'transportation',
-            description: 'Need a ride to the hospital for check-up',
-            type: 'help',
-            urgency: 'high',
-            status: 'fulfilled',
-            createdAt: '2025-09-25T10:30:00Z',
-            fulfilledAt: '2025-09-25T11:45:00Z',
-            fulfilledBy: {
-                name: 'John Doe',
-                rating: 4.8
-            },
-            responses: [
-                {
-                    userId: 'user123',
-                    name: 'John Doe',
-                    message: 'I can help you with this!',
-                    timestamp: '2025-09-25T10:35:00Z'
-                }
-            ]
-        };
-        
-        res.json({ request: requestDetails });
+        res.json({ request: result.rows[0] });
     } catch (error) {
         console.error('Get request details error:', error);
         res.status(500).json({ error: 'Internal server error' });

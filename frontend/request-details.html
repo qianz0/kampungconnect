@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Request Details - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="container py-5">
+
+    <h2 class="mb-4">Request Details</h2>
+    <a href="javascript:history.back()" class="btn btn-secondary mb-3">← Back</a>
+
+    <div id="detailsCard" class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Request #<span id="reqId"></span></h5>
+            <p><strong>Category:</strong> <span id="category"></span></p>
+            <p><strong>Title:</strong> <span id="title"></span></p>
+            <p><strong>Description:</strong> <span id="description"></span></p>
+            <p><strong>Urgency:</strong> <span id="urgency"></span></p>
+            <p><strong>Status:</strong> <span id="status"></span></p>
+            <p><strong>Created At:</strong> <span id="createdAt"></span></p>
+            <p><strong>Fulfilled At:</strong> <span id="fulfilledAt"></span></p>
+            <p><strong>Fulfilled By:</strong> <span id="fulfilledBy"></span></p>
+
+            <h6 class="mt-4">Responses:</h6>
+            <ul id="responsesList" class="list-group"></ul>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50;
+                function check() {
+                    attempts++;
+                    if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error("AuthManager not available"));
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                }
+                check();
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const authManager = await waitForAuthManager();
+                await authManager.initialize();
+
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                // Now load details
+                const params = new URLSearchParams(window.location.search);
+                const requestId = params.get("id");
+                if (!requestId) return;
+
+                const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}`);
+                const data = await response.json();
+                console.log("Request details:", data);
+
+                const req = data.request;
+
+                document.getElementById("reqId").textContent = req.id;
+                document.getElementById("title").textContent = req.title;
+                document.getElementById("category").textContent = req.category;
+                document.getElementById("description").textContent = req.description;
+                document.getElementById("urgency").textContent = req.urgency;
+                document.getElementById("status").textContent = req.status;
+                document.getElementById("createdAt").textContent = new Date(req.created_at).toLocaleString();
+                document.getElementById("fulfilledAt").textContent = req.fulfilledAt ? new Date(req.fulfilledAt).toLocaleString() : "—";
+                document.getElementById("fulfilledBy").textContent = req.fulfilledBy ? `${req.fulfilledBy.name} (${req.fulfilledBy.rating})` : "Not yet assigned";
+
+            } catch (err) {
+                console.error("Error loading request details:", err);
+                document.getElementById("detailsCard").innerHTML =
+                    `<div class="card-body text-danger">Failed to load request details.</div>`;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
