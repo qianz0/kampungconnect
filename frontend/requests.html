@@ -4,80 +4,528 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requests - KampungConnect</title>
+    <title>Post Request - KampungConnect</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+        }
+        .form-card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 1rem;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        .form-control, .form-select {
+            border-radius: 0.5rem;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .category-option {
+            padding: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            background: white;
+        }
+        .category-option:hover {
+            border-color: #667eea;
+            background: #667eea10;
+            transform: translateY(-2px);
+        }
+        .category-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+        }
+        .category-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .urgency-card {
+            padding: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        .urgency-card:hover {
+            transform: translateY(-2px);
+        }
+        .urgency-card.selected {
+            border-color: var(--urgency-color);
+            background: var(--urgency-bg);
+        }
+        .urgency-card.low { --urgency-color: #17a2b8; --urgency-bg: #17a2b820; }
+        .urgency-card.medium { --urgency-color: #ffc107; --urgency-bg: #ffc10720; }
+        .urgency-card.high { --urgency-color: #fd7e14; --urgency-bg: #fd7e1420; }
+        .urgency-card.urgent { --urgency-color: #dc3545; --urgency-bg: #dc354520; }
+        .info-box {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border-left: 4px solid #667eea;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+        .character-count {
+            font-size: 0.875rem;
+            color: #6c757d;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
 </head>
 
-<body class="container py-5">
-    <h2 class="mb-4">
-        <i class="fas fa-hands-helping me-2"></i>
-        Post a Request for Help
-    </h2>
-    
-    <div class="card">
-        <div class="card-body">
-            <form id="requestForm">
-                <div class="mb-3">
-                    <label for="title" class="form-label">Request Title</label>
-                    <input type="text" class="form-control" id="title" required 
-                           placeholder="Brief description of what you need help with">
-                </div>
-                
-                <div class="mb-3">
-                    <label for="description" class="form-label">Description</label>
-                    <textarea class="form-control" id="description" rows="4" required
-                              placeholder="Provide more details about your request"></textarea>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="category" class="form-label">Category</label>
-                    <select class="form-select" id="category" required>
-                        <option value="">Select a category</option>
-                        <option value="household">Household Tasks</option>
-                        <option value="shopping">Shopping/Errands</option>
-                        <option value="transportation">Transportation</option>
-                        <option value="medical">Medical Assistance</option>
-                        <option value="technology">Technology Help</option>
-                        <option value="social">Social/Companionship</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="urgency" class="form-label">Urgency Level</label>
-                    <select class="form-select" id="urgency" required>
-                        <option value="">Select urgency</option>
-                        <option value="low">Low - Within a week</option>
-                        <option value="medium">Medium - Within a few days</option>
-                        <option value="high">High - Within 24 hours</option>
-                        <option value="urgent">Urgent - ASAP</option>
-                    </select>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-paper-plane me-2"></i>Submit Request
-                </button>
-                <a href="dashboard.html" class="btn btn-secondary ms-2">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-                </a>
-            </form>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Submitting your request...</p>
         </div>
     </div>
 
-    <div id="output" class="mt-3"></div>
-
-    <script src="js/main.js"></script>
-    <script src="js/auth.js"></script>
-    <script>
-        // Check authentication on page load
-        document.addEventListener('DOMContentLoaded', async () => {
-            await AuthManager.initialize();
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">
+                <i class="fas fa-home me-2"></i>KampungConnect
+            </a>
             
-            const isAuthenticated = await AuthManager.checkAuthentication();
-            if (!isAuthenticated) {
-                window.location.href = '/login.html';
-                return;
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                       role="button" data-bs-toggle="dropdown">
+                        <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar">
+                        <span id="userName">Loading...</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-2">
+                            <i class="fas fa-hands-helping me-2"></i>Post a Request for Help
+                        </h2>
+                        <p class="mb-0 opacity-75">Let your community know how they can help you</p>
+                    </div>
+                    <a href="dashboard.html" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-2"></i>Back
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Form Section -->
+            <div class="col-lg-8">
+                <div class="card form-card">
+                    <div class="card-body p-4">
+                        <form id="requestForm">
+                            <!-- Title -->
+                            <div class="mb-4">
+                                <label for="title" class="form-label">
+                                    <i class="fas fa-heading text-primary me-2"></i>Request Title
+                                </label>
+                                <input type="text" class="form-control" id="title" required 
+                                       placeholder="e.g., Need help with grocery shopping"
+                                       maxlength="100">
+                                <div class="character-count">
+                                    <span id="titleCount">0</span>/100 characters
+                                </div>
+                            </div>
+                            
+                            <!-- Description -->
+                            <div class="mb-4">
+                                <label for="description" class="form-label">
+                                    <i class="fas fa-align-left text-primary me-2"></i>Description
+                                </label>
+                                <textarea class="form-control" id="description" rows="5" required
+                                          placeholder="Provide detailed information about what you need help with..."
+                                          maxlength="500"></textarea>
+                                <div class="character-count">
+                                    <span id="descriptionCount">0</span>/500 characters
+                                </div>
+                            </div>
+                            
+                            <!-- Category Selection -->
+                            <div class="mb-4">
+                                <label class="form-label">
+                                    <i class="fas fa-tags text-primary me-2"></i>Category
+                                </label>
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Household">
+                                            <div class="category-icon" style="color: #28a745;">
+                                                <i class="fas fa-home"></i>
+                                            </div>
+                                            <div class="fw-bold small">Household</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Shopping">
+                                            <div class="category-icon" style="color: #007bff;">
+                                                <i class="fas fa-shopping-cart"></i>
+                                            </div>
+                                            <div class="fw-bold small">Shopping</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Transportation">
+                                            <div class="category-icon" style="color: #6f42c1;">
+                                                <i class="fas fa-car"></i>
+                                            </div>
+                                            <div class="fw-bold small">Transportation</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Medical">
+                                            <div class="category-icon" style="color: #dc3545;">
+                                                <i class="fas fa-medkit"></i>
+                                            </div>
+                                            <div class="fw-bold small">Medical</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Technology">
+                                            <div class="category-icon" style="color: #17a2b8;">
+                                                <i class="fas fa-laptop"></i>
+                                            </div>
+                                            <div class="fw-bold small">Technology</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Social">
+                                            <div class="category-icon" style="color: #fd7e14;">
+                                                <i class="fas fa-users"></i>
+                                            </div>
+                                            <div class="fw-bold small">Social</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="category-option" data-value="Other">
+                                            <div class="category-icon" style="color: #6c757d;">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </div>
+                                            <div class="fw-bold small">Other</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="category" required>
+                            </div>
+                            
+                            <!-- Urgency Level -->
+                            <div class="mb-4">
+                                <label class="form-label">
+                                    <i class="fas fa-exclamation-circle text-primary me-2"></i>Urgency Level
+                                </label>
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-3">
+                                        <div class="urgency-card low" data-value="low">
+                                            <div class="text-center">
+                                                <i class="fas fa-circle fa-2x mb-2" style="color: #17a2b8;"></i>
+                                                <div class="fw-bold">Low</div>
+                                                <small class="text-muted">Within a week</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <div class="urgency-card medium" data-value="medium">
+                                            <div class="text-center">
+                                                <i class="fas fa-circle fa-2x mb-2" style="color: #ffc107;"></i>
+                                                <div class="fw-bold">Medium</div>
+                                                <small class="text-muted">Few days</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <div class="urgency-card high" data-value="high">
+                                            <div class="text-center">
+                                                <i class="fas fa-circle fa-2x mb-2" style="color: #fd7e14;"></i>
+                                                <div class="fw-bold">High</div>
+                                                <small class="text-muted">24 hours</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <div class="urgency-card urgent" data-value="urgent">
+                                            <div class="text-center">
+                                                <i class="fas fa-exclamation-triangle fa-2x mb-2" style="color: #dc3545;"></i>
+                                                <div class="fw-bold">Urgent</div>
+                                                <small class="text-muted">ASAP</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="urgency" required>
+                            </div>
+                            
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-primary btn-submit">
+                                    <i class="fas fa-paper-plane me-2"></i>Submit Request
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Sidebar -->
+            <div class="col-lg-4 mt-4 mt-lg-0">
+                <div class="info-box mb-3">
+                    <h5 class="mb-3">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>Tips for a Great Request
+                    </h5>
+                    <ul class="mb-0">
+                        <li class="mb-2">Be specific about what you need</li>
+                        <li class="mb-2">Include relevant details (location, time, etc.)</li>
+                        <li class="mb-2">Choose the right category and urgency</li>
+                        <li class="mb-2">Be polite and respectful</li>
+                        <li>Respond promptly to offers of help</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h5 class="mb-3">
+                        <i class="fas fa-shield-alt text-success me-2"></i>Your Safety
+                    </h5>
+                    <p class="mb-0 small">
+                        <i class="fas fa-check-circle text-success me-1"></i> All helpers are verified community members<br>
+                        <i class="fas fa-check-circle text-success me-1"></i> Your contact info is protected<br>
+                        <i class="fas fa-check-circle text-success me-1"></i> Report any concerns immediately
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success/Error Message -->
+        <div id="output" class="mt-4"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        let currentUser = null;
+        let selectedCategory = null;
+        let selectedUrgency = null;
+
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50;
+                function check() {
+                    attempts++;
+                    if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error('AuthManager not available after timeout'));
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                }
+                check();
+            });
+        }
+
+        // Populate user info
+        function populateUserInfo(user) {
+            if (!user) return;
+            document.getElementById('userName').textContent = user.name || 'User';
+            const avatar = document.getElementById('userAvatar');
+            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+        }
+
+        // Character counter
+        function setupCharacterCounter(inputId, counterId, maxLength) {
+            const input = document.getElementById(inputId);
+            const counter = document.getElementById(counterId);
+            
+            input.addEventListener('input', () => {
+                const length = input.value.length;
+                counter.textContent = length;
+                
+                if (length >= maxLength * 0.9) {
+                    counter.style.color = '#dc3545';
+                } else if (length >= maxLength * 0.7) {
+                    counter.style.color = '#ffc107';
+                } else {
+                    counter.style.color = '#6c757d';
+                }
+            });
+        }
+
+        // Category selection
+        document.querySelectorAll('.category-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedCategory = this.dataset.value;
+                document.getElementById('category').value = selectedCategory;
+            });
+        });
+
+        // Urgency selection
+        document.querySelectorAll('.urgency-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.urgency-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedUrgency = this.dataset.value;
+                document.getElementById('urgency').value = selectedUrgency;
+            });
+        });
+
+        // Show success message
+        function showSuccess(message) {
+            const output = document.getElementById('output');
+            output.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Success!</strong> ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Show error message
+        function showError(message) {
+            const output = document.getElementById('output');
+            output.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Error!</strong> ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Form validation
+        function validateForm() {
+            const title = document.getElementById('title').value.trim();
+            const description = document.getElementById('description').value.trim();
+            
+            if (!title) {
+                showError('Please enter a request title');
+                return false;
+            }
+            
+            if (!description) {
+                showError('Please enter a description');
+                return false;
+            }
+            
+            if (!selectedCategory) {
+                showError('Please select a category');
+                return false;
+            }
+            
+            if (!selectedUrgency) {
+                showError('Please select an urgency level');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const authManager = await waitForAuthManager();
+                await authManager.initialize();
+                
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                // Get and populate user info
+                currentUser = authManager.getCurrentUser();
+                populateUserInfo(currentUser);
+
+                // Setup character counters
+                setupCharacterCounter('title', 'titleCount', 100);
+                setupCharacterCounter('description', 'descriptionCount', 500);
+
+                // Logout handler
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (confirm('Are you sure you want to logout?')) {
+                        await authManager.logout();
+                    }
+                });
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Failed to initialize page. Please refresh and try again.');
             }
         });
 
@@ -85,38 +533,54 @@
         document.getElementById("requestForm").addEventListener("submit", async (e) => {
             e.preventDefault();
             
-            const title = document.getElementById("title").value;
-            const description = document.getElementById("description").value;
-            const category = document.getElementById("category").value;
-            const urgency = document.getElementById("urgency").value;
+            if (!validateForm()) {
+                return;
+            }
+            
+            const title = document.getElementById("title").value.trim();
+            const description = document.getElementById("description").value.trim();
+            const category = selectedCategory;
+            const urgency = selectedUrgency;
+            
+            // Show loading overlay
+            document.getElementById('loadingOverlay').style.display = 'flex';
             
             try {
-                const result = await AuthManager.authenticatedFetch("http://localhost:5002/requests", {
+                const authManager = await waitForAuthManager();
+                const result = await authManager.authenticatedFetch("http://localhost:5002/postRequest", {
                     method: "POST",
                     body: JSON.stringify({ title, description, category, urgency })
                 });
                 
                 const responseData = await result.json();
                 
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+                
                 if (result.ok) {
-                    document.getElementById("output").innerHTML = `
-                        <div class="alert alert-success">
-                            <i class="fas fa-check-circle me-2"></i>
-                            Request submitted successfully! Request ID: ${responseData.id || 'N/A'}
-                        </div>
-                    `;
+                    showSuccess('Your request has been posted successfully! Redirecting to dashboard...');
+                    
+                    // Reset form
                     document.getElementById("requestForm").reset();
+                    document.querySelectorAll('.category-option, .urgency-card').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                    selectedCategory = null;
+                    selectedUrgency = null;
+                    document.getElementById('titleCount').textContent = '0';
+                    document.getElementById('descriptionCount').textContent = '0';
+                    
+                    // Redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
                 } else {
                     throw new Error(responseData.error || 'Failed to submit request');
                 }
             } catch (error) {
                 console.error('Request submission error:', error);
-                document.getElementById("output").innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Error: ${error.message}
-                    </div>
-                `;
+                document.getElementById('loadingOverlay').style.display = 'none';
+                showError(error.message || 'An unexpected error occurred. Please try again.');
             }
         });
     </script>

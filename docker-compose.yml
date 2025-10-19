@@ -53,7 +53,9 @@ services:
       - db
       - auth-service
     volumes:
-      - ./backend/shared:/app/shared
+      - ./backend/services/request-service:/app       
+      - /app/node_modules                             
+      - ./backend/shared:/app/shared   
   
   matching-service:
     build: ./backend/services/matching-service
@@ -177,7 +179,7 @@ services:
       - matching-service
       - notification-service
     volumes:
-      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend:/usr/share/nginx/html
 
 volumes:
   postgres_data:

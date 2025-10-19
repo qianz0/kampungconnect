@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Details - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+        }
+        .detail-card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .detail-card .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            border: none;
+        }
+        .info-row {
+            padding: 1rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.25rem;
+        }
+        .info-value {
+            color: #212529;
+        }
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .category-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-right: 1rem;
+        }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .response-item {
+            border-left: 3px solid #667eea;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .response-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+            padding-bottom: 1.5rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #e9ecef;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -6px;
+            top: 5px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px #e9ecef;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* Base response */
+        .response-item {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        margin-left: var(--indent, 0px);
+        position: relative;
+        }
+
+        /* Remove strong colored borders */
+        .response-item.senior,
+        .response-item.helper {
+        border-left: none;
+        }
+
+        /* Add faint dotted vertical guides */
+        .response-item::before {
+        content: '';
+        position: absolute;
+        left: -12px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        border-left: 2px dotted #dee2e6;
+        }
+
+        /* Hide guide for root comments */
+        .response-item.depth-0::before {
+        display: none;
+        }
+
+        /* Hover effect like Reddit */
+        .response-item:hover {
+        background: #f8f9fa;
+        }
+            
+
+    </style>
+</head>
+
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading request details...</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">
+                <i class="fas fa-home me-2"></i>KampungConnect
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                       role="button" data-bs-toggle="dropdown">
+                        <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar">
+                        <span id="userName">Loading...</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-2">
+                            <i class="fas fa-file-alt me-2"></i>Request Details
+                        </h2>
+                        <p class="mb-0 opacity-75">View complete request information</p>
+                    </div>
+                    <button onclick="history.back()" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-2"></i>Back
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Request Overview Card -->
+        <div class="card detail-card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Request Overview
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-start mb-4">
+                    <div id="categoryIconContainer" class="category-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h3 class="mb-0" id="title">Loading...</h3>
+                            <span class="badge bg-secondary" id="posterName">#0</span>
+                        </div>
+                        <div class="mt-2">
+                            <span id="categoryBadge" class="category-badge me-2">
+                                <i class="fas fa-tag me-1"></i>Category
+                            </span>
+                            <span id="urgencyBadge" class="badge bg-info">
+                                <i class="fas fa-exclamation-circle me-1"></i>Urgency
+                            </span>
+                            
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-badge">
+                    <i class="fas fa-reply text-success me-1"></i>
+                    0 offers
+                </div>
+
+                <div class="info-row">
+                    <div class="info-label">
+                        <i class="fas fa-align-left me-2 text-primary"></i>Description
+                    </div>
+                    <div class="info-value" id="description">Loading description...</div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="info-row">
+                            <div class="info-label">
+                                <i class="fas fa-circle me-2 text-primary"></i>Status
+                            </div>
+                            <div class="info-value">
+                                <span id="statusBadge" class="status-indicator">
+                                    <i class="fas fa-clock me-2"></i>Loading...
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-row">
+                            <div class="info-label">
+                                <i class="far fa-calendar me-2 text-primary"></i>Created
+                            </div>
+                            <div class="info-value" id="createdAt">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fulfillment Information -->
+        <div class="card detail-card" id="fulfillmentCard" style="display: none;">
+            <div class="card-header">
+                <i class="fas fa-check-circle me-2"></i>Fulfillment Information
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-row">
+                            <div class="info-label">
+                                <i class="fas fa-user-check me-2 text-success"></i>Fulfilled By
+                            </div>
+                            <div class="info-value" id="fulfilledBy">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-row">
+                            <div class="info-label">
+                                <i class="far fa-clock me-2 text-success"></i>Fulfilled At
+                            </div>
+                            <div class="info-value" id="fulfilledAt">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="card detail-card">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="fas fa-tasks me-2"></i>Actions</h6>
+                <div class="action-buttons">
+                  
+                </div>
+            </div>
+        </div>
+
+        <!-- Responses Section -->
+        <div class="card detail-card">
+            <div class="card-header">
+                <i class="fas fa-comments me-2"></i>Community Responses
+            </div>
+            <div class="card-body">
+                <div id="responsesList">
+                   
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="card detail-card">
+            <div class="card-header">
+                <i class="fas fa-history me-2"></i>Activity Timeline
+            </div>
+            <div class="card-body">
+                <div id="timeline">
+                    <!-- Timeline will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        let currentUser = null;
+        let currentRequest = null;
+
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50;
+                function check() {
+                    attempts++;
+                    if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error("AuthManager not available"));
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                }
+                check();
+            });
+        }
+
+        // Get category icon and color
+        function getCategoryInfo(category) {
+            const categories = {
+                'Household': { icon: 'fa-home', color: '#28a745', bg: '#28a74520' },
+                'Shopping': { icon: 'fa-shopping-cart', color: '#007bff', bg: '#007bff20' },
+                'Transportation': { icon: 'fa-car', color: '#6f42c1', bg: '#6f42c120' },
+                'Medical': { icon: 'fa-medkit', color: '#dc3545', bg: '#dc354520' },
+                'Technology': { icon: 'fa-laptop', color: '#17a2b8', bg: '#17a2b820' },
+                'Social': { icon: 'fa-users', color: '#fd7e14', bg: '#fd7e1420' },
+                'Other': { icon: 'fa-ellipsis-h', color: '#6c757d', bg: '#6c757d20' }
+            };
+            return categories[category] || categories['Other'];
+        }
+
+        // Populate user info
+        function populateUserInfo(user) {
+            if (!user) return;
+            document.getElementById('userName').textContent = user.name || 'User';
+            const avatar = document.getElementById('userAvatar');
+            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+        }
+
+        // Populate request details
+        function populateRequestDetails(req) {
+            currentRequest = req;
+
+            // Basic info
+            document.getElementById('posterName').innerHTML = `Posted by <br><br>${req.requester_name} (${req.requester_role})`;
+            document.getElementById('title').textContent = req.title.charAt(0).toUpperCase() + req.title.slice(1);
+            document.getElementById('description').textContent = req.description;
+            document.getElementById('createdAt').textContent = new Date(req.created_at).toLocaleString();
+
+            // Category
+            const categoryInfo = getCategoryInfo(req.category);
+            const categoryIconContainer = document.getElementById('categoryIconContainer');
+            categoryIconContainer.innerHTML = `<i class="fas ${categoryInfo.icon}"></i>`;
+            categoryIconContainer.style.backgroundColor = categoryInfo.bg;
+            categoryIconContainer.querySelector('i').style.color = categoryInfo.color;
+
+            const categoryBadge = document.getElementById('categoryBadge');
+            categoryBadge.textContent = req.category;
+            categoryBadge.style.backgroundColor = categoryInfo.bg;
+            categoryBadge.style.color = categoryInfo.color;
+
+            // Urgency
+            const urgencyBadge = document.getElementById('urgencyBadge');
+            const urgencyColors = {
+                'low': 'info',
+                'medium': 'warning',
+                'high': 'danger'
+            };
+            urgencyBadge.className = `badge bg-${urgencyColors[req.urgency] || 'info'}`;
+            urgencyBadge.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${req.urgency}`;
+
+            // Status
+            const statusBadge = document.getElementById('statusBadge');
+            if (req.status === 'fulfilled') {
+                statusBadge.className = 'status-indicator bg-success text-white';
+                statusBadge.innerHTML = '<i class="fas fa-check-circle me-2"></i>Fulfilled';
+            } else {
+                statusBadge.className = 'status-indicator bg-secondary text-white';
+                statusBadge.innerHTML = '<i class="fas fa-clock me-2"></i>Pending';
+            }
+
+            // Fulfillment info
+            if (req.fulfilledAt && req.fulfilledBy) {
+                document.getElementById('fulfillmentCard').style.display = 'block';
+                document.getElementById('fulfilledAt').textContent = new Date(req.fulfilledAt).toLocaleString();
+                document.getElementById('fulfilledBy').innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-circle fa-2x me-2 text-success"></i>
+                        <div>
+                            <strong>${req.fulfilledBy.name}</strong><br>
+                            <small class="text-muted">
+                                <i class="fas fa-star text-warning"></i> ${req.fulfilledBy.rating || 'N/A'}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Create timeline
+            createTimeline(req);
+        }
+
+        // Create activity timeline
+        function createTimeline(req) {
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
+
+            const events = [
+                {
+                    icon: 'fa-plus-circle',
+                    color: 'primary',
+                    title: 'Request Created',
+                    time: req.created_at,
+                    description: `Request was posted by ${req.requester_name || 'user'}`
+                }
+            ];
+
+            if (req.fulfilledAt) {
+                events.push({
+                    icon: 'fa-check-circle',
+                    color: 'success',
+                    title: 'Request Fulfilled',
+                    time: req.fulfilledAt,
+                    description: `Fulfilled by ${req.fulfilledBy?.name || 'volunteer'}`
+                });
+            }
+
+            events.forEach((event, index) => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                if (index === events.length - 1) {
+                    item.style.paddingBottom = '0';
+                }
+                item.innerHTML = `
+                    <div class="timeline-dot" style="background: var(--bs-${event.color});"></div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <strong>
+                                <i class="fas ${event.icon} me-2 text-${event.color}"></i>
+                                ${event.title}
+                            </strong>
+                            <small class="text-muted">${new Date(event.time).toLocaleString()}</small>
+                        </div>
+                        <p class="text-muted mb-0">${event.description}</p>
+                    </div>
+                `;
+                timeline.appendChild(item);
+            });
+        }
+
+        function showActionButtons(user) {
+            const actions = document.querySelector('.action-buttons');
+            actions.innerHTML = ''; // clear
+
+            // senior cant press respond to request button
+            let respondBtn;
+            if (user.role !== 'helper') {
+                respondBtn = `
+                    <span data-bs-toggle="tooltip" title="Only helpers can respond to requests">
+                        <button class="btn btn-success" disabled>
+                            <i class="fas fa-reply me-2"></i>Respond to Request
+                        </button>
+                    </span>
+                `;
+            } else {
+                respondBtn = `
+                    <button class="btn btn-success" onclick="respondToRequest()">
+                        <i class="fas fa-reply me-2"></i>Respond to Request
+                    </button>
+                `;
+            }
+
+            // Offer to help button (helpers only)
+            let offerBtn = '';
+            if (user.role === 'helper') {
+                offerBtn = `
+                    <button class="btn btn-info" onclick="offerToHelp()">
+                        <i class="fas fa-hands-helping me-2"></i>Offer to Help
+                    </button>
+                `;
+            } else {
+                offerBtn = `
+                    <span data-bs-toggle="tooltip" title="Only helpers can offer to help">
+                        <button class="btn btn-info" disabled>
+                            <i class="fas fa-hands-helping me-2"></i>Offer to Help
+                        </button>
+                    </span>
+                `;
+            }
+
+            // Other action buttons
+            actions.innerHTML = `
+                ${respondBtn}
+                ${offerBtn}
+                <button class="btn btn-primary" onclick="shareRequest()">
+                    <i class="fas fa-share-alt me-2"></i>Share
+                </button>
+                <button class="btn btn-warning" onclick="reportRequest()">
+                    <i class="fas fa-flag me-2"></i>Report
+                </button>
+            `;
+
+            // Initialize Bootstrap tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+        }
+
+        async function loadResponses(requestId) {
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    `http://localhost:5002/requests/${requestId}/responses`
+                );
+                const data = await response.json();
+
+                const container = document.getElementById("responsesList");
+                container.innerHTML = "";
+
+                if (!response.ok || !data.responses || data.responses.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2 opacity-50"></i>
+                            <p>No responses yet. Be the first to help!</p>
+                        </div>`;
+                    return;
+                }
+
+                renderResponses(data.responses);
+            } catch (err) {
+                console.error("Error loading responses:", err);
+            }
+        }
+
+        // Action functions
+        async function respondToRequest() {
+            const message = prompt("Enter your response message:");
+            if (!message) return;
+
+            try {
+                const authManager = await waitForAuthManager();
+                const params = new URLSearchParams(window.location.search);
+                const requestId = params.get("id");
+
+                const response = await authManager.authenticatedFetch(
+                    `http://localhost:5002/requests/${requestId}/respond`,
+                    {
+                        method: "POST",
+                        body: JSON.stringify({ message })
+                    }
+                );
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert("Response submitted successfully!");
+                    console.log("Response:", data);
+                    location.reload(); // reload to show the new response
+                } else {
+                    throw new Error(data.error || "Failed to respond");
+                }
+            } catch (err) {
+                console.error("Respond error:", err);
+                alert("Error: " + err.message);
+            }
+        }
+
+        function renderResponses(responses) {
+            const container = document.getElementById("responsesList");
+            container.innerHTML = '';
+
+            // Build a map of responses by id
+            const responseMap = {};
+           responses.forEach(r => {
+                const id = Number(r.id);
+                responseMap[id] = { ...r, id, replies: [] };
+            });
+
+            // Link children to parents
+            const rootResponses = [];
+            responses.forEach(r => {
+                const id = Number(r.id);
+                const pid = r.parent_id ? Number(r.parent_id) : null;
+
+                if (pid && responseMap[pid]) {
+                    responseMap[pid].replies.push(responseMap[id]);
+                } else {
+                    rootResponses.push(responseMap[id]);
+                }
+            });
+
+            // Recursive render
+            function renderResponse(res, depth = 0, parentEl = container) {
+                const item = document.createElement("div");
+                const roleClass = res.responder_role || '';
+                item.className = `response-item depth-${depth} ${roleClass}`;
+                item.style.setProperty('--indent', `${depth * 24}px`);
+
+                // role badge
+                let roleBadge = '';
+                if (res.responder_role === 'senior') {
+                    roleBadge = `<span class="badge bg-primary ms-2">Senior</span>`;
+                } else if (res.responder_role === 'helper') {
+                    roleBadge = `<span class="badge bg-success ms-2">Helper</span>`;
+                }
+
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <strong class="${res.responder_role === 'senior' ? 'text-primary fw-bold' : ''}">
+                                ${res.responder_name || "Anonymous"}
+                            </strong>
+                            ${roleBadge}
+                        </div>
+                        <small class="text-muted">${new Date(res.created_at).toLocaleString()}</small>
+                    </div>
+                    <p class="mb-1">${res.message}</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="replyToResponse(${res.id})">
+                        Reply
+                    </button>
+                `;
+
+                const repliesContainer = document.createElement("div");
+                repliesContainer.classList.add("replies");
+                item.appendChild(repliesContainer);
+
+                // add this item into the parent
+                parentEl.appendChild(item);
+
+                res.replies.forEach(reply => renderResponse(reply, depth + 1, repliesContainer));
+            }
+
+            function sortReplies(node) {
+                node.replies.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                node.replies.forEach(sortReplies);
+            }
+
+            // sort root responses
+            rootResponses.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            rootResponses.forEach(sortReplies);
+
+            rootResponses.forEach(r => renderResponse(r));
+        }
+
+        async function replyToResponse(responseId) {
+            const message = prompt("Enter your reply:");
+            if (!message) return;
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    `http://localhost:5002/responses/${responseId}/reply`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message })
+                    }
+                );
+                if (response.ok) {
+                    location.reload(); // refresh to show new reply
+                }
+            } catch (err) {
+                alert("Failed to reply: " + err.message);
+            }
+        }
+
+
+        function shareRequest() {
+            if (navigator.share && currentRequest) {
+                navigator.share({
+                    title: currentRequest.title,
+                    text: currentRequest.description,
+                    url: window.location.href
+                }).catch(err => console.log('Error sharing:', err));
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('Link copied to clipboard!');
+                });
+            }
+        }
+
+        function reportRequest() {
+            if (confirm('Are you sure you want to report this request?')) {
+                alert('Report feature - This will send a report to moderators');
+            }
+        }
+
+        // Initialize
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const authManager = await waitForAuthManager();
+                await authManager.initialize();
+
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                // Get and populate user info
+                currentUser = authManager.getCurrentUser();
+                populateUserInfo(currentUser);
+                
+                showActionButtons(currentUser);
+                // Get request ID from URL
+                const params = new URLSearchParams(window.location.search);
+                const requestId = params.get("id");
+                
+                if (!requestId) {
+                    throw new Error('No request ID provided');
+                }
+
+                // Fetch request details
+                const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load request');
+                }
+
+                populateRequestDetails(data.request);
+
+                // fetch and display responses
+                await loadResponses(requestId);
+
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+                // Logout handler
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (confirm('Are you sure you want to logout?')) {
+                        await authManager.logout();
+                    }
+                });
+
+            } catch (err) {
+                console.error("Error loading request details:", err);
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div class="text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <h4>Failed to Load Request</h4>
+                        <p class="text-muted">${err.message}</p>
+                        <div class="mt-3">
+                            <button onclick="history.back()" class="btn btn-secondary me-2">
+                                <i class="fas fa-arrow-left me-1"></i>Go Back
+                            </button>
+                            <a href="dashboard.html" class="btn btn-primary">
+                                <i class="fas fa-home me-1"></i>Dashboard
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+
+</html>

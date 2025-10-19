@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const db = require('./db');
 
 // Import authentication middleware
 const AuthMiddleware = require('/app/shared/auth-middleware');
@@ -42,35 +43,29 @@ app.get('/info', (req, res) => {
 });
 
 // Protected endpoints - require authentication
-app.post('/postRequest', authMiddleware.authenticateToken, (req, res) => {
+app.post('/postRequest', authMiddleware.authenticateToken, async(req, res) => {
     try {
-        const { category, description, type, urgency } = req.body;
+        const { title, category, description, urgency } = req.body;
         const userId = req.user.id; // Get from authenticated user
         
         // Validate required fields
-        if (!category || !description || !type) {
-            return res.status(400).json({ 
-                error: 'Missing required fields: category, description, type' 
+        if (!title || !category || !description || !urgency) {
+            return res.status(400).json({
+                error: 'Missing required fields: title, category, description, urgency'
             });
         }
         
-        // Here you would typically save to database
-        const requestData = {
-            id: Math.floor(Math.random() * 10000), // Mock ID
-            userId: userId,
-            userEmail: req.user.email,
-            userName: req.user.name,
-            category,
-            description,
-            type,
-            urgency: urgency || 'normal',
-            status: 'pending',
-            createdAt: new Date().toISOString()
-        };
+        // Database insertion
+        const result = await db.query(
+            `INSERT INTO requests (user_id, title, category, description, urgency, status, created_at)
+             VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+             RETURNING id, user_id, title, category, description, urgency, status, created_at`,
+            [userId, title, category, description, urgency]
+        );
         
         res.json({ 
             message: "Request posted successfully", 
-            request: requestData
+            request: result.rows[0]
         });
     } catch (error) {
         console.error('Post request error:', error);
@@ -120,36 +115,60 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
     }
 });
 
-// Get user's requests
-app.get('/requests', authMiddleware.authenticateToken, (req, res) => {
+// Get all community requests (everyone can see)
+app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const results = await db.query(
+            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
+             FROM requests r
+             JOIN users u ON r.user_id = u.id
+             ORDER BY r.created_at DESC`
+        );
+
+        res.json({ 
+            requests: results.rows,
+            total: results.rowCount
+        });
+    } catch (error) {
+        console.error('Get all requests error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get latest 3 community requests (everyone can see)
+app.get('/requests/latest3/all', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const results = await db.query(
+            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
+             FROM requests r
+             JOIN users u ON r.user_id = u.id
+             ORDER BY r.created_at DESC
+             LIMIT 3`
+        );
+
+        res.json({
+            requests: results.rows,
+            total: results.rowCount
+        });
+    } catch (error) {
+        console.error('Get latest 3 community requests error:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get user's requests only
+app.get('/requests', authMiddleware.authenticateToken, async(req, res) => {
     try {
         const userId = req.user.id;
         
-        // Mock data - in production, fetch from database
-        const userRequests = [
-            {
-                id: 1,
-                category: 'transportation',
-                description: 'Need a ride to the hospital',
-                type: 'help',
-                urgency: 'high',
-                status: 'fulfilled',
-                createdAt: '2025-09-25T10:30:00Z'
-            },
-            {
-                id: 2,
-                category: 'food',
-                description: 'Looking for someone to share grocery shopping',
-                type: 'collaboration',
-                urgency: 'normal',
-                status: 'pending',
-                createdAt: '2025-09-29T14:15:00Z'
-            }
-        ];
-        
+        const results = await db.query(
+            "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC",
+            [userId]
+        );
+    
         res.json({ 
-            requests: userRequests,
-            total: userRequests.length
+            requests: results.rows,
+            total: results.rowCount
         });
     } catch (error) {
         console.error('Get requests error:', error);
@@ -157,43 +176,149 @@ app.get('/requests', authMiddleware.authenticateToken, (req, res) => {
     }
 });
 
-// Get specific request details
-app.get('/requests/:id', authMiddleware.authenticateToken, (req, res) => {
+// Get latest 3 requests
+app.get('/requests/latest3', authMiddleware.authenticateToken, async(req, res) => {
     try {
-        const requestId = req.params.id;
         const userId = req.user.id;
         
-        // Mock data - verify user owns this request or has permission to view
-        const requestDetails = {
-            id: requestId,
-            userId: userId,
-            category: 'transportation',
-            description: 'Need a ride to the hospital for check-up',
-            type: 'help',
-            urgency: 'high',
-            status: 'fulfilled',
-            createdAt: '2025-09-25T10:30:00Z',
-            fulfilledAt: '2025-09-25T11:45:00Z',
-            fulfilledBy: {
-                name: 'John Doe',
-                rating: 4.8
-            },
-            responses: [
-                {
-                    userId: 'user123',
-                    name: 'John Doe',
-                    message: 'I can help you with this!',
-                    timestamp: '2025-09-25T10:35:00Z'
-                }
-            ]
-        };
-        
-        res.json({ request: requestDetails });
+        const results = await db.query(
+            "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 3",
+            [userId]
+        );
+
+        res.json({
+            requests: results.rows,
+            total: results.rowCount
+        });
+    } catch (error) {
+        console.error('Get latest 3 requests error:', error.message);
+        console.error(error.stack);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get specific request details
+app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+
+        const result = await db.query(
+            `SELECT r.*,
+                    poster.name   AS requester_name,
+                    poster.role   AS requester_role,
+                    helper.name   AS fulfilled_by_name,
+                    helper.rating AS fulfilled_by_rating
+             FROM requests r
+             JOIN users poster ON r.user_id = poster.id
+             LEFT JOIN matches m ON r.id = m.request_id
+             LEFT JOIN users helper ON m.helper_id = helper.id
+             WHERE r.id = $1`,
+            [requestId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        res.json({ request: result.rows[0] });
     } catch (error) {
         console.error('Get request details error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// Respond to a request
+app.post('/requests/:id/respond', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    const { message } = req.body;
+    const requestId = req.params.id;
+
+    if (userRole !== 'helper') {
+      return res.status(403).json({ error: 'Only helpers can respond to requests' });
+    }
+
+    if (!message) {
+      return res.status(400).json({ error: 'Response message is required' });
+    }
+
+    // Save response in DB
+    const result = await db.query(
+      `INSERT INTO responses (request_id, user_id, message, created_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING id, request_id, user_id, message, created_at`,
+      [requestId, userId, message]
+    );
+
+    res.json({ message: 'Response added successfully', response: result.rows[0] });
+  } catch (error) {
+    console.error('Respond to request error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+// Reply to a response
+app.post('/responses/:id/reply', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const responseId = req.params.id;  // ID of the response being replied to
+        const { message } = req.body;
+        const userId = req.user.id;
+
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
+
+        // Find the request that this response belongs to
+        const parentRes = await db.query("SELECT request_id FROM responses WHERE id = $1", [responseId]);
+
+        if (parentRes.rowCount === 0) {
+            return res.status(404).json({ error: "Parent response not found" });
+        }
+
+        const requestId = parentRes.rows[0].request_id;
+
+        // Insert reply correctly
+        const result = await db.query(
+            `INSERT INTO responses (request_id, user_id, message, parent_id, created_at)
+             VALUES ($1, $2, $3, $4, NOW())
+             RETURNING id, request_id, user_id, message, parent_id, created_at`,
+            [requestId, userId, message, responseId]
+        );
+
+        res.json({ reply: result.rows[0] });
+    } catch (error) {
+        console.error("Reply error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+// Get responses and their replies for a request
+// Get responses for a request
+app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+
+        const result = await db.query(
+            `SELECT r.id, r.message, r.created_at, r.parent_id,
+                    u.name AS responder_name, u.role as responder_role
+             FROM responses r
+             JOIN users u ON r.user_id = u.id
+             WHERE r.request_id = $1
+             ORDER BY r.created_at ASC`,
+            [requestId]
+        );
+
+        res.json({ responses: result.rows });
+    } catch (error) {
+        console.error('Get responses error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 // Error handling middleware
 app.use((error, req, res, next) => {

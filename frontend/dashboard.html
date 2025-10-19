@@ -71,6 +71,7 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" id="switchAccountBtn">
                             <i class="fas fa-user-friends me-2"></i>Switch Account
@@ -122,9 +123,9 @@
                         <i class="fas fa-hands-helping fa-3x text-primary mb-3"></i>
                         <h5 class="card-title">Make Requests</h5>
                         <p class="card-text">Request help from your community members for various needs.</p>
-                        <a href="/requests.html" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>New Request
-                        </a>
+                        
+                        <div id="newRequestBtnContainer"></div>
+
                     </div>
                 </div>
             </div>
@@ -152,6 +153,48 @@
                             <i class="fas fa-chart-line me-1"></i>View Ratings
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Requests Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Recent Requests
+                    </h5>
+                    <a href="/all-requests.html" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right me-1"></i>View More
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="recentRequests" class="list-group">
+                    <!-- Requests will be populated here -->
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Requests Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Recent Requests
+                    </h5>
+                    <a href="/all-requests.html" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right me-1"></i>View More
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="recentRequests" class="list-group">
+                    <!-- Requests will be populated here -->
+                    </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -243,6 +286,7 @@
                 }
                 
                 populateUserInfo(currentUser);
+                showNewRequestButton(currentUser);
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -376,6 +420,82 @@
             `;
             document.body.appendChild(alert);
         }
+
+        function showNewRequestButton(user) {
+            const container = document.getElementById("newRequestBtnContainer");
+
+            if (user.role === "senior") {
+                // Seniors can create requests
+                container.innerHTML = `
+                    <a href="/requests.html" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>New Request
+                    </a>
+                `;
+            } else {
+                // Helpers see disabled button with tooltip
+                container.innerHTML = `
+                    <span data-bs-toggle="tooltip" title="Only seniors can post requests">
+                        <button class="btn btn-primary" disabled>
+                            <i class="fas fa-plus me-1"></i>New Request
+                        </button>
+                    </span>
+                `;
+
+                // Activate Bootstrap tooltips
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async() => {
+            try {
+                const authManager = await waitForAuthManager();
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) return;
+                
+                const response = await authManager.authenticatedFetch('http://localhost:5002/requests/latest3/all');
+                const data = await response.json();
+
+                const requestContainer = document.getElementById('recentRequests');
+                requestContainer.innerHTML = '';
+
+                if (response.ok && data.requests && data.requests.length > 0) {
+                    data.requests.forEach(req => {
+                    const item = document.createElement("div");
+                    item.className = "list-group-item";
+                    item.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">
+                            <a href="request-details.html?id=${req.id}" style="text-decoration: none;">
+                                ${req.title}</h6>
+                            </a>
+                        </h6>
+                        <td>
+                            <small class="text-muted">Posted by ${req.requester_name} (${req.requester_role})</small>
+                            <small>${new Date(req.created_at).toLocaleString()}</small>
+                        </td>
+                        </div>
+                        <p class="mb-1">Category: ${req.category}</p>
+                        <p class="mb-1">${req.description}</p>
+                        <small>Status: <span class="badge bg-${req.status === 'fulfilled' ? 'success' : 'secondary'}">
+                        ${req.status}
+                        </span> | Urgency: <span class="badge bg-${req.urgency === 'high' ? 'danger' : 'info'}">
+                        ${req.urgency}
+                        </span></small>
+                    `;
+                    requestContainer.appendChild(item);
+                    });
+                } else {
+                    requestContainer.innerHTML = `<div class="alert alert-info mb-0">No requests found.</div>`;
+                }
+
+            } catch (error) {
+                console.error('Fail to load requests:', error);
+                document.getElementById('recentRequests').innerHTML = `<div class="alert alert-danger mb-0">
+                    Failed to load requests. Please try again later.
+                </div>`;
+            }
+        });
     </script>
 </body>
 

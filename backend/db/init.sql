@@ -26,10 +26,11 @@ CREATE INDEX IF NOT EXISTS idx_users_provider_id ON users(provider_id);
 CREATE TABLE IF NOT EXISTS requests (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    category VARCHAR(50), -- e.g. groceries, chores, companionship
-    type VARCHAR(10) CHECK (type IN ('normal', 'urgent')) NOT NULL,
+    title VARCHAR(255), -- NEW
+    category VARCHAR(50),
     description TEXT,
-    status VARCHAR(20) DEFAULT 'pending', -- pending, matched, completed
+    urgency VARCHAR(10) CHECK (urgency IN ('low', 'medium', 'high', 'urgent')) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -50,5 +51,14 @@ CREATE TABLE IF NOT EXISTS ratings (
     ratee_id INT REFERENCES users(id),
     score INT CHECK (score BETWEEN 1 AND 5),
     comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS responses (
+    id SERIAL PRIMARY KEY,
+    request_id INT REFERENCES requests(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    parent_id INT REFERENCES responses(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
