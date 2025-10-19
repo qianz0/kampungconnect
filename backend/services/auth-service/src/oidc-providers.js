@@ -12,20 +12,36 @@ class OIDCProviders {
     }
 
     initializeStrategies() {
-        const provider = process.env.OIDC_PROVIDER;
+        let providersInitialized = 0;
 
-        switch (provider) {
-            case 'google':
-                this.setupGoogleStrategy();
-                break;
-            case 'azure':
+        // Initialize all available providers based on environment variables
+        if (this.isGoogleConfigured()) {
+            this.setupGoogleStrategy();
+            providersInitialized++;
+            console.log('✅ Google OAuth strategy initialized');
+        }
+
+        if (this.isAzureConfigured()) {
+            try {
                 this.setupAzureStrategy();
-                break;
-            case 'auth0':
-                this.setupAuth0Strategy();
-                break;
-            default:
-                console.warn('No OIDC provider specified. Please set OIDC_PROVIDER in environment variables.');
+                providersInitialized++;
+                console.log('✅ Azure AD strategy initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize Azure AD strategy:', error.message);
+                console.warn('⚠️  Continuing without Azure AD authentication...');
+            }
+        }
+
+        if (this.isAuth0Configured()) {
+            this.setupAuth0Strategy();
+            providersInitialized++;
+            console.log('✅ Auth0 strategy initialized');
+        }
+
+        if (providersInitialized === 0) {
+            console.warn('⚠️  No OIDC providers configured. Please set provider credentials in environment variables.');
+        } else {
+            console.log(`🎉 ${providersInitialized} OIDC provider(s) initialized successfully`);
         }
 
         // Serialize/Deserialize user for session
@@ -38,17 +54,61 @@ class OIDCProviders {
         });
     }
 
+    // Helper methods to check if provider credentials are configured
+    isGoogleConfigured() {
+        return !!(process.env.GOOGLE_CLIENT_ID && 
+                 process.env.GOOGLE_CLIENT_SECRET && 
+                 process.env.GOOGLE_REDIRECT_URI);
+    }
+
+    isAzureConfigured() {
+        return !!(process.env.AZURE_CLIENT_ID && 
+                 process.env.AZURE_CLIENT_SECRET && 
+                 process.env.AZURE_TENANT_ID &&
+                 process.env.AZURE_REDIRECT_URI);
+    }
+
+    isAuth0Configured() {
+        return !!(process.env.AUTH0_DOMAIN && 
+                 process.env.AUTH0_CLIENT_ID && 
+                 process.env.AUTH0_CLIENT_SECRET &&
+                 process.env.AUTH0_REDIRECT_URI);
+    }
+
     setupGoogleStrategy() {
-        passport.use(new GoogleStrategy({
+        passport.use('google', new GoogleStrategy({
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             callbackURL: process.env.GOOGLE_REDIRECT_URI
         }, async (accessToken, refreshToken, profile, done) => {
             try {
+                // Helper function to parse full name into first and last name
+                const parseFullName = (fullName) => {
+                    if (!fullName) return { firstName: '', lastName: '' };
+                    
+                    const nameParts = fullName.trim().split(' ');
+                    if (nameParts.length === 1) {
+                        return { firstName: nameParts[0], lastName: '' };
+                    } else if (nameParts.length === 2) {
+                        return { firstName: nameParts[0], lastName: nameParts[1] };
+                    } else {
+                        // For names with more than 2 parts, take first as firstName and rest as lastName
+                        return { 
+                            firstName: nameParts[0], 
+                            lastName: nameParts.slice(1).join(' ') 
+                        };
+                    }
+                };
+
+                const fullName = profile.displayName || '';
+                const { firstName, lastName } = parseFullName(fullName);
+
                 const user = {
                     id: profile.id,
                     email: profile.emails[0].value,
-                    name: profile.displayName,
+                    name: fullName,
+                    firstName: firstName,
+                    lastName: lastName,
                     picture: profile.photos[0].value,
                     provider: 'google'
                 };
@@ -60,42 +120,145 @@ class OIDCProviders {
     }
 
     setupAzureStrategy() {
-        passport.use(new AzureAdOAuth2Strategy({
-            identityMetadata: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0/.well-known/openid_configuration`,
-            clientID: process.env.AZURE_CLIENT_ID,
-            clientSecret: process.env.AZURE_CLIENT_SECRET,
-            redirectUrl: process.env.AZURE_REDIRECT_URI,
-            allowHttpForRedirectUrl: true, // For development only
-            responseType: 'code',
-            responseMode: 'query',
-            scope: ['profile', 'email', 'openid']
-        }, async (iss, sub, profile, accessToken, refreshToken, done) => {
-            try {
-                const user = {
-                    id: profile.oid,
-                    email: profile.preferred_username || profile.email,
-                    name: profile.name,
-                    provider: 'azure'
-                };
-                return done(null, user);
-            } catch (error) {
-                return done(error, null);
-            }
-        }));
+        try {
+            // Log configuration for debugging (without exposing sensitive data)
+            console.log('Setting up Azure strategy with configuration:');
+            console.log('- Client ID:', process.env.AZURE_CLIENT_ID ? 'configured' : 'MISSING');
+            console.log('- Client Secret:', process.env.AZURE_CLIENT_SECRET ? `configured (length: ${process.env.AZURE_CLIENT_SECRET.length})` : 'MISSING');
+            console.log('- Tenant ID:', process.env.AZURE_TENANT_ID ? 'configured' : 'MISSING');
+            console.log('- Redirect URI:', process.env.AZURE_REDIRECT_URI);
+            
+            // Use 'common' endpoint for multi-tenant support or specific tenant ID for single tenant
+            const tenantId = process.env.AZURE_TENANT_ID === 'common' || process.env.AZURE_MULTITENANT === 'true' 
+                ? 'common' 
+                : process.env.AZURE_TENANT_ID;
+                
+            passport.use('azure', new AzureAdOAuth2Strategy({
+                identityMetadata: `https://login.microsoftonline.com/${tenantId}/v2.0/.well-known/openid-configuration`,
+                clientID: process.env.AZURE_CLIENT_ID,
+                clientSecret: process.env.AZURE_CLIENT_SECRET,
+                redirectUrl: process.env.AZURE_REDIRECT_URI,
+                allowHttpForRedirectUrl: true, // For development only
+                responseType: 'code',
+                responseMode: 'query',
+                scope: ['profile', 'email', 'openid'],
+                loggingLevel: 'info', // Increase logging to help debug
+                validateIssuer: false, // Allow different issuers for multi-tenant
+                passReqToCallback: false,
+                clockSkew: 300, // 5 minute clock skew tolerance
+                // Additional Azure-specific configuration
+                useCookieInsteadOfSession: false,
+                cookieEncryptionKeys: null,
+                nonceLifetime: null,
+                nonceMaxAmount: 5,
+                isB2C: false
+            }, async (iss, sub, profile, accessToken, refreshToken, done) => {
+                try {
+                    console.log('✅ Azure AD authentication successful!');
+
+                    // Helper function to parse full name into first and last name
+                    const parseFullName = (fullName) => {
+                        if (!fullName) return { firstName: '', lastName: '' };
+                        
+                        const nameParts = fullName.trim().split(' ');
+                        if (nameParts.length === 1) {
+                            return { firstName: nameParts[0], lastName: '' };
+                        } else if (nameParts.length === 2) {
+                            return { firstName: nameParts[0], lastName: nameParts[1] };
+                        } else {
+                            // For names with more than 2 parts, take first as firstName and rest as lastName
+                            return { 
+                                firstName: nameParts[0], 
+                                lastName: nameParts.slice(1).join(' ') 
+                            };
+                        }
+                    };
+
+                    // Extract name from profile (try different possible fields)
+                    // Azure AD can return names in various fields
+                    const fullName = profile.displayName || 
+                                   profile.name || 
+                                   profile._json?.name || 
+                                   profile._json?.displayName ||
+                                   (profile._json?.given_name && profile._json?.family_name ? 
+                                    `${profile._json.given_name} ${profile._json.family_name}` : '') ||
+                                   '';
+                    
+                    const { firstName, lastName } = parseFullName(fullName);
+                    
+                    // Try to get more specific first/last names from Azure profile
+                    const finalFirstName = firstName || 
+                                         profile._json?.given_name || 
+                                         profile._json?.givenName ||
+                                         profile.givenName || '';
+                    
+                    const finalLastName = lastName || 
+                                        profile._json?.family_name || 
+                                        profile._json?.familyName ||
+                                        profile.familyName || '';
+                    
+                    const user = {
+                        id: profile.oid || profile._json?.oid || profile.id,
+                        email: profile._json?.email || 
+                               profile._json?.preferred_username || 
+                               profile._json?.mail ||
+                               profile._json?.upn ||
+                               profile.emails?.[0]?.value,
+                        name: fullName,
+                        firstName: finalFirstName,
+                        lastName: finalLastName,
+                        provider: 'azure',
+                        tenantId: profile.tid || profile._json?.tid,
+                        picture: profile._json?.picture || profile.picture
+                    };
+                    
+                    return done(null, user);
+                } catch (error) {
+                    console.error('❌ Azure profile processing error:', error);
+                    return done(error, null);
+                }
+            }));
+        } catch (error) {
+            console.error('❌ Azure strategy setup failed:', error.message);
+            throw error;
+        }
     }
 
     setupAuth0Strategy() {
-        passport.use(new Auth0Strategy({
+        passport.use('auth0', new Auth0Strategy({
             domain: process.env.AUTH0_DOMAIN,
             clientID: process.env.AUTH0_CLIENT_ID,
             clientSecret: process.env.AUTH0_CLIENT_SECRET,
             callbackURL: process.env.AUTH0_REDIRECT_URI
         }, async (accessToken, refreshToken, extraParams, profile, done) => {
             try {
+                // Helper function to parse full name into first and last name
+                const parseFullName = (fullName) => {
+                    if (!fullName) return { firstName: '', lastName: '' };
+                    
+                    const nameParts = fullName.trim().split(' ');
+                    if (nameParts.length === 1) {
+                        return { firstName: nameParts[0], lastName: '' };
+                    } else if (nameParts.length === 2) {
+                        return { firstName: nameParts[0], lastName: nameParts[1] };
+                    } else {
+                        // For names with more than 2 parts, take first as firstName and rest as lastName
+                        return { 
+                            firstName: nameParts[0], 
+                            lastName: nameParts.slice(1).join(' ') 
+                        };
+                    }
+                };
+
+                const fullName = profile.displayName || '';
+                const { firstName, lastName } = parseFullName(fullName);
+
                 const user = {
                     id: profile.id,
                     email: profile.emails[0].value,
-                    name: profile.displayName,
+                    name: fullName,
+                    firstName: firstName,
+                    lastName: lastName,
                     picture: profile.picture,
                     provider: 'auth0'
                 };
@@ -107,30 +270,43 @@ class OIDCProviders {
     }
 
     getAuthRoutes() {
-        const provider = process.env.OIDC_PROVIDER;
-        
-        switch (provider) {
-            case 'google':
-                return {
-                    auth: '/auth/google',
-                    callback: '/auth/google/callback',
-                    scope: ['profile', 'email']
-                };
-            case 'azure':
-                return {
-                    auth: '/auth/azure',
-                    callback: '/auth/azure/callback',
-                    scope: ['profile', 'email', 'openid']
-                };
-            case 'auth0':
-                return {
-                    auth: '/auth/auth0',
-                    callback: '/auth/auth0/callback',
-                    scope: ['openid', 'email', 'profile']
-                };
-            default:
-                return null;
+        const availableRoutes = {};
+
+        if (this.isGoogleConfigured()) {
+            availableRoutes.google = {
+                auth: '/auth/google',
+                callback: '/auth/google/callback',
+                scope: ['profile', 'email']
+            };
         }
+
+        if (this.isAzureConfigured()) {
+            availableRoutes.azure = {
+                auth: '/auth/azure',
+                callback: '/auth/azure/callback',
+                scope: ['profile', 'email', 'openid']
+            };
+        }
+
+        if (this.isAuth0Configured()) {
+            availableRoutes.auth0 = {
+                auth: '/auth/auth0',
+                callback: '/auth/auth0/callback',
+                scope: ['openid', 'email', 'profile']
+            };
+        }
+
+        return availableRoutes;
+    }
+
+    getAvailableProviders() {
+        const providers = [];
+        
+        if (this.isGoogleConfigured()) providers.push('google');
+        if (this.isAzureConfigured()) providers.push('azure');
+        if (this.isAuth0Configured()) providers.push('auth0');
+        
+        return providers;
     }
 }
 

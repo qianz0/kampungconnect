@@ -21,7 +21,7 @@ class DatabaseService {
             try {
                 console.log(`Attempting to connect to database (attempt ${retries + 1}/${maxRetries})...`);
                 await this.pool.query('SELECT 1');
-                console.log('Database connection established successfully');
+                console.log('Database connection established successfully!');
                 return true;
             } catch (error) {
                 retries++;
@@ -61,28 +61,45 @@ class DatabaseService {
                 // Update existing user (for OIDC users)
                 const updateQuery = `
                     UPDATE users 
-                    SET name = $1, picture = $2, updated_at = CURRENT_TIMESTAMP 
-                    WHERE provider_id = $3 OR email = $4
-                    RETURNING *
+                    SET firstname = $1, lastname = $2, picture = $3, updated_at = CURRENT_TIMESTAMP 
+                    WHERE provider_id = $4 OR email = $5
+                    RETURNING id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
+                
+                // Use provided firstName and lastName, or parse from name if not available
+                const firstName = userData.firstName || 
+                                (userData.name ? userData.name.trim().split(' ')[0] : '') || '';
+                const lastName = userData.lastName || 
+                               (userData.name ? userData.name.trim().split(' ').slice(1).join(' ') : '') || '';
+                
                 const updateResult = await client.query(updateQuery, [
-                    userData.name,
+                    firstName,
+                    lastName,
                     userData.picture || null,
                     userData.id,
                     userData.email
                 ]);
+                
                 return updateResult.rows[0];
             } else {
-                // Create new user (for OIDC users)
+                // Create new user (for OIDC users) - no default role assigned
                 const insertQuery = `
-                    INSERT INTO users (provider_id, email, name, picture, provider)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING *
+                    INSERT INTO users (provider_id, email, firstname, lastname, picture, provider, role)
+                    VALUES ($1, $2, $3, $4, $5, $6, NULL)
+                    RETURNING id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
+                
+                // Split name into firstName and lastName for OIDC users
+                const nameStr = (typeof userData.name === 'string' && userData.name) ? userData.name.trim() : '';
+                const nameParts = nameStr ? nameStr.split(' ') : ['', ''];
+                const firstName = userData.firstName || nameParts[0] || '';
+                const lastName = userData.lastName || nameParts.slice(1).join(' ') || '';
+                
                 const insertResult = await client.query(insertQuery, [
                     userData.id,
                     userData.email,
-                    userData.name,
+                    firstName,
+                    lastName,
                     userData.picture || null,
                     userData.provider
                 ]);
@@ -110,13 +127,14 @@ class DatabaseService {
             
             // Create new email/password user
             const insertQuery = `
-                INSERT INTO users (email, name, password_hash, provider, role, location, email_verified)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING id, email, name, provider, role, location, email_verified, created_at
+                INSERT INTO users (email, firstname, lastname, password_hash, provider, role, location, email_verified)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id, email, firstname as "firstName", lastname as "lastName", provider, role, location, email_verified, created_at
             `;
             const insertResult = await client.query(insertQuery, [
                 userData.email,
-                userData.name,
+                userData.firstName,
+                userData.lastName,
                 userData.passwordHash,
                 'email',
                 userData.role || 'senior',
@@ -136,9 +154,16 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT * FROM users WHERE email = $1 AND is_active = TRUE';
+            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at FROM users WHERE email = $1 AND is_active = TRUE';
             const result = await client.query(query, [email]);
-            return result.rows[0] || null;
+            const user = result.rows[0];
+            
+            if (user) {
+                // Map database fields to camelCase for API response
+                return user;
+            }
+            
+            return null;
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -155,7 +180,7 @@ class DatabaseService {
                 UPDATE users 
                 SET password_hash = $1, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $2
-                RETURNING id, email, name
+                RETURNING id, email, firstname as "firstName", lastname as "lastName"
             `;
             const result = await client.query(query, [passwordHash, userId]);
             return result.rows[0] || null;
@@ -175,9 +200,29 @@ class DatabaseService {
                 UPDATE users 
                 SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $1
-                RETURNING id, email, name, email_verified
+                RETURNING id, email, firstname as "firstName", lastname as "lastName", email_verified
             `;
             const result = await client.query(query, [userId]);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async updateUserRole(userId, role, location = null) {
+        const client = await this.pool.connect();
+        
+        try {
+            const query = `
+                UPDATE users 
+                SET role = $1, location = $2, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = $3
+                RETURNING id, email, firstname as "firstName", lastname as "lastName", provider, role, location
+            `;
+            const result = await client.query(query, [role, location, userId]);
             return result.rows[0] || null;
         } catch (error) {
             console.error('Database error:', error);
@@ -191,9 +236,16 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT * FROM users WHERE id = $1';
+            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at FROM users WHERE id = $1';
             const result = await client.query(query, [userId]);
-            return result.rows[0] || null;
+            const user = result.rows[0];
+            
+            if (user) {
+                // Map database fields to camelCase for API response
+                return user;
+            }
+            
+            return null;
         } catch (error) {
             console.error('Database error:', error);
             throw error;

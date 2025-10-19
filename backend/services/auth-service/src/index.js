@@ -37,88 +37,140 @@ app.use(passport.session());
 
 // Health check endpoint
 app.get('/', (req, res) => {
-    res.json({ 
-        service: "auth-service", 
+    res.json({
+        service: "auth-service",
         status: "running",
         oidc_provider: process.env.OIDC_PROVIDER || 'not configured'
     });
 });
 
-// OIDC Authentication Routes
+// OIDC Authentication Routes for all configured providers
 const authRoutes = oidcProviders.getAuthRoutes();
+const availableProviders = oidcProviders.getAvailableProviders();
 
-if (authRoutes) {
-    const provider = process.env.OIDC_PROVIDER;
+// Set up routes for each configured provider
+availableProviders.forEach(provider => {
+    const routes = authRoutes[provider];
     
-    // Initiate OIDC authentication
-    app.get(authRoutes.auth, passport.authenticate(provider, {
-        scope: authRoutes.scope
-    }));
+    if (routes) {
+        console.log(`Setting up ${provider} routes:`, routes.auth, routes.callback);
 
-    // OIDC callback handler
-    app.get(authRoutes.callback, 
-        passport.authenticate(provider, { failureRedirect: '/login?error=auth_failed' }),
-        async (req, res) => {
-            try {
-                // Store user in database
-                const dbUser = await dbService.findOrCreateUser(req.user);
-                
-                // Generate JWT token
-                const tokenPayload = {
-                    id: dbUser.id,
-                    email: dbUser.email,
-                    name: dbUser.name,
-                    provider: dbUser.provider
-                };
-                
-                const token = jwtUtils.generateToken(tokenPayload);
-                
-                // Set token in cookie and redirect to frontend
-                res.cookie('auth_token', token, {
-                    httpOnly: false, // Allow frontend to read the token
-                    secure: false, // Set to true in production with HTTPS
-                    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-                });
-                
-                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-                res.redirect(`${frontendUrl}/dashboard.html?authenticated=true`);
-                
-            } catch (error) {
-                console.error('Authentication callback error:', error);
-                res.redirect('/login?error=server_error');
+        // Initiate OIDC authentication for this provider
+        app.get(routes.auth, (req, res, next) => {
+            // For Azure, check if prompt parameter is provided for account selection
+            if (provider === 'azure' && req.query.prompt) {
+                passport.authenticate(provider, {
+                    scope: routes.scope,
+                    prompt: req.query.prompt // Pass through the prompt parameter
+                })(req, res, next);
+            } else {
+                passport.authenticate(provider, {
+                    scope: routes.scope
+                })(req, res, next);
             }
-        }
-    );
-}
+        });
+
+        // OIDC callback handler for this provider
+        app.get(routes.callback,
+            (req, res, next) => {
+                passport.authenticate(provider, (err, user, info) => {
+                    if (err) {
+                        console.error(`❌ ${provider} authentication error:`, err);
+                        
+                        // Handle specific Azure AD errors
+                        if (provider === 'azure' && err.message) {
+                            if (err.message.includes('AADSTS50020')) {
+                                return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login.html?error=azure_user_not_found&message=${encodeURIComponent('Your account is not authorized for this application. Please contact the administrator or try a different account.')}`);
+                            } else if (err.message.includes('AADSTS')) {
+                                return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login.html?error=azure_error&message=${encodeURIComponent('Azure authentication failed. Please try again or contact support.')}`);
+                            }
+                        }
+                        
+                        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login.html?error=auth_failed&provider=${provider}`);
+                    }
+                    
+                    if (!user) {
+                        console.log(`❌ ${provider} authentication failed: no user returned`);
+                        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login.html?error=auth_failed&provider=${provider}`);
+                    }
+                    
+                    req.user = user;
+                    next();
+                })(req, res, next);
+            },
+            async (req, res) => {
+                try {
+                    // Store user in database
+                    const dbUser = await dbService.findOrCreateUser(req.user);
+
+                    // Generate JWT token
+                    const tokenPayload = {
+                        id: dbUser.id,
+                        email: dbUser.email,
+                        firstName: dbUser.firstName,
+                        lastName: dbUser.lastName,
+                        provider: dbUser.provider,
+                        role: dbUser.role
+                    };
+
+                    const token = jwtUtils.generateToken(tokenPayload);
+
+                    // Set token in cookie
+                    res.cookie('auth_token', token, {
+                        httpOnly: false, // Allow frontend to read the token
+                        secure: false, // Set to true in production with HTTPS
+                        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+                    });
+
+                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+                    
+                    // Check if user needs to select a role
+                    if (!dbUser.role || dbUser.role === 'undefined' || dbUser.role === '') {
+                        console.log(`User ${dbUser.email} needs to select a role, redirecting to role selection`);
+                        res.redirect(`${frontendUrl}/role-selection.html?first_login=true`);
+                    } else {
+                        console.log(`User ${dbUser.email} has role ${dbUser.role}, redirecting to dashboard`);
+                        res.redirect(`${frontendUrl}/dashboard.html?authenticated=true`);
+                    }
+
+                } catch (error) {
+                    console.error(`${provider} authentication callback error:`, error);
+                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+                    res.redirect(`${frontendUrl}/login.html?error=server_error`);
+                }
+            }
+        );
+    }
+});
 
 // Email/Password Authentication Routes
 
 // Register new user with email and password
 app.post('/register', async (req, res) => {
     try {
-        const { email, password, name, role, location } = req.body;
+        const { email, password, firstName, lastName, role, location } = req.body;
 
         // Input validation
-        if (!email || !password || !name) {
-            return res.status(400).json({ 
-                error: 'Email, password, and name are required' 
+        if (!email || !password || !firstName || !lastName) {
+            return res.status(400).json({
+                error: 'Email, password, first name, and last name are required'
             });
         }
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            return res.status(400).json({ 
-                error: 'Please provide a valid email address' 
+            return res.status(400).json({
+                error: 'Please provide a valid email address'
             });
         }
 
         // Validate password strength
         const passwordValidation = passwordService.validatePasswordStrength(password);
         if (!passwordValidation.isValid) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Password validation failed',
-                messages: passwordValidation.messages 
+                messages: passwordValidation.messages
             });
         }
 
@@ -128,7 +180,8 @@ app.post('/register', async (req, res) => {
         // Create user in database
         const newUser = await dbService.createEmailUser({
             email: email.toLowerCase(),
-            name: name.trim(),
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
             passwordHash,
             role: role || 'senior',
             location: location?.trim() || null
@@ -138,7 +191,8 @@ app.post('/register', async (req, res) => {
         const tokenPayload = {
             id: newUser.id,
             email: newUser.email,
-            name: newUser.name,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
             provider: 'email',
             role: newUser.role
         };
@@ -158,19 +212,21 @@ app.post('/register', async (req, res) => {
             user: {
                 id: newUser.id,
                 email: newUser.email,
-                name: newUser.name,
+                firstName: newUser.firstName,
+                lastName: newUser.lastName,
                 role: newUser.role,
-                provider: 'email'
+                provider: 'email',
+                location: newUser.location
             }
         });
 
     } catch (error) {
         console.error('Registration error:', error);
-        
+
         if (error.message === 'User with this email already exists') {
             return res.status(409).json({ error: error.message });
         }
-        
+
         res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
 });
@@ -182,31 +238,31 @@ app.post('/login', async (req, res) => {
 
         // Input validation
         if (!email || !password) {
-            return res.status(400).json({ 
-                error: 'Email and password are required' 
+            return res.status(400).json({
+                error: 'Email and password are required'
             });
         }
 
         // Find user by email
         const user = await dbService.findUserByEmail(email.toLowerCase());
         if (!user) {
-            return res.status(401).json({ 
-                error: 'Invalid email or password' 
+            return res.status(401).json({
+                error: 'Invalid email or password'
             });
         }
 
         // Check if user is email/password user (not OIDC)
         if (user.provider !== 'email' || !user.password_hash) {
-            return res.status(400).json({ 
-                error: 'This email is associated with social login. Please use the appropriate login method.' 
+            return res.status(400).json({
+                error: 'This email is associated with social login. Please use the appropriate login method.'
             });
         }
 
         // Verify password
         const isPasswordValid = await passwordService.verifyPassword(password, user.password_hash);
         if (!isPasswordValid) {
-            return res.status(401).json({ 
-                error: 'Invalid email or password' 
+            return res.status(401).json({
+                error: 'Invalid email or password'
             });
         }
 
@@ -214,7 +270,8 @@ app.post('/login', async (req, res) => {
         const tokenPayload = {
             id: user.id,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             provider: user.provider,
             role: user.role
         };
@@ -234,9 +291,11 @@ app.post('/login', async (req, res) => {
             user: {
                 id: user.id,
                 email: user.email,
-                name: user.name,
+                firstName: user.firstName,
+                lastName: user.lastName,
                 role: user.role,
-                provider: user.provider
+                provider: user.provider,
+                location: user.location
             }
         });
 
@@ -254,8 +313,8 @@ app.post('/change-password', jwtUtils.authenticateToken.bind(jwtUtils), async (r
 
         // Input validation
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ 
-                error: 'Current password and new password are required' 
+            return res.status(400).json({
+                error: 'Current password and new password are required'
             });
         }
 
@@ -267,25 +326,25 @@ app.post('/change-password', jwtUtils.authenticateToken.bind(jwtUtils), async (r
 
         // Check if user is email/password user
         if (user.provider !== 'email' || !user.password_hash) {
-            return res.status(400).json({ 
-                error: 'Password change not available for social login users' 
+            return res.status(400).json({
+                error: 'Password change not available for social login users'
             });
         }
 
         // Verify current password
         const isCurrentPasswordValid = await passwordService.verifyPassword(currentPassword, user.password_hash);
         if (!isCurrentPasswordValid) {
-            return res.status(401).json({ 
-                error: 'Current password is incorrect' 
+            return res.status(401).json({
+                error: 'Current password is incorrect'
             });
         }
 
         // Validate new password strength
         const passwordValidation = passwordService.validatePasswordStrength(newPassword);
         if (!passwordValidation.isValid) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'New password validation failed',
-                messages: passwordValidation.messages 
+                messages: passwordValidation.messages
             });
         }
 
@@ -306,6 +365,66 @@ app.post('/change-password', jwtUtils.authenticateToken.bind(jwtUtils), async (r
     }
 });
 
+// Update user role (for OIDC users after role selection)
+app.post('/update-role', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
+    try {
+        const { role, location } = req.body;
+        const userId = req.user.id;
+
+        // Validate role
+        const validRoles = ['senior', 'volunteer', 'caregiver'];
+        if (!role || !validRoles.includes(role)) {
+            return res.status(400).json({
+                error: 'Invalid role. Must be one of: senior, volunteer, caregiver'
+            });
+        }
+
+        // Update user role and location
+        const updatedUser = await dbService.updateUserRole(userId, role, location);
+        
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Generate new JWT token with updated role
+        const tokenPayload = {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            firstName: updatedUser.firstName,
+            lastName: updatedUser.lastName,
+            provider: updatedUser.provider,
+            role: updatedUser.role
+        };
+
+        const token = jwtUtils.generateToken(tokenPayload);
+
+        // Set updated token in cookie
+        res.cookie('auth_token', token, {
+            httpOnly: false,
+            secure: false, // Set to true in production with HTTPS
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        res.json({
+            success: true,
+            message: 'Role updated successfully',
+            user: {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                role: updatedUser.role,
+                provider: updatedUser.provider,
+                location: updatedUser.location
+            }
+        });
+
+    } catch (error) {
+        console.error('Update role error:', error);
+        res.status(500).json({ error: 'Failed to update role. Please try again.' });
+    }
+});
+
 // Get current authenticated user
 app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
     try {
@@ -313,14 +432,17 @@ app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        
+
         // Return user data without sensitive information
         res.json({
             id: user.id,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             picture: user.picture,
-            provider: user.provider
+            provider: user.provider,
+            role: user.role,
+            location: user.location
         });
     } catch (error) {
         console.error('Get user error:', error);
@@ -337,11 +459,11 @@ app.post('/logout', (req, res) => {
 // Token validation endpoint (for other services)
 app.post('/validate-token', (req, res) => {
     const { token } = req.body;
-    
+
     if (!token) {
         return res.status(400).json({ error: 'Token required' });
     }
-    
+
     try {
         const decoded = jwtUtils.verifyToken(token);
         res.json({ valid: true, user: decoded });
@@ -352,17 +474,17 @@ app.post('/validate-token', (req, res) => {
 
 // Get available authentication methods
 app.get('/auth-config', (req, res) => {
-    const provider = process.env.OIDC_PROVIDER;
     const authRoutes = oidcProviders.getAuthRoutes();
-    
+    const availableProviders = oidcProviders.getAvailableProviders();
+
     res.json({
-        // OIDC configuration
+        // OIDC configuration for multiple providers
         oidc: {
-            provider: provider,
-            auth_url: authRoutes ? authRoutes.auth : null,
-            available: !!provider
+            providers: availableProviders,
+            routes: authRoutes,
+            available: availableProviders.length > 0
         },
-        
+
         // Email/Password configuration
         emailPassword: {
             enabled: true,
@@ -372,12 +494,31 @@ app.get('/auth-config', (req, res) => {
                 changePassword: '/change-password'
             }
         },
-        
+
         // Authentication methods available
         methods: [
-            ...(provider ? [`oidc_${provider}`] : []),
+            ...availableProviders.map(provider => `oidc_${provider}`),
             'email_password'
         ]
+    });
+});
+
+// Diagnostic endpoint for Azure configuration
+app.get('/azure-debug', (req, res) => {
+    res.json({
+        azure_configured: oidcProviders.isAzureConfigured(),
+        azure_config: {
+            client_id: process.env.AZURE_CLIENT_ID ? 'configured' : 'missing',
+            client_secret: process.env.AZURE_CLIENT_SECRET ? 'configured' : 'missing',
+            tenant_id: process.env.AZURE_TENANT_ID ? 'configured' : 'missing',
+            redirect_uri: process.env.AZURE_REDIRECT_URI || 'not set',
+            metadata_url: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0/.well-known/openid-configuration`
+        },
+        server_info: {
+            port: process.env.PORT || 5000,
+            frontend_url: process.env.FRONTEND_URL || 'http://localhost:8080',
+            auth_service_url: 'http://localhost:5001'
+        }
     });
 });
 
@@ -391,13 +532,23 @@ app.use((error, req, res, next) => {
 async function startServer() {
     try {
         await dbService.initialize();
-        
+
         const PORT = process.env.PORT || 5000;
         app.listen(PORT, () => {
-            console.log(`Auth service running on port ${PORT}`);
-            console.log(`OIDC Provider: ${process.env.OIDC_PROVIDER || 'Not configured'}`);
-            if (authRoutes) {
-                console.log(`Auth URL: http://localhost:${PORT}${authRoutes.auth}`);
+            console.log(`🚀 Auth service running on port ${PORT}`);
+            console.log(`📧 Email/Password authentication: enabled`);
+            
+            const availableProviders = oidcProviders.getAvailableProviders();
+            if (availableProviders.length > 0) {
+                console.log(`🔐 OIDC Providers available: ${availableProviders.join(', ')}`);
+                availableProviders.forEach(provider => {
+                    const routes = authRoutes[provider];
+                    if (routes) {
+                        console.log(`   ${provider}: http://localhost:${PORT}${routes.auth}`);
+                    }
+                });
+            } else {
+                console.log(`⚠️  No OIDC providers configured`);
             }
         });
     } catch (error) {

@@ -100,11 +100,34 @@
             color: #0b5ed7;
             text-decoration: underline;
         }
+        
+        /* Password Toggle Styles */
+        .input-group .btn-outline-secondary {
+            border-left: 0;
+            border-color: #ddd;
+            color: #6c757d;
+        }
+        .input-group .btn-outline-secondary:hover {
+            background-color: #f8f9fa;
+            border-color: #ddd;
+            color: #495057;
+        }
+        .input-group .form-control:focus + .btn-outline-secondary {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
+        <!-- Back to Home Button -->
+        <div class="mb-3 mt-5">
+            <a href="http://localhost:8080/" class="btn btn-primary btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Back to Home
+            </a>
+        </div>
+        
         <div class="login-container">
             <div class="text-center mb-4">
                 <h2>Welcome to KampungConnect</h2>
@@ -138,7 +161,12 @@
                             </div>
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                                    </button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100 mb-3">
                                 <i class="fas fa-sign-in-alt me-2"></i>
@@ -155,9 +183,15 @@
                     <!-- Register Form -->
                     <div id="registerFormContainer" style="display: none;">
                         <form id="registerForm">
-                            <div class="mb-3">
-                                <label for="regName" class="form-label">Full Name</label>
-                                <input type="text" class="form-control" id="regName" required>
+                            <div class="mb-3 row">
+                                <div class="col-md-6">
+                                    <label for="regFirstName" class="form-label">First Name</label>
+                                    <input type="text" class="form-control" id="regFirstName" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="regLastName" class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="regLastName" required>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="regEmail" class="form-label">Email</label>
@@ -165,26 +199,65 @@
                             </div>
                             <div class="mb-3">
                                 <label for="regPassword" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="regPassword" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="regPassword" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleRegPassword">
+                                        <i class="fas fa-eye" id="toggleRegPasswordIcon"></i>
+                                    </button>
+                                </div>
                                 <div class="form-text">
                                     Password must be at least 8 characters with uppercase, lowercase, number, and special character.
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <label for="regConfirmPassword" class="form-label">Confirm Password</label>
-                                <input type="password" class="form-control" id="regConfirmPassword" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="regConfirmPassword" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleRegConfirmPassword">
+                                        <i class="fas fa-eye" id="toggleRegConfirmPasswordIcon"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="regRole" class="form-label">I am a...</label>
                                 <select class="form-select" id="regRole" required>
                                     <option value="senior">Senior looking for help</option>
                                     <option value="volunteer">Volunteer wanting to help</option>
-                                    <option value="both">Both</option>
+                                    <option value="caregiver">Caregiver providing care</option>
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="regLocation" class="form-label">Location (Optional)</label>
-                                <input type="text" class="form-control" id="regLocation" placeholder="e.g., Singapore, Jurong West">
+                                <label for="regLocation" class="form-label">Residing Area</label>
+                                <select class="form-select" id="regLocation" required>
+                                    <option value="">Select your area</option>
+                                    <option value="Ang Mo Kio">Ang Mo Kio</option>
+                                    <option value="Bedok">Bedok</option>
+                                    <option value="Bishan">Bishan</option>
+                                    <option value="Boon Lay">Boon Lay</option>
+                                    <option value="Bukit Batok">Bukit Batok</option>
+                                    <option value="Bukit Merah">Bukit Merah</option>
+                                    <option value="Bukit Panjang">Bukit Panjang</option>
+                                    <option value="Bukit Timah">Bukit Timah</option>
+                                    <option value="Central Area">Central Area</option>
+                                    <option value="Choa Chu Kang">Choa Chu Kang</option>
+                                    <option value="Clementi">Clementi</option>
+                                    <option value="Geylang">Geylang</option>
+                                    <option value="Hougang">Hougang</option>
+                                    <option value="Jurong East">Jurong East</option>
+                                    <option value="Jurong West">Jurong West</option>
+                                    <option value="Kallang/Whampoa">Kallang/Whampoa</option>
+                                    <option value="Marine Parade">Marine Parade</option>
+                                    <option value="Pasir Ris">Pasir Ris</option>
+                                    <option value="Punggol">Punggol</option>
+                                    <option value="Queenstown">Queenstown</option>
+                                    <option value="Sembawang">Sembawang</option>
+                                    <option value="Sengkang">Sengkang</option>
+                                    <option value="Serangoon">Serangoon</option>
+                                    <option value="Tampines">Tampines</option>
+                                    <option value="Toa Payoh">Toa Payoh</option>
+                                    <option value="Woodlands">Woodlands</option>
+                                    <option value="Yishun">Yishun</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn btn-success w-100 mb-3">
                                 <i class="fas fa-user-plus me-2"></i>
@@ -257,30 +330,56 @@
                 console.log('[Login] Initializing AuthManager...');
                 await authManager.initialize();
                 
-                console.log('[Login] Checking if user is already authenticated...');
-                // Check if user is already authenticated
-                const isAuthenticated = await authManager.checkAuthentication();
-                console.log('[Login] Authentication check result:', isAuthenticated);
+                // Check URL parameters first
+                const urlParams = new URLSearchParams(window.location.search);
+                const forceLogin = urlParams.get('force_login') === 'true';
+                const switchAccount = urlParams.get('switch_account') === 'true';
+                const error = urlParams.get('error');
+                const customMessage = urlParams.get('message');
                 
-                if (isAuthenticated && !isRedirecting) {
-                    console.log('[Login] User already authenticated, redirecting to dashboard...');
-                    isRedirecting = true;
-                    // Add a delay to prevent immediate redirect loops
-                    setTimeout(() => {
-                        window.location.href = '/dashboard.html';
-                    }, 500);
-                    return;
+                // If force_login or switch_account is requested, clear any existing tokens
+                if (forceLogin || switchAccount) {
+                    console.log('[Login] Force login or switch account requested, clearing tokens...');
+                    authManager.removeToken();
+                    
+                    // Show appropriate message
+                    if (switchAccount) {
+                        // Show info message for account switching
+                        const infoDiv = document.createElement('div');
+                        infoDiv.className = 'alert alert-info mb-3';
+                        infoDiv.innerHTML = '<i class="fas fa-info-circle me-2"></i>Please select the account you want to use to sign in.';
+                        document.querySelector('.login-container').insertBefore(infoDiv, document.querySelector('.login-container').firstChild);
+                    }
+                } else {
+                    console.log('[Login] Checking if user is already authenticated...');
+                    // Check if user is already authenticated
+                    const isAuthenticated = await authManager.checkAuthentication();
+                    console.log('[Login] Authentication check result:', isAuthenticated);
+                    
+                    if (isAuthenticated && !isRedirecting) {
+                        console.log('[Login] User already authenticated, redirecting to dashboard...');
+                        isRedirecting = true;
+                        // Add a delay to prevent immediate redirect loops
+                        setTimeout(() => {
+                            window.location.href = '/dashboard.html';
+                        }, 500);
+                        return;
+                    }
                 }
                 
                 console.log('[Login] User not authenticated, showing login options...');
                 
-                // Check for error parameters
-                const urlParams = new URLSearchParams(window.location.search);
-                const error = urlParams.get('error');
+                // Handle error parameters
                 if (error) {
                     console.log('[Login] Error parameter found:', error);
-                    authManager.showError(getErrorMessage(error));
+                    const errorMessage = customMessage ? decodeURIComponent(customMessage) : getErrorMessage(error);
+                    authManager.showError(errorMessage);
                 }
+                
+                // Clean up URL parameters
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+                
             } catch (error) {
                 console.error('[Login] Error during authentication initialization:', error);
                 document.getElementById('errorAlert').style.display = 'block';
@@ -296,10 +395,45 @@
                     return 'Server error occurred. Please try again later.';
                 case 'access_denied':
                     return 'Access was denied. Please check your permissions.';
+                case 'azure_user_not_found':
+                    return 'Your account is not authorized for this application. Please contact the administrator or use a different account.';
+                case 'azure_error':
+                    return 'Azure authentication failed. Please try again or contact support.';
                 default:
                     return 'An unknown error occurred. Please try again.';
             }
         }
+
+        // Password toggle functionality
+        function setupPasswordToggle(toggleButtonId, passwordFieldId, iconId) {
+            const toggleButton = document.getElementById(toggleButtonId);
+            const passwordField = document.getElementById(passwordFieldId);
+            const icon = document.getElementById(iconId);
+
+            if (toggleButton && passwordField && icon) {
+                toggleButton.addEventListener('click', function() {
+                    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordField.setAttribute('type', type);
+                    
+                    // Toggle icon
+                    if (type === 'text') {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            }
+        }
+
+        // Initialize password toggles when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup password toggles
+            setupPasswordToggle('togglePassword', 'password', 'togglePasswordIcon');
+            setupPasswordToggle('toggleRegPassword', 'regPassword', 'toggleRegPasswordIcon');
+            setupPasswordToggle('toggleRegConfirmPassword', 'regConfirmPassword', 'toggleRegConfirmPasswordIcon');
+        });
     </script>
 </body>
 

@@ -109,7 +109,7 @@ class AuthManager {
         console.log('[AuthManager] Setting up auth options with config:', this.authConfig);
         
         // Check if we have any authentication methods available
-        const hasOIDC = this.authConfig?.oidc?.available;
+        const hasOIDC = this.authConfig?.oidc?.available && this.authConfig?.oidc?.providers?.length > 0;
         const hasEmailAuth = this.authConfig?.emailPassword?.enabled;
         
         if (!hasOIDC && !hasEmailAuth) {
@@ -122,9 +122,20 @@ class AuthManager {
 
         // Set up OIDC buttons if available
         if (hasOIDC && oidcButtonsContainer) {
-            console.log('[AuthManager] Creating OIDC button for provider:', this.authConfig.oidc.provider);
-            const button = this.createOIDCButton(this.authConfig.oidc.provider);
-            oidcButtonsContainer.appendChild(button);
+            console.log('[AuthManager] Creating OIDC buttons for providers:', this.authConfig.oidc.providers);
+            
+            // Clear any existing buttons
+            oidcButtonsContainer.innerHTML = '';
+            
+            // Create a button for each available provider
+            this.authConfig.oidc.providers.forEach(provider => {
+                const routes = this.authConfig.oidc.routes[provider];
+                if (routes) {
+                    console.log(`[AuthManager] Creating button for ${provider}:`, routes);
+                    const button = this.createOIDCButton(provider, routes.auth);
+                    oidcButtonsContainer.appendChild(button);
+                }
+            });
             
             // Show both the buttons container and its parent
             oidcButtonsContainer.style.display = 'block';
@@ -163,10 +174,14 @@ class AuthManager {
         // Set up register form submission  
         const registerForm = document.getElementById('registerForm');
         if (registerForm) {
+            console.log('[AuthManager] Register form found, adding event listener');
             registerForm.addEventListener('submit', async (e) => {
+                console.log('[AuthManager] Register form submitted!');
                 e.preventDefault();
                 await this.registerWithEmail();
             });
+        } else {
+            console.error('[AuthManager] Register form not found!');
         }
 
         // Set up form switching
@@ -185,12 +200,21 @@ class AuthManager {
     /**
      * Create OIDC authentication button for specific provider
      */
-    createOIDCButton(provider) {
-        console.log('[AuthManager] Creating OIDC button for provider:', provider);
+    createOIDCButton(provider, authUrl) {
+        console.log('[AuthManager] Creating OIDC button for provider:', provider, 'with URL:', authUrl);
         
         const button = document.createElement('a');
         button.className = 'oidc-button';
-        button.href = `${this.authServiceUrl}${this.authConfig.oidc.auth_url}`;
+        
+        // Add account selection prompt for Microsoft to force account picker
+        let finalAuthUrl = `${this.authServiceUrl}${authUrl}`;
+        if (provider === 'azure') {
+            // Add prompt parameter to force account selection for Microsoft
+            const separator = authUrl.includes('?') ? '&' : '?';
+            finalAuthUrl += `${separator}prompt=select_account`;
+        }
+        
+        button.href = finalAuthUrl;
         
         const config = this.getProviderConfig(provider);
         button.classList.add(config.className);
@@ -259,22 +283,67 @@ class AuthManager {
      * Register with email and password
      */
     async registerWithEmail() {
+        console.log('[AuthManager] registerWithEmail() called');
         try {
-            const email = document.getElementById('regEmail')?.value;
-            const password = document.getElementById('regPassword')?.value;
-            const confirmPassword = document.getElementById('regConfirmPassword')?.value;
-            const name = document.getElementById('regName')?.value;
-            const role = document.getElementById('regRole')?.value || 'senior';
-            const location = document.getElementById('regLocation')?.value;
+            // Check if form elements exist
+            const firstNameEl = document.getElementById('regFirstName');
+            const lastNameEl = document.getElementById('regLastName');
+            const emailEl = document.getElementById('regEmail');
+            const passwordEl = document.getElementById('regPassword');
+            const confirmPasswordEl = document.getElementById('regConfirmPassword');
+            const roleEl = document.getElementById('regRole');
+            const locationEl = document.getElementById('regLocation');
+            
+            console.log('[AuthManager] Form elements found:', {
+                firstName: !!firstNameEl,
+                lastName: !!lastNameEl,
+                email: !!emailEl,
+                password: !!passwordEl,
+                confirmPassword: !!confirmPasswordEl,
+                role: !!roleEl,
+                location: !!locationEl
+            });
+
+            const firstName = firstNameEl?.value?.trim();
+            const lastName = lastNameEl?.value?.trim();
+            const email = emailEl?.value?.trim();
+            const password = passwordEl?.value;
+            const confirmPassword = confirmPasswordEl?.value;
+            const role = roleEl?.value || 'senior';
+            const location = locationEl?.value?.trim();
 
             // Client-side validation
-            if (!email || !password || !confirmPassword || !name) {
-                this.showError('Please fill in all required fields');
+            console.log('[AuthManager] Form values:', { firstName, lastName, email, password: '***', confirmPassword: '***', role, location });
+            
+            const missingFields = [];
+            if (!firstName) missingFields.push('First Name');
+            if (!lastName) missingFields.push('Last Name');
+            if (!email) missingFields.push('Email');
+            if (!password) missingFields.push('Password');
+            if (!confirmPassword) missingFields.push('Confirm Password');
+            if (!location) missingFields.push('Residing Area');
+            
+            if (missingFields.length > 0) {
+                this.showError(`Please fill in the following required fields: ${missingFields.join(', ')}`);
                 return;
             }
 
             if (password !== confirmPassword) {
                 this.showError('Passwords do not match');
+                return;
+            }
+
+            // Validate password strength on frontend as well
+            const passwordValidation = this.validatePasswordStrength(password);
+            if (!passwordValidation.isValid) {
+                this.showError('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+                return;
+            }
+
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                this.showError('Please enter a valid email address');
                 return;
             }
 
@@ -287,7 +356,14 @@ class AuthManager {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
-                body: JSON.stringify({ email, password, name, role, location })
+                body: JSON.stringify({ 
+                    firstName: firstName.trim(), 
+                    lastName: lastName.trim(),
+                    email: email.trim(), 
+                    password: password, 
+                    role: role || 'senior', 
+                    location: location.trim() || null 
+                })
             });
 
             const data = await response.json();
@@ -619,6 +695,30 @@ class AuthManager {
         if (errorAlert) {
             errorAlert.style.display = 'none';
         }
+    }
+
+    /**
+     * Validate password strength
+     */
+    validatePasswordStrength(password) {
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        const isValid = password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar;
+
+        return {
+            isValid,
+            messages: isValid ? [] : [
+                password.length < minLength ? `Password must be at least ${minLength} characters long` : '',
+                !hasUpperCase ? 'Password must contain at least one uppercase letter' : '',
+                !hasLowerCase ? 'Password must contain at least one lowercase letter' : '',
+                !hasNumbers ? 'Password must contain at least one number' : '',
+                !hasSpecialChar ? 'Password must contain at least one special character' : ''
+            ].filter(msg => msg !== '')
+        };
     }
 }
 
