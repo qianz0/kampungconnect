@@ -432,7 +432,6 @@ CMD ["npm", "start"]
 - Check client ID and secret are correct (no extra spaces)
 - Ensure provider application is enabled and approved
 - Clear browser cookies and localStorage: `AuthManager.removeToken()`
-- Use the auth debug page: `http://localhost:8080/auth-debug.html`
 
 #### 3. **"Token validation failed" or 401 errors**
 **Symptoms**: Dashboard loads but API requests fail
@@ -452,7 +451,6 @@ CMD ["npm", "start"]
 #### 5. **Infinite redirect loop between login and dashboard**
 **Symptoms**: Pages keep redirecting back and forth
 **Solutions**:
-- Clear all authentication tokens: Visit `/auth-debug.html` and click "Clear Tokens"
 - Check browser console for AuthManager initialization errors
 - Verify dashboard authentication check is working properly
 - Restart frontend container: `docker-compose restart frontend`
@@ -467,20 +465,13 @@ CMD ["npm", "start"]
 
 ### Debug Tools
 
-#### 1. **Authentication Debug Page**
-Visit `http://localhost:8080/auth-debug.html` (if created) for:
-- Real-time authentication status
-- Token validation testing
-- Manual token clearing
-- Auth service connectivity checks
-
-#### 2. **Browser Developer Tools**
+#### 1. **Browser Developer Tools**
 - **Console**: Check for JavaScript errors and AuthManager logs
 - **Network**: Monitor API requests and responses
 - **Application/Storage**: Inspect cookies and localStorage
 - **Security**: Check for mixed content warnings
 
-#### 3. **Docker Logs**
+#### 2. **Docker Logs**
 ```bash
 # View all service logs
 docker-compose logs -f
@@ -493,7 +484,7 @@ docker-compose logs -f frontend
 docker-compose ps
 ```
 
-#### 4. **Manual API Testing**
+#### 3. **Manual API Testing**
 ```bash
 # Test auth service health
 curl http://localhost:5001/
@@ -772,7 +763,6 @@ createHelpRequest({
 
 #### 1. **Immediate Steps**
 - Check browser console for JavaScript errors
-- Use authentication debug page (`/auth-debug.html`)
 - Clear browser cookies and localStorage
 - Restart Docker services: `docker-compose restart`
 

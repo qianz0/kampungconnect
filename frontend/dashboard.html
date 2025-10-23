@@ -73,6 +73,9 @@
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
                         <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
                         <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="switchAccountBtn">
+                            <i class="fas fa-user-friends me-2"></i>Switch Account
+                        </a></li>
                         <li><a class="dropdown-item" href="#" id="logoutBtn">
                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                         </a></li>
@@ -93,10 +96,6 @@
                             <i class="fas fa-hand-wave me-2"></i>
                             Welcome back, <span id="welcomeName">User</span>!
                         </h2>
-                        <p class="card-text mb-3">
-                            You're successfully logged in via <strong id="providerName">SSO</strong>. 
-                            Your secure session is managed through OpenID Connect.
-                        </p>
                         <div class="row text-center">
                             <div class="col-md-4">
                                 <i class="fas fa-shield-alt fa-2x mb-2"></i>
@@ -299,6 +298,18 @@
                     throw new Error('No user data available');
                 }
                 
+                // Check if user needs to complete role selection
+                if (!currentUser.role || currentUser.role === 'undefined' || currentUser.role === '' || currentUser.role === null) {
+                    console.log('[Dashboard] User needs to complete role selection, redirecting...');
+                    if (!isRedirecting) {
+                        isRedirecting = true;
+                        setTimeout(() => {
+                            window.location.href = '/role-selection.html';
+                        }, 100);
+                    }
+                    return;
+                }
+                
                 populateUserInfo(currentUser);
                 showNewRequestButton(currentUser);
                 showMatchButton(currentUser); 
@@ -311,6 +322,10 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('authenticated') === 'true') {
                     showSuccessMessage('Successfully logged in!');
+                    // Clean up URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else if (urlParams.get('role_selected') === 'true') {
+                    showSuccessMessage('Welcome to KampungConnect! Your account setup is complete.');
                     // Clean up URL
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
@@ -344,21 +359,19 @@
         function populateUserInfo(user) {
             if (!user) return;
 
+            // Create display name from firstName and lastName, fallback to email
+            const displayName = user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user.firstName || user.name || user.email || 'User';
+
             // Update navigation
-            document.getElementById('userName').textContent = user.name || 'User';
+            document.getElementById('userName').textContent = displayName;
             const avatar = document.getElementById('userAvatar');
-            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
-            avatar.alt = user.name || 'User';
+            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
+            avatar.alt = displayName;
 
             // Update welcome section
-            document.getElementById('welcomeName').textContent = user.name || 'User';
-            document.getElementById('providerName').textContent = 
-                user.provider ? user.provider.charAt(0).toUpperCase() + user.provider.slice(1) : 'SSO';
-
-            // Update user info section
-            document.getElementById('userEmail').textContent = user.email || '-';
-            document.getElementById('userProvider').textContent = user.provider || '-';
-            document.getElementById('userId').textContent = user.id || '-';
+            document.getElementById('welcomeName').textContent = displayName;
         }
 
         // Logout handler
@@ -375,6 +388,26 @@
                     document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
                     localStorage.removeItem('auth_token');
                     window.location.href = '/login.html';
+                }
+            }
+        });
+
+        // Switch Account functionality
+        document.getElementById('switchAccountBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            if (confirm('Are you sure you want to switch to a different account?')) {
+                try {
+                    const authManager = await waitForAuthManager();
+                    // Clear the token and redirect to login with switch_account parameter
+                    authManager.removeToken();
+                    window.location.href = '/login.html?switch_account=true';
+                } catch (error) {
+                    console.error('[Dashboard] Switch account error:', error);
+                    // Fallback: manually clear and redirect
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+                    localStorage.removeItem('auth_token');
+                    window.location.href = '/login.html?switch_account=true';
                 }
             }
         });

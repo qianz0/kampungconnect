@@ -3,11 +3,12 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     provider_id VARCHAR(255) UNIQUE, -- NULL for email/password users
     email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    firstName VARCHAR(255), -- Split name into firstName and lastName for better handling
+    lastName VARCHAR(255),
     password_hash VARCHAR(255), -- NULL for OAuth users
     picture VARCHAR(500),
     provider VARCHAR(50) NOT NULL DEFAULT 'email', -- email, google, azure, auth0
-    role VARCHAR(20) CHECK (role IN ('senior', 'helper')) DEFAULT 'helper',
+    role VARCHAR(20) CHECK (role IN ('senior', 'volunteer', 'caregiver', 'admin')) DEFAULT NULL, -- Allow NULL for incomplete registrations
     rating DECIMAL(3,2) DEFAULT 5.0, -- average rating out of 5
     location VARCHAR(100), -- can be a postal code or simple text area
     email_verified BOOLEAN DEFAULT FALSE,

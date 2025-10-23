@@ -4,26 +4,33 @@ services:
     ports:
       - "5001:5000"
     environment:
-      - OIDC_PROVIDER=${OIDC_PROVIDER}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
-      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI}
-      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
-      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
-      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
-      - AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=${JWT_EXPIRATION}
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=kampungconnect
-      - DB_USER=admin
-      - DB_PASSWORD=password
-      - FRONTEND_URL=${FRONTEND_URL}
+      # Google OAuth2/OIDC
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:5001/auth/google/callback}
+      
+      # Microsoft Azure AD
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-}
+      - AZURE_MULTITENANT=${AZURE_MULTITENANT:-false}
+      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI:-http://localhost:5001/auth/azure/callback}
+      
+      # Auth0
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
+      - AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI:-http://localhost:5001/auth/auth0/callback}
+      
+      # JWT and Database Configuration
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-24h}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-kampungconnect}
+      - DB_USER=${DB_USER:-admin}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
     depends_on:
       db:
         condition: service_healthy
@@ -157,6 +164,29 @@ services:
       timeout: 5s
       retries: 5
 
+  ready-checker:
+    image: alpine:latest
+    depends_on:
+      auth-service:
+        condition: service_started
+      request-service:
+        condition: service_started
+      matching-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      priority-router-service:
+        condition: service_started
+      rating-service:
+        condition: service_started
+      frontend:
+        condition: service_started
+    command: >
+      sh -c "
+        echo '⏳ Waiting for all services to start...';
+        sleep 5;
+        echo '✅ All services are ready!';
+      "
   frontend:
     build: ./frontend
     ports:

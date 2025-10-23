@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Selection - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .role-selection-container {
+            max-width: 1200px;
+            margin: 3rem auto;
+        }
+        
+        .role-card {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: white;
+            height: 100%;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 767.98px) {
+            .role-selection-container {
+                max-width: 600px;
+            }
+            
+            .role-card {
+                padding: 2rem;
+            }
+        }
+        
+        .role-card:hover {
+            border-color: #0d6efd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .role-card.selected {
+            border-color: #0d6efd;
+            background-color: #f8f9ff;
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+        }
+        
+        .role-card input[type="radio"] {
+            display: none;
+        }
+        
+        .role-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #6c757d;
+            transition: color 0.3s ease;
+        }
+        
+        .role-card.selected .role-icon {
+            color: #0d6efd;
+        }
+        
+        .role-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        
+        .role-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        /* Desktop styles - horizontal layout */
+        @media (min-width: 768px) {
+            .role-card {
+                min-height: 280px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            
+            .role-title {
+                font-size: 1.5rem;
+            }
+            
+            .role-description {
+                font-size: 1rem;
+                line-height: 1.5;
+            }
+        }
+        
+        /* Mobile styles - keep original spacing */
+        @media (max-width: 767.98px) {
+            .role-icon {
+                font-size: 2.5rem;
+            }
+            
+            .role-title {
+                font-size: 1.5rem;
+            }
+            
+            .role-description {
+                font-size: 1rem;
+                line-height: 1.5;
+            }
+        }
+        
+        .continue-btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 12px 2rem;
+            transition: all 0.2s;
+        }
+        
+        .continue-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .continue-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .welcome-text {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .welcome-text h2 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .welcome-text .user-name {
+            color: #0d6efd;
+            font-weight: 600;
+        }
+        
+        .loading-spinner {
+            display: none;
+        }
+        
+        .error-alert {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="role-selection-container">
+            <!-- Loading State -->
+            <div id="loadingState" class="text-center loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Setting up your account...</p>
+            </div>
+
+            <!-- Error Alert -->
+            <div id="errorAlert" class="alert alert-danger error-alert" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+
+            <!-- Alternative Action -->
+            <div class="mb-2">
+                <button id="switchAccountBtn" class="btn btn-outline-primary">
+                    <i class="fas fa-user-friends me-2"></i>
+                    Switch Account
+                </button>
+            </div>
+
+            <!-- Welcome Message -->
+            <div class="welcome-text">
+                <h2>Welcome to KampungConnect, <span id="userName" class="user-name">there</span>!</h2>
+                <p class="text-muted">To get started, please tell us how you'd like to use our platform.</p>
+            </div>
+
+            <!-- Role Selection Form -->
+            <form id="roleSelectionForm">
+                <div class="row g-3">
+                    <!-- Senior Role Card -->
+                    <div class="col-12 col-md-4">
+                        <div class="role-card" data-role="senior">
+                            <input type="radio" name="role" value="senior" id="seniorRole">
+                            <div class="text-center">
+                                <div class="role-icon">
+                                    <i class="fas fa-heart"></i>
+                                </div>
+                                <div class="role-title">Senior</div>
+                                <div class="role-description">
+                                    I am a senior looking for help with daily tasks, companionship, or support from volunteers in my community.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volunteer Role Card -->
+                    <div class="col-12 col-md-4">
+                        <div class="role-card" data-role="volunteer">
+                            <input type="radio" name="role" value="volunteer" id="volunteerRole">
+                            <div class="text-center">
+                                <div class="role-icon">
+                                    <i class="fas fa-hands-helping"></i>
+                                </div>
+                                <div class="role-title">Volunteer</div>
+                                <div class="role-description">
+                                    I want to help seniors in my community by offering assistance with daily tasks, providing companionship, or lending a helping hand.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Caregiver Role Card -->
+                    <div class="col-12 col-md-4">
+                        <div class="role-card" data-role="caregiver">
+                            <input type="radio" name="role" value="caregiver" id="caregiverRole">
+                            <div class="text-center">
+                                <div class="role-icon">
+                                    <i class="fas fa-user-nurse"></i>
+                                </div>
+                                <div class="role-title">Caregiver</div>
+                                <div class="role-description">
+                                    I am a professional caregiver or family member providing care for seniors and want to connect with community support.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Selection (Optional) -->
+                <div class="mb-4 mt-3">
+                    <label for="location" class="form-label">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        Your Area (Optional)
+                    </label>
+                    <select class="form-select" id="location">
+                        <option value="">Select your area (helps us connect you locally)</option>
+                        <option value="Ang Mo Kio">Ang Mo Kio</option>
+                        <option value="Bedok">Bedok</option>
+                        <option value="Bishan">Bishan</option>
+                        <option value="Boon Lay">Boon Lay</option>
+                        <option value="Bukit Batok">Bukit Batok</option>
+                        <option value="Bukit Merah">Bukit Merah</option>
+                        <option value="Bukit Panjang">Bukit Panjang</option>
+                        <option value="Bukit Timah">Bukit Timah</option>
+                        <option value="Central Area">Central Area</option>
+                        <option value="Choa Chu Kang">Choa Chu Kang</option>
+                        <option value="Clementi">Clementi</option>
+                        <option value="Geylang">Geylang</option>
+                        <option value="Hougang">Hougang</option>
+                        <option value="Jurong East">Jurong East</option>
+                        <option value="Jurong West">Jurong West</option>
+                        <option value="Kallang/Whampoa">Kallang/Whampoa</option>
+                        <option value="Marine Parade">Marine Parade</option>
+                        <option value="Pasir Ris">Pasir Ris</option>
+                        <option value="Punggol">Punggol</option>
+                        <option value="Queenstown">Queenstown</option>
+                        <option value="Sembawang">Sembawang</option>
+                        <option value="Sengkang">Sengkang</option>
+                        <option value="Serangoon">Serangoon</option>
+                        <option value="Tampines">Tampines</option>
+                        <option value="Toa Payoh">Toa Payoh</option>
+                        <option value="Woodlands">Woodlands</option>
+                        <option value="Yishun">Yishun</option>
+                    </select>
+                </div>
+
+                <!-- Continue Button -->
+                <div class="text-center">
+                    <button type="submit" id="continueBtn" class="btn btn-primary btn-lg continue-btn" disabled>
+                        <i class="fas fa-arrow-right me-2"></i>
+                        Continue to Dashboard
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        let authManager;
+        let currentUser = null;
+
+        // Wait for AuthManager to be available
+        function waitForAuthManager() {
+            return new Promise((resolve) => {
+                if (window.AuthManager && typeof window.AuthManager.checkAuthentication === 'function') {
+                    resolve(window.AuthManager);
+                } else {
+                    setTimeout(() => waitForAuthManager().then(resolve), 10);
+                }
+            });
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                authManager = await waitForAuthManager();
+                
+                // Check authentication
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                currentUser = authManager.getCurrentUser();
+                if (currentUser) {
+                    // Display user's name
+                    const userName = document.getElementById('userName');
+                    if (userName) {
+                        // Create display name from firstName and lastName, fallback to email
+                        const displayName = currentUser.firstName && currentUser.lastName 
+                            ? `${currentUser.firstName} ${currentUser.lastName}` 
+                            : currentUser.firstName || currentUser.name || currentUser.email || 'there';
+                        userName.textContent = displayName;
+                    }
+                    
+                    // If user already has a role, redirect to dashboard
+                    if (currentUser.role && currentUser.role !== 'undefined' && currentUser.role !== '') {
+                        console.log('User already has role:', currentUser.role, 'redirecting to dashboard');
+                        window.location.href = '/dashboard.html';
+                        return;
+                    }
+                }
+                
+                setupRoleSelection();
+                
+            } catch (error) {
+                console.error('Error initializing role selection:', error);
+                showError('Failed to load page. Please try again.');
+            }
+        });
+
+        function setupRoleSelection() {
+            const roleCards = document.querySelectorAll('.role-card');
+            const continueBtn = document.getElementById('continueBtn');
+            const form = document.getElementById('roleSelectionForm');
+
+            // Handle role card selection
+            roleCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const role = card.dataset.role;
+                    const radioInput = card.querySelector('input[type="radio"]');
+                    
+                    // Clear all selections
+                    roleCards.forEach(c => c.classList.remove('selected'));
+                    
+                    // Select this card
+                    card.classList.add('selected');
+                    radioInput.checked = true;
+                    
+                    // Enable continue button
+                    continueBtn.disabled = false;
+                });
+            });
+
+            // Handle form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await submitRoleSelection();
+            });
+
+            // Handle switch account
+            const switchAccountBtn = document.getElementById('switchAccountBtn');
+            switchAccountBtn.addEventListener('click', async () => {
+                try {
+                    // Clear the token and redirect to login with switch_account parameter
+                    authManager.removeToken();
+                    window.location.href = '/login.html?switch_account=true';
+                } catch (error) {
+                    console.error('Switch account error:', error);
+                    // Force redirect even if fails
+                    window.location.href = '/login.html?switch_account=true';
+                }
+            });
+        }
+
+        async function submitRoleSelection() {
+            try {
+                const selectedRole = document.querySelector('input[name="role"]:checked');
+                const location = document.getElementById('location').value;
+                
+                if (!selectedRole) {
+                    showError('Please select a role');
+                    return;
+                }
+
+                showLoading(true);
+                clearError();
+
+                // Update user role
+                const response = await authManager.authenticatedFetch(`${authManager.authServiceUrl}/update-role`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        role: selectedRole.value,
+                        location: location || null
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Role updated successfully:', data);
+                    
+                    // Update current user data
+                    if (currentUser) {
+                        currentUser.role = selectedRole.value;
+                        currentUser.location = location || currentUser.location;
+                    }
+                    
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard.html?role_selected=true';
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.error || 'Failed to update role');
+                }
+
+            } catch (error) {
+                console.error('Role selection error:', error);
+                showError('Network error. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loadingState');
+            const form = document.getElementById('roleSelectionForm');
+            
+            if (loading) loading.style.display = show ? 'block' : 'none';
+            if (form) form.style.display = show ? 'none' : 'block';
+        }
+
+        function showError(message) {
+            const errorAlert = document.getElementById('errorAlert');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            if (errorAlert && errorMessage) {
+                errorMessage.textContent = message;
+                errorAlert.style.display = 'block';
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    errorAlert.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function clearError() {
+            const errorAlert = document.getElementById('errorAlert');
+            if (errorAlert) {
+                errorAlert.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>
