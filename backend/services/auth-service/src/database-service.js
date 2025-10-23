@@ -42,10 +42,46 @@ class DatabaseService {
         try {
             // Wait for database to be ready
             await this.waitForDatabase();
+            
+            // Create pending_users table if it doesn't exist
+            await this.createPendingUsersTable();
+            
             console.log('Database initialized successfully');
         } catch (error) {
             console.error('Database initialization error:', error);
             throw error;
+        }
+    }
+
+    async createPendingUsersTable() {
+        const client = await this.pool.connect();
+        
+        try {
+            const query = `
+                CREATE TABLE IF NOT EXISTS pending_users (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    firstname VARCHAR(100) NOT NULL,
+                    lastname VARCHAR(100) NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    role VARCHAR(50),
+                    location VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '24 hours')
+                );
+                
+                -- Create index for faster lookups
+                CREATE INDEX IF NOT EXISTS idx_pending_users_email ON pending_users(email);
+                CREATE INDEX IF NOT EXISTS idx_pending_users_expires_at ON pending_users(expires_at);
+            `;
+            
+            await client.query(query);
+            console.log('Pending users table ready');
+        } catch (error) {
+            console.error('Error creating pending_users table:', error);
+            throw error;
+        } finally {
+            client.release();
         }
     }
 
@@ -246,6 +282,106 @@ class DatabaseService {
             }
             
             return null;
+        } catch (error) {
+            console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async createPendingUser(userData) {
+        const client = await this.pool.connect();
+        
+        try {
+            // Delete any existing pending user with this email
+            await client.query('DELETE FROM pending_users WHERE email = $1', [userData.email]);
+            
+            // Insert new pending user
+            const insertQuery = `
+                INSERT INTO pending_users (email, firstname, lastname, password_hash, role, location)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id, email, firstname as "firstName", lastname as "lastName", role, location, created_at
+            `;
+            
+            const result = await client.query(insertQuery, [
+                userData.email,
+                userData.firstName,
+                userData.lastName,
+                userData.passwordHash,
+                userData.role || 'senior',
+                userData.location || null
+            ]);
+            
+            return result.rows[0];
+        } catch (error) {
+            console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async getPendingUser(email) {
+        const client = await this.pool.connect();
+        
+        try {
+            const query = `
+                SELECT id, email, firstname as "firstName", lastname as "lastName", 
+                       password_hash, role, location, created_at, expires_at
+                FROM pending_users 
+                WHERE email = $1 AND expires_at > NOW()
+            `;
+            
+            const result = await client.query(query, [email]);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async deletePendingUser(email) {
+        const client = await this.pool.connect();
+        
+        try {
+            await client.query('DELETE FROM pending_users WHERE email = $1', [email]);
+        } catch (error) {
+            console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async cleanupExpiredPendingUsers() {
+        const client = await this.pool.connect();
+        
+        try {
+            const result = await client.query('DELETE FROM pending_users WHERE expires_at <= NOW()');
+            if (result.rowCount > 0) {
+                console.log(`Cleaned up ${result.rowCount} expired pending user(s)`);
+            }
+        } catch (error) {
+            console.error('Error cleaning up pending users:', error);
+        } finally {
+            client.release();
+        }
+    }
+
+    async findUserByEmailForReset(email) {
+        const client = await this.pool.connect();
+        
+        try {
+            const query = `
+                SELECT id, email, firstname as "firstName", lastname as "lastName", provider 
+                FROM users 
+                WHERE email = $1 AND provider = 'email' AND is_active = TRUE
+            `;
+            const result = await client.query(query, [email]);
+            return result.rows[0] || null;
         } catch (error) {
             console.error('Database error:', error);
             throw error;

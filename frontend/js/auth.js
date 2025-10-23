@@ -1,5 +1,5 @@
 /**
- * Authentication Manager for OIDC/SSO
+ * Authentication Manager for OIDC/SSO and Email/Password
  * Handles authentication flow, token management, and user sessions
  */
 class AuthManager {
@@ -369,14 +369,19 @@ class AuthManager {
             const data = await response.json();
 
             if (response.ok) {
-                console.log('[AuthManager] Email registration successful:', data);
-                this.currentUser = data.user;
+                console.log('[AuthManager] Registration initiated, requires verification:', data);
                 
-                // Show success message and redirect
-                this.showSuccess('Registration successful! Welcome to KampungConnect.');
-                setTimeout(() => {
-                    window.location.href = '/dashboard.html?authenticated=true';
-                }, 1500);
+                if (data.requiresVerification) {
+                    // Redirect to verification page
+                    window.location.href = `/verify-email.html?email=${encodeURIComponent(email)}&type=signup`;
+                } else {
+                    // Old flow - direct registration (backward compatibility)
+                    this.currentUser = data.user;
+                    this.showSuccess('Registration successful! Welcome to KampungConnect.');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html?authenticated=true';
+                    }, 1500);
+                }
             } else {
                 if (data.messages && Array.isArray(data.messages)) {
                     this.showError(data.messages.join('<br>'));

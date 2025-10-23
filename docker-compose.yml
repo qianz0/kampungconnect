@@ -22,6 +22,15 @@ services:
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
       - AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI:-http://localhost:5001/auth/auth0/callback}
       
+      # SMTP Configuration (for OTP emails)
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-KampungConnect}
+      
       # JWT and Database Configuration
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-24h}
@@ -35,6 +44,8 @@ services:
       db:
         condition: service_healthy
     volumes:
+      - ./backend/services/auth-service:/app
+      - /app/node_modules
       - ./backend/shared:/app/shared
     
   request-service:

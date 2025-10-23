@@ -10,12 +10,14 @@ const JWTUtils = require('./jwt-utils');
 const OIDCProviders = require('./oidc-providers');
 const DatabaseService = require('./database-service');
 const PasswordService = require('./password-service');
+const OTPService = require('./otp-service');
 
 const app = express();
 const jwtUtils = new JWTUtils();
 const oidcProviders = new OIDCProviders();
 const dbService = new DatabaseService();
 const passwordService = new PasswordService();
+const otpService = new OTPService();
 
 // Middleware setup
 app.use(cors({
@@ -145,7 +147,7 @@ availableProviders.forEach(provider => {
 
 // Email/Password Authentication Routes
 
-// Register new user with email and password
+// Register new user with email and password (Step 1: Create pending user and send OTP)
 app.post('/register', async (req, res) => {
     try {
         const { email, password, firstName, lastName, role, location } = req.body;
@@ -174,11 +176,17 @@ app.post('/register', async (req, res) => {
             });
         }
 
+        // Check if user already exists in main users table
+        const existingUser = await dbService.findUserByEmail(email.toLowerCase());
+        if (existingUser) {
+            return res.status(409).json({ error: 'User with this email already exists' });
+        }
+
         // Hash password
         const passwordHash = await passwordService.hashPassword(password);
 
-        // Create user in database
-        const newUser = await dbService.createEmailUser({
+        // Store as pending user
+        await dbService.createPendingUser({
             email: email.toLowerCase(),
             firstName: firstName.trim(),
             lastName: lastName.trim(),
@@ -186,6 +194,66 @@ app.post('/register', async (req, res) => {
             role: role || 'senior',
             location: location?.trim() || null
         });
+
+        // Generate and send OTP
+        const otp = otpService.generateOTP();
+        otpService.storeOTP(email.toLowerCase(), otp, 'signup');
+        
+        await otpService.sendOTP(email.toLowerCase(), otp, 'signup', {
+            firstName: firstName.trim(),
+            lastName: lastName.trim()
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Verification code sent to your email. Please check your inbox.',
+            requiresVerification: true
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: error.message || 'Registration failed. Please try again.' });
+    }
+});
+
+// Verify email and complete registration (Step 2: Verify OTP and create actual user)
+app.post('/verify-email', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({
+                error: 'Email and verification code are required'
+            });
+        }
+
+        // Verify OTP
+        const verification = otpService.verifyOTP(email.toLowerCase(), otp, 'signup');
+        if (!verification.valid) {
+            return res.status(400).json({ error: verification.error });
+        }
+
+        // Get pending user data
+        const pendingUser = await dbService.getPendingUser(email.toLowerCase());
+        if (!pendingUser) {
+            return res.status(400).json({ error: 'Registration session expired. Please register again.' });
+        }
+
+        // Create actual user in database
+        const newUser = await dbService.createEmailUser({
+            email: pendingUser.email,
+            firstName: pendingUser.firstName,
+            lastName: pendingUser.lastName,
+            passwordHash: pendingUser.password_hash,
+            role: pendingUser.role,
+            location: pendingUser.location
+        });
+
+        // Delete pending user
+        await dbService.deletePendingUser(email.toLowerCase());
+
+        // Verify email in database
+        await dbService.verifyUserEmail(newUser.id);
 
         // Generate JWT token
         const tokenPayload = {
@@ -208,7 +276,7 @@ app.post('/register', async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
+            message: 'Email verified! Registration complete.',
             user: {
                 id: newUser.id,
                 email: newUser.email,
@@ -221,13 +289,63 @@ app.post('/register', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('Email verification error:', error);
+        res.status(500).json({ error: error.message || 'Verification failed. Please try again.' });
+    }
+});
 
-        if (error.message === 'User with this email already exists') {
-            return res.status(409).json({ error: error.message });
+// Resend OTP for signup
+app.post('/resend-otp', async (req, res) => {
+    try {
+        const { email, type } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
         }
 
-        res.status(500).json({ error: 'Registration failed. Please try again.' });
+        const otpType = type || 'signup';
+
+        // For signup, check if pending user exists
+        if (otpType === 'signup') {
+            const pendingUser = await dbService.getPendingUser(email.toLowerCase());
+            if (!pendingUser) {
+                return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
+            }
+
+            const result = await otpService.resendOTP(email.toLowerCase(), otpType, {
+                firstName: pendingUser.firstName,
+                lastName: pendingUser.lastName
+            });
+
+            if (!result.success) {
+                return res.status(400).json({ error: result.error });
+            }
+
+            res.json({ success: true, message: result.message });
+        } else if (otpType === 'password_reset') {
+            // For password reset, check if user exists
+            const user = await dbService.findUserByEmailForReset(email.toLowerCase());
+            if (!user) {
+                return res.status(400).json({ error: 'No account found with this email.' });
+            }
+
+            const result = await otpService.resendOTP(email.toLowerCase(), otpType, {
+                firstName: user.firstName,
+                lastName: user.lastName
+            });
+
+            if (!result.success) {
+                return res.status(400).json({ error: result.error });
+            }
+
+            res.json({ success: true, message: result.message });
+        } else {
+            return res.status(400).json({ error: 'Invalid OTP type' });
+        }
+
+    } catch (error) {
+        console.error('Resend OTP error:', error);
+        res.status(500).json({ error: 'Failed to resend verification code.' });
     }
 });
 
@@ -362,6 +480,135 @@ app.post('/change-password', jwtUtils.authenticateToken.bind(jwtUtils), async (r
     } catch (error) {
         console.error('Change password error:', error);
         res.status(500).json({ error: 'Password change failed. Please try again.' });
+    }
+});
+
+// Request password reset (Step 1: Send OTP)
+app.post('/request-password-reset', async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        // Check if user exists and is email/password user
+        const user = await dbService.findUserByEmailForReset(email.toLowerCase());
+        if (!user) {
+            // Don't reveal if email exists or not for security
+            return res.json({
+                success: true,
+                message: 'If an account exists with this email, you will receive a password reset code.'
+            });
+        }
+
+        // Generate and send OTP
+        const otp = otpService.generateOTP();
+        otpService.storeOTP(email.toLowerCase(), otp, 'password_reset');
+        
+        await otpService.sendOTP(email.toLowerCase(), otp, 'password_reset', {
+            firstName: user.firstName,
+            lastName: user.lastName
+        });
+
+        res.json({
+            success: true,
+            message: 'If an account exists with this email, you will receive a password reset code.'
+        });
+
+    } catch (error) {
+        console.error('Password reset request error:', error);
+        res.status(500).json({ error: 'Failed to process password reset request.' });
+    }
+});
+
+// Verify OTP for password reset (Step 2: Verify OTP)
+app.post('/verify-reset-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({
+                error: 'Email and verification code are required'
+            });
+        }
+
+        // Verify OTP
+        const verification = otpService.verifyOTP(email.toLowerCase(), otp, 'password_reset');
+        if (!verification.valid) {
+            return res.status(400).json({ error: verification.error });
+        }
+
+        // Generate a temporary reset token (valid for 10 minutes)
+        const resetToken = jwtUtils.generateToken(
+            { email: email.toLowerCase(), purpose: 'password_reset' },
+            '10m'
+        );
+
+        res.json({
+            success: true,
+            message: 'Verification successful. You can now reset your password.',
+            resetToken
+        });
+
+    } catch (error) {
+        console.error('OTP verification error:', error);
+        res.status(500).json({ error: 'Verification failed. Please try again.' });
+    }
+});
+
+// Reset password (Step 3: Set new password)
+app.post('/reset-password', async (req, res) => {
+    try {
+        const { resetToken, newPassword } = req.body;
+
+        if (!resetToken || !newPassword) {
+            return res.status(400).json({
+                error: 'Reset token and new password are required'
+            });
+        }
+
+        // Verify reset token
+        let decoded;
+        try {
+            decoded = jwtUtils.verifyToken(resetToken);
+        } catch (error) {
+            return res.status(401).json({ error: 'Invalid or expired reset token' });
+        }
+
+        if (decoded.purpose !== 'password_reset') {
+            return res.status(401).json({ error: 'Invalid reset token' });
+        }
+
+        // Validate new password strength
+        const passwordValidation = passwordService.validatePasswordStrength(newPassword);
+        if (!passwordValidation.isValid) {
+            return res.status(400).json({
+                error: 'Password validation failed',
+                messages: passwordValidation.messages
+            });
+        }
+
+        // Find user
+        const user = await dbService.findUserByEmailForReset(decoded.email);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Hash new password
+        const newPasswordHash = await passwordService.hashPassword(newPassword);
+
+        // Update password
+        await dbService.updateUserPassword(user.id, newPasswordHash);
+
+        res.json({
+            success: true,
+            message: 'Password reset successfully. You can now login with your new password.'
+        });
+
+    } catch (error) {
+        console.error('Password reset error:', error);
+        res.status(500).json({ error: 'Password reset failed. Please try again.' });
     }
 });
 
@@ -537,6 +784,7 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log(`🚀 Auth service running on port ${PORT}`);
             console.log(`📧 Email/Password authentication: enabled`);
+            console.log(`🔐 OTP verification: ${otpService.isConfigured ? 'enabled (NodeMailer)' : 'enabled (console logging)'}`);
             
             const availableProviders = oidcProviders.getAvailableProviders();
             if (availableProviders.length > 0) {
@@ -551,10 +799,33 @@ async function startServer() {
                 console.log(`⚠️  No OIDC providers configured`);
             }
         });
+
+        // Start periodic cleanup tasks
+        startCleanupTasks();
+
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
     }
+}
+
+// Start periodic cleanup tasks
+function startCleanupTasks() {
+    // Cleanup expired OTPs every 5 minutes
+    setInterval(() => {
+        otpService.cleanupExpiredOTPs();
+    }, 5 * 60 * 1000);
+
+    // Cleanup expired pending users every hour
+    setInterval(async () => {
+        try {
+            await dbService.cleanupExpiredPendingUsers();
+        } catch (error) {
+            console.error('Error cleaning up pending users:', error);
+        }
+    }, 60 * 60 * 1000);
+
+    console.log('🧹 Cleanup tasks scheduled');
 }
 
 // Graceful shutdown

@@ -12,8 +12,10 @@ class JWTUtils {
     /**
      * Generate JWT token for authenticated user
      */
-    generateToken(userPayload) {
-        return jwt.sign(userPayload, this.secret, { expiresIn: this.expiresIn });
+    generateToken(userPayload, expiresIn = null) {
+        return jwt.sign(userPayload, this.secret, { 
+            expiresIn: expiresIn || this.expiresIn 
+        });
     }
 
     /**
