@@ -156,6 +156,17 @@
                 </div>
             </div>
         </div>
+
+                <div class="col-md-4 mb-3">
+    <div class="card feature-card h-100">
+        <div class="card-body text-center">
+            <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
+            <h5 class="card-title">My Matches</h5>
+            <p class="card-text">View your connected helpers or assigned seniors.</p>
+            <div id="matchButtonContainer"></div>
+        </div>
+    </div>
+</div>
         
         <!-- Recent Requests Section -->
         <div class="row mt-4">
@@ -174,6 +185,39 @@
                     <!-- Requests will be populated here -->
                     </div>
                 </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <!-- User Info Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Your Session Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Email:</strong> <span id="userEmail">-</span><br>
+                                <strong>Provider:</strong> <span id="userProvider">-</span><br>
+                                <strong>User ID:</strong> <span id="userId">-</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Login Status:</strong> 
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>Authenticated
+                                </span><br>
+                                <strong>Session Type:</strong> 
+                                <span class="badge bg-info">OIDC/JWT</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -212,6 +256,8 @@
                 checkAuthManager();
             });
         }
+
+        
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
@@ -266,6 +312,8 @@
                 
                 populateUserInfo(currentUser);
                 showNewRequestButton(currentUser);
+                showMatchButton(currentUser); 
+
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -304,6 +352,8 @@
                 }
             }
         });
+
+        
 
         // Populate user information
         function populateUserInfo(user) {
@@ -425,6 +475,34 @@
                 tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
             }
         }
+        function showMatchButton(user) {
+                console.log("[showMatchButton] user.role =", user.role); // 👈 add this
+
+    const matchContainer = document.getElementById("matchButtonContainer");
+
+    if (!user || !user.role) {
+        matchContainer.innerHTML = `<div class="text-muted small">Unable to determine role.</div>`;
+        return;
+    }
+
+    if (user.role === "senior") {
+        matchContainer.innerHTML = `
+            <a href="match.html" class="btn btn-primary">
+                <i class="fas fa-user-friends me-1"></i>View My Helpers
+            </a>
+        `;
+    } else if (user.role === "helper") {
+        matchContainer.innerHTML = `
+            <a href="match-helper.html" class="btn btn-success">
+                <i class="fas fa-handshake me-1"></i>View My Seniors
+            </a>
+        `;
+    } else {
+        matchContainer.innerHTML = `
+            <div class="text-muted small">No matches available.</div>
+        `;
+    }
+}
 
         document.addEventListener('DOMContentLoaded', async() => {
             try {

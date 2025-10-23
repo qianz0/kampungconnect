@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
+const { connectQueue, publishMessage } = require("./queue");
+
 
 // Import authentication middleware
 const AuthMiddleware = require('/app/shared/auth-middleware');
@@ -62,6 +64,21 @@ app.post('/postRequest', authMiddleware.authenticateToken, async(req, res) => {
              RETURNING id, user_id, title, category, description, urgency, status, created_at`,
             [userId, title, category, description, urgency]
         );
+
+         // 2️⃣ Publish event to matching-service via RabbitMQ
+        try {
+            await publishMessage("request_created", {
+                id: result.rows[0].id,
+                user_id: userId,
+                title,
+                category,
+                description,
+                urgency,
+        });
+        console.log("📤 [request-service] Sent message to queue: request_created");
+        }   catch (err) {
+        console.error("❌ [request-service] Failed to publish message:", err);
+        }
         
         res.json({ 
             message: "Request posted successfully", 
@@ -320,11 +337,50 @@ app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req,
 });
 
 
+// Get all matches for the logged-in helper
+app.get('/matches', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if (userRole !== 'helper') {
+      return res.status(403).json({ error: 'Only helpers can view their matches' });
+    }
+
+    const results = await db.query(`
+      SELECT m.*, 
+             r.id AS request_id, r.title, r.category, r.description, r.urgency,
+             u.name AS requester_name, u.email AS requester_email
+      FROM matches m
+      JOIN requests r ON m.request_id = r.id
+      JOIN users u ON r.user_id = u.id
+      WHERE m.helper_id = $1
+      ORDER BY m.matched_at DESC
+    `, [userId]);
+
+    res.json({ matches: results.rows, total: results.rowCount });
+  } catch (error) {
+    console.error('Get helper matches error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
 // Error handling middleware
 app.use((error, req, res, next) => {
     console.error('Request service error:', error);
     res.status(500).json({ error: 'Internal server error' });
 });
+
+(async () => {
+  try {
+    await connectQueue(); // ✅ connect to RabbitMQ when service starts
+    console.log("✅ Request-service connected to RabbitMQ");
+  } catch (err) {
+    console.error("❌ Failed to connect to RabbitMQ:", err);
+  }
+})();
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

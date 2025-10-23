@@ -1,4 +1,6 @@
 {
+  "dependencies": {
+    "bcrypt": "^6.0.0"
   "name": "kampungconnect-setup",
   "version": "1.0.0",
   "description": "Setup scripts for KampungConnect",
