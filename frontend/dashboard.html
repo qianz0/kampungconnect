@@ -157,6 +157,17 @@
                 </div>
             </div>
         </div>
+
+                <div class="col-md-4 mb-3">
+    <div class="card feature-card h-100">
+        <div class="card-body text-center">
+            <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
+            <h5 class="card-title">My Matches</h5>
+            <p class="card-text">View your connected helpers or assigned seniors.</p>
+            <div id="matchButtonContainer"></div>
+        </div>
+    </div>
+</div>
         
         <!-- Recent Requests Section -->
         <div class="row mt-4">
@@ -178,6 +189,9 @@
                 </div>
             </div>
         </div>
+
+
+
 
         <!-- User Info Section -->
         <div class="row mt-4">
@@ -244,6 +258,8 @@
             });
         }
 
+        
+
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('[Dashboard] Initializing dashboard...');
@@ -285,6 +301,8 @@
                 
                 populateUserInfo(currentUser);
                 showNewRequestButton(currentUser);
+                showMatchButton(currentUser); 
+
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -319,6 +337,8 @@
                 }
             }
         });
+
+        
 
         // Populate user information
         function populateUserInfo(user) {
@@ -422,6 +442,34 @@
                 tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
             }
         }
+        function showMatchButton(user) {
+                console.log("[showMatchButton] user.role =", user.role); // 👈 add this
+
+    const matchContainer = document.getElementById("matchButtonContainer");
+
+    if (!user || !user.role) {
+        matchContainer.innerHTML = `<div class="text-muted small">Unable to determine role.</div>`;
+        return;
+    }
+
+    if (user.role === "senior") {
+        matchContainer.innerHTML = `
+            <a href="match.html" class="btn btn-primary">
+                <i class="fas fa-user-friends me-1"></i>View My Helpers
+            </a>
+        `;
+    } else if (user.role === "helper") {
+        matchContainer.innerHTML = `
+            <a href="match-helper.html" class="btn btn-success">
+                <i class="fas fa-handshake me-1"></i>View My Seniors
+            </a>
+        `;
+    } else {
+        matchContainer.innerHTML = `
+            <div class="text-muted small">No matches available.</div>
+        `;
+    }
+}
 
         document.addEventListener('DOMContentLoaded', async() => {
             try {
