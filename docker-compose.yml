@@ -45,6 +45,11 @@ services:
       environment:
         RABBITMQ_DEFAULT_USER: guest
         RABBITMQ_DEFAULT_PASS: guest
+      healthcheck:
+        test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
       restart: always
 
 
@@ -60,13 +65,15 @@ services:
       - DB_NAME=kampungconnect
       - DB_USER=admin
       - DB_PASSWORD=password
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     depends_on:
-      - db
-      - auth-service
-      - rabbitmq
+      db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     volumes:
-      - ./backend/services/request-service:/app       
-      - /app/node_modules                             
       - ./backend/shared:/app/shared   
   
   matching-service:
@@ -85,12 +92,14 @@ services:
       - NOTIFICATION_QUEUE=notification_events
       - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
-      - db
-      - rabbitmq
-      - auth-service
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
     volumes:
       - ./backend/shared:/app/shared
-      - ./backend/services/matching-service:/app
     restart: always
     
   notification-service:
