@@ -3,6 +3,9 @@ const amqp = require("amqplib");
 
 let channel;
 let isConnecting = false;
+let retryCount = 0;
+const MAX_RETRIES = 20;
+const INITIAL_DELAY = 2000; // 2 seconds initial delay
 
 async function connectQueue() {
   if (isConnecting || channel) return;
@@ -13,6 +16,7 @@ async function connectQueue() {
       process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672"
     );
     channel = await connection.createChannel();
+    retryCount = 0; // Reset retry count on successful connection
     console.log("✅ [matching-service] Connected to RabbitMQ");
 
     connection.on("close", () => {
@@ -21,10 +25,22 @@ async function connectQueue() {
       isConnecting = false;
       setTimeout(connectQueue, 5000);
     });
+
+    connection.on("error", (err) => {
+      console.error("❌ [matching-service] RabbitMQ connection error:", err);
+    });
   } catch (err) {
-    console.error("❌ [matching-service] RabbitMQ connection error:", err);
+    console.error(`❌ [matching-service] RabbitMQ connection error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, err.message);
     isConnecting = false;
-    setTimeout(connectQueue, 5000); // retry every 5 seconds
+    retryCount++;
+    
+    if (retryCount < MAX_RETRIES) {
+      const delay = Math.min(5000, INITIAL_DELAY * Math.pow(1.5, retryCount - 1));
+      console.log(`⏳ [matching-service] Retrying in ${delay}ms...`);
+      setTimeout(connectQueue, delay);
+    } else {
+      console.error("❌ [matching-service] Max retries reached. Stopping retry attempts.");
+    }
   }
 }
 

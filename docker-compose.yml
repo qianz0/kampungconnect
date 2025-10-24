@@ -45,11 +45,14 @@ services:
       environment:
         RABBITMQ_DEFAULT_USER: guest
         RABBITMQ_DEFAULT_PASS: guest
+      volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
       healthcheck:
         test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-        interval: 10s
+        interval: 5s
         timeout: 5s
-        retries: 5
+        retries: 10
+        start_period: 15s
       restart: always
 
 
@@ -210,3 +213,4 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq_data:
