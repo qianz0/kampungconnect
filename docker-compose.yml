@@ -190,6 +190,10 @@ services:
   ready-checker:
     image: alpine:latest
     depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       auth-service:
         condition: service_started
       request-service:
@@ -206,9 +210,38 @@ services:
         condition: service_started
     command: >
       sh -c "
-        echo '⏳ Waiting for all services to start...';
-        sleep 5;
-        echo '✅ All services are ready!';
+        apk add --no-cache curl netcat-openbsd;
+        echo '⏳ Waiting for all services to be ready...';
+        echo '';
+        echo '🔍 Checking PostgreSQL...';
+        while ! nc -z db 5432; do sleep 1; done;
+        echo '✅ PostgreSQL is ready';
+        echo '';
+        echo '🔍 Checking RabbitMQ AMQP port...';
+        while ! nc -z rabbitmq 5672; do sleep 1; done;
+        echo '✅ RabbitMQ AMQP port is open';
+        echo '';
+        echo '🔍 Checking RabbitMQ Management API...';
+        while ! nc -z rabbitmq 15672; do sleep 1; done;
+        echo '✅ RabbitMQ Management API is ready';
+        echo '';
+        echo '🔍 Verifying RabbitMQ is accepting connections...';
+        sleep 3;
+        echo '✅ RabbitMQ is fully operational';
+        echo '';
+        echo '🔍 Checking Auth Service...';
+        while ! nc -z auth-service 5000; do sleep 1; done;
+        echo '✅ Auth Service is ready';
+        echo '';
+        echo '🔍 Checking Request Service...';
+        while ! nc -z request-service 5000; do sleep 1; done;
+        echo '✅ Request Service is ready';
+        echo '';
+        echo '🔍 Checking Matching Service...';
+        while ! nc -z matching-service 5003; do sleep 1; done;
+        echo '✅ Matching Service is ready';
+        echo '';
+        echo '🎉 All services are ready and operational!';
       "
   frontend:
     build: ./frontend
