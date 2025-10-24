@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Matches - KampungConnect</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .navbar-brand {
+      font-weight: bold;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .page-header {
+      background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+      color: white;
+      padding: 2rem 0;
+      margin-bottom: 2rem;
+      border-radius: 0.5rem;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1050;
+    }
+    .feature-card {
+      transition: transform 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-3px);
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2">Loading your matched seniors...</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="dashboard.html">
+        <i class="fas fa-home me-2"></i>KampungConnect
+      </a>
+
+      <div class="navbar-nav ms-auto">
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
+             role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar">
+            <span id="userName">Loading...</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" id="logoutBtn">
+              <i class="fas fa-sign-out-alt me-2"></i>Logout
+            </a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-4">
+    <div class="page-header">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h2 class="mb-2">
+              <i class="fas fa-handshake me-2"></i>Matched Seniors
+            </h2>
+            <p class="mb-0 opacity-75">See which seniors you’re currently helping</p>
+          </div>
+          <a href="dashboard.html" class="btn btn-light">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div id="matchesContainer" class="row g-4"></div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    function waitForAuthManager() {
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 50;
+        function check() {
+          attempts++;
+          if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
+            resolve(window.AuthManager);
+          } else if (attempts >= maxAttempts) {
+            reject(new Error("AuthManager not available"));
+          } else {
+            setTimeout(check, 100);
+          }
+        }
+        check();
+      });
+    }
+
+    function populateUserInfo(user) {
+      if (!user) return;
+      document.getElementById('userName').textContent = user.name || 'User';
+      const avatar = document.getElementById('userAvatar');
+      avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+    }
+
+    const apiBase = "http://localhost:5003";
+
+    async function loadMatches() {
+      try {
+        const overlay = document.getElementById("loadingOverlay");
+        overlay.style.display = "flex";
+
+        const res = await fetch(`${apiBase}/matches/helper`, { credentials: "include" });
+        const data = await res.json();
+
+        const container = document.getElementById("matchesContainer");
+        container.innerHTML = "";
+
+        if (!data.matches || data.matches.length === 0) {
+          container.innerHTML = `<div class="text-center text-muted">No seniors matched yet.</div>`;
+          overlay.style.display = "none";
+          return;
+        }
+
+data.matches.forEach(match => {
+  const seniorName = match.senior_name || "Unassigned";
+  const urgencyBadge = match.urgency === "high"
+    ? `<span class="badge bg-danger">High</span>`
+    : `<span class="badge bg-success text-uppercase">${match.urgency}</span>`;
+
+  const isCompleted = match.status?.toLowerCase() === "completed";
+
+  const card = document.createElement("div");
+  card.className = "col-md-4";
+  card.innerHTML = `
+    <div class="card feature-card shadow-sm border-0 h-100">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title fw-bold text-primary">${match.title}</h5>
+        <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
+        <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
+        <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
+        <hr>
+        <p><i class="fas fa-user"></i> <strong>Senior:</strong> ${seniorName}</p>
+
+        ${
+          !isCompleted
+            ? `<button class="btn btn-success mt-auto mark-complete" data-id="${match.id}">
+                 <i class="fas fa-check-circle me-1"></i>Mark as Complete
+               </button>`
+            : `<span class="badge bg-secondary mt-auto">Completed</span>`
+        }
+      </div>
+    </div>
+  `;
+  container.appendChild(card);
+});
+
+      } catch (err) {
+        console.error("Error loading matches:", err);
+        document.getElementById("matchesContainer").innerHTML =
+          `<div class="text-center text-danger">Failed to load seniors.</div>`;
+      } finally {
+        document.getElementById("loadingOverlay").style.display = "none";
+      }
+    }
+document.addEventListener("click", async (e) => {
+  if (e.target.closest(".mark-complete")) {
+    const button = e.target.closest(".mark-complete");
+    const matchId = button.dataset.id;
+
+    if (!confirm("Mark this task as complete?")) return;
+
+    try {
+      button.disabled = true;
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+
+      const res = await fetch(`${apiBase}/matches/${matchId}/complete`, {
+        method: "POST",  // ✅ Use POST instead of PUT
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed: ${res.status} - ${errorText}`);
+      }
+
+      alert("✅ Match marked as completed!");
+      await loadMatches(); // refresh list
+    } catch (err) {
+      console.error("Error completing match:", err);
+      alert("⚠️ Failed to complete match. See console for details.");
+      button.disabled = false;
+      button.innerHTML = '<i class="fas fa-check-circle me-1"></i>Mark as Complete';
+    }
+  }
+});
+
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const authManager = await waitForAuthManager();
+        await authManager.initialize();
+
+        const isAuthenticated = await authManager.checkAuthentication();
+        if (!isAuthenticated) {
+          window.location.href = "login.html";
+          return;
+        }
+
+        const currentUser = authManager.getCurrentUser();
+        populateUserInfo(currentUser);
+
+        // ✅ Helper-only access
+        if (!currentUser || currentUser.role !== 'helper') {
+          alert('Access denied. This page is for helpers only.');
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        await loadMatches(authManager);
+
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+          e.preventDefault();
+          if (confirm('Are you sure you want to logout?')) {
+            await authManager.logout();
+          }
+        });
+
+      } catch (error) {
+        console.error("Error during initialization:", error);
+        document.getElementById('matchesContainer').innerHTML = `
+          <div class="text-center">
+            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+            <h4>Failed to Load Matches</h4>
+            <p>Please try again later.</p>
+            <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+          </div>
+        `;
+      }
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
