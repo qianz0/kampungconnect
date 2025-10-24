@@ -1,23 +1,32 @@
-// queue.js (for matching-service)
+// src/queue.js
 const amqp = require("amqplib");
 
 let channel;
+let connection;
 let isConnecting = false;
-let retryCount = 0;
-const MAX_RETRIES = 20;
-const INITIAL_DELAY = 2000; // 2 seconds initial delay
+let onConnectedCallback = null;
 
+const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
+
+/**
+ * Connect to RabbitMQ (with automatic reconnects)
+ */
 async function connectQueue() {
   if (isConnecting || channel) return;
   isConnecting = true;
 
   try {
-    const connection = await amqp.connect(
-      process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672"
-    );
+    connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
-    retryCount = 0; // Reset retry count on successful connection
     console.log("✅ [matching-service] Connected to RabbitMQ");
+
+    isConnecting = false;
+
+    // re-register consumer if needed
+    if (onConnectedCallback) {
+      console.log("🔄 [matching-service] Re-registering consumer...");
+      await onConnectedCallback(channel);
+    }
 
     connection.on("close", () => {
       console.warn("⚠️ [matching-service] RabbitMQ connection closed. Reconnecting...");
@@ -27,34 +36,22 @@ async function connectQueue() {
     });
 
     connection.on("error", (err) => {
-      console.error("❌ [matching-service] RabbitMQ connection error:", err);
+      console.error("❌ [matching-service] RabbitMQ error:", err.message);
     });
   } catch (err) {
-    console.error(`❌ [matching-service] RabbitMQ connection error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, err.message);
+    console.error("❌ [matching-service] RabbitMQ connection failed:", err.message);
+    channel = null;
     isConnecting = false;
-    retryCount++;
-    
-    if (retryCount < MAX_RETRIES) {
-      const delay = Math.min(5000, INITIAL_DELAY * Math.pow(1.5, retryCount - 1));
-      console.log(`⏳ [matching-service] Retrying in ${delay}ms...`);
-      setTimeout(connectQueue, delay);
-    } else {
-      console.error("❌ [matching-service] Max retries reached. Stopping retry attempts.");
-    }
+    setTimeout(connectQueue, 5000);
   }
 }
 
+/**
+ * Publish message to a queue
+ */
 async function publishMessage(queueName, message) {
   try {
-    if (!channel) {
-      console.warn("⚠️ [matching-service] No channel yet, retrying...");
-      await connectQueue();
-      if (!channel) {
-        console.error("❌ [matching-service] Channel still not ready. Message dropped.");
-        return;
-      }
-    }
-
+    if (!channel) await connectQueue();
     await channel.assertQueue(queueName, { durable: true });
     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
     console.log(`📤 [matching-service] Sent message to queue: ${queueName}`);
@@ -63,35 +60,32 @@ async function publishMessage(queueName, message) {
   }
 }
 
+/**
+ * Consume messages from a queue
+ */
 async function consumeQueue(queueName, callback) {
-  try {
-    if (!channel) {
-      console.warn("⚠️ [matching-service] No channel yet, retrying consume setup...");
-      await connectQueue();
-      if (!channel) {
-        console.error("❌ [matching-service] Channel still not ready to consume.");
-        return;
-      }
-    }
-
-    await channel.assertQueue(queueName, { durable: true });
+  // this inner function is async, so awaits are legal
+  onConnectedCallback = async (ch) => {
+    await ch.assertQueue(queueName, { durable: true });
     console.log(`👂 [matching-service] Listening on queue: ${queueName}`);
 
-    channel.consume(queueName, async (msg) => {
-      if (msg) {
-        try {
-          const data = JSON.parse(msg.content.toString());
-          await callback(data);
-          channel.ack(msg);
-        } catch (err) {
-          console.error("❌ [matching-service] Error handling message:", err);
-          // don't ack message so it can be retried
-        }
+    ch.consume(queueName, async (msg) => {
+      if (!msg) return;
+      try {
+        const data = JSON.parse(msg.content.toString());
+        await callback(data);
+        ch.ack(msg);
+      } catch (err) {
+        console.error("❌ [matching-service] Error handling message:", err);
       }
     });
-  } catch (err) {
-    console.error("❌ [matching-service] Failed to consume queue:", err);
+  };
+
+  if (channel) {
+    await onConnectedCallback(channel);
+  } else {
+    console.warn("⚠️ [matching-service] Channel not ready yet, will listen after connect.");
   }
 }
 
-module.exports = { connectQueue, consumeQueue, publishMessage };
+module.exports = { connectQueue, publishMessage, consumeQueue };

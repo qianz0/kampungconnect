@@ -476,7 +476,7 @@
             }
         }
         function showMatchButton(user) {
-                console.log("[showMatchButton] user.role =", user.role); // 👈 add this
+                console.log("[showMatchButton] user.role =", user.role);
 
     const matchContainer = document.getElementById("matchButtonContainer");
 
@@ -491,13 +491,23 @@
                 <i class="fas fa-user-friends me-1"></i>View My Helpers
             </a>
         `;
-    } else if (user.role === "helper") {
+    } else if (user.role === "volunteer" || role === "caregiver") {
         matchContainer.innerHTML = `
             <a href="match-helper.html" class="btn btn-success">
                 <i class="fas fa-handshake me-1"></i>View My Seniors
             </a>
         `;
-    } else {
+    
+    }
+      else if (role === "admin") {
+        matchContainer.innerHTML = `
+            <a href="admin-dashboard.html" class="btn btn-danger">
+                <i class="fas fa-tools me-1"></i>Admin Panel
+            </a>
+        `;
+    } 
+    
+    else {
         matchContainer.innerHTML = `
             <div class="text-muted small">No matches available.</div>
         `;

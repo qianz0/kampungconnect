@@ -131,10 +131,14 @@
 
          // Populate user info
         function populateUserInfo(user) {
-            if (!user) return;
-            document.getElementById('userName').textContent = user.name || 'User';
-            const avatar = document.getElementById('userAvatar');
-            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+           if (!user) return;
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
+  document.getElementById('userName').textContent = fullName;
+
+  const avatar = document.getElementById('userAvatar');
+  avatar.src = user.picture || 
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6c757d&color=fff`;
+  avatar.alt = fullName;
         }
     const apiBase = "http://localhost:5003";
 
@@ -235,10 +239,7 @@
     }
 });
 
-    document.getElementById("logoutBtn").addEventListener("click", async () => {
-      await fetch("http://localhost:5001/logout", { credentials: "include" });
-      window.location.href = "login.html";
-    });
+  
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -136,10 +136,13 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
 app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const results = await db.query(
-            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
-             FROM requests r
-             JOIN users u ON r.user_id = u.id
-             ORDER BY r.created_at DESC`
+            `SELECT r.*, 
+       CONCAT(u.firstName, ' ', u.lastName) AS requester_name, 
+       u.role AS requester_role
+FROM requests r
+JOIN users u ON r.user_id = u.id
+ORDER BY r.created_at DESC
+`
         );
 
         res.json({ 
@@ -156,11 +159,13 @@ app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
 app.get('/requests/latest3/all', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const results = await db.query(
-            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
-             FROM requests r
-             JOIN users u ON r.user_id = u.id
-             ORDER BY r.created_at DESC
-             LIMIT 3`
+            `SELECT r.*, 
+       CONCAT(u.firstName, ' ', u.lastName) AS requester_name, 
+       u.role AS requester_role
+FROM requests r
+JOIN users u ON r.user_id = u.id
+ORDER BY r.created_at DESC
+LIMIT 3`
         );
 
         res.json({
@@ -221,15 +226,16 @@ app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
 
         const result = await db.query(
             `SELECT r.*,
-                    poster.name   AS requester_name,
-                    poster.role   AS requester_role,
-                    helper.name   AS fulfilled_by_name,
-                    helper.rating AS fulfilled_by_rating
-             FROM requests r
-             JOIN users poster ON r.user_id = poster.id
-             LEFT JOIN matches m ON r.id = m.request_id
-             LEFT JOIN users helper ON m.helper_id = helper.id
-             WHERE r.id = $1`,
+       CONCAT(poster.firstName, ' ', poster.lastName) AS requester_name,
+       poster.role AS requester_role,
+       CONCAT(helper.firstName, ' ', helper.lastName) AS fulfilled_by_name,
+       helper.rating AS fulfilled_by_rating
+FROM requests r
+JOIN users poster ON r.user_id = poster.id
+LEFT JOIN matches m ON r.id = m.request_id
+LEFT JOIN users helper ON m.helper_id = helper.id
+WHERE r.id = $1
+`,
             [requestId]
         );
 
@@ -321,11 +327,13 @@ app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req,
 
         const result = await db.query(
             `SELECT r.id, r.message, r.created_at, r.parent_id,
-                    u.name AS responder_name, u.role as responder_role
-             FROM responses r
-             JOIN users u ON r.user_id = u.id
-             WHERE r.request_id = $1
-             ORDER BY r.created_at ASC`,
+       CONCAT(u.firstName, ' ', u.lastName) AS responder_name,
+       u.role as responder_role
+FROM responses r
+JOIN users u ON r.user_id = u.id
+WHERE r.request_id = $1
+ORDER BY r.created_at ASC
+`,
             [requestId]
         );
 
@@ -343,19 +351,22 @@ app.get('/matches', authMiddleware.authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const userRole = req.user.role;
 
-    if (userRole !== 'helper') {
-      return res.status(403).json({ error: 'Only helpers can view their matches' });
-    }
+    if (userRole !== 'volunteer' && userRole !== 'caregiver' && userRole !== 'admin') {
+  return res.status(403).json({ error: 'Only helpers can view their matches' });
+}
+
 
     const results = await db.query(`
       SELECT m.*, 
-             r.id AS request_id, r.title, r.category, r.description, r.urgency,
-             u.name AS requester_name, u.email AS requester_email
-      FROM matches m
-      JOIN requests r ON m.request_id = r.id
-      JOIN users u ON r.user_id = u.id
-      WHERE m.helper_id = $1
-      ORDER BY m.matched_at DESC
+       r.id AS request_id, r.title, r.category, r.description, r.urgency,
+       CONCAT(u.firstName, ' ', u.lastName) AS requester_name,
+       u.email AS requester_email
+FROM matches m
+JOIN requests r ON m.request_id = r.id
+JOIN users u ON r.user_id = u.id
+WHERE m.helper_id = $1
+ORDER BY m.matched_at DESC
+
     `, [userId]);
 
     res.json({ matches: results.rows, total: results.rowCount });
