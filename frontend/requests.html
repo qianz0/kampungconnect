@@ -362,14 +362,18 @@
                                     </div>
                                 </div>
                                 <input type="hidden" id="urgency" required>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <button type="submit" class="btn btn-primary btn-submit">
-                                    <i class="fas fa-paper-plane me-2"></i>Submit Request
-                                </button>
-                            </div>
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" id="instantMatch">
+                                    <label class="form-check-label" for="instantMatch">
+                                        <i class="fas fa-bolt text-warning me-2"></i>Match me with a helper instantly
+                                    </label>
+                                </div>
+                                <!-- Submit Button -->
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary btn-submit">
+                                        <i class="fas fa-paper-plane me-2"></i>Submit Request
+                                    </button>
+                                </div>
                         </form>
                     </div>
                 </div>
@@ -415,6 +419,8 @@
         let currentUser = null;
         let selectedCategory = null;
         let selectedUrgency = null;
+
+
 
         function waitForAuthManager() {
             return new Promise((resolve, reject) => {
@@ -538,13 +544,15 @@
             const description = document.getElementById("description").value.trim();
             const category = selectedCategory;
             const urgency = selectedUrgency;
+            const instantMatch = document.getElementById("instantMatch").checked;
+
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
                 const authManager = await waitForAuthManager();
                 const result = await authManager.authenticatedFetch("http://localhost:5002/postRequest", {
                     method: "POST",
-                    body: JSON.stringify({ title, description, category, urgency })
+                    body: JSON.stringify({ title, description, category, urgency, instantMatch })
                 });
 
                 const responseData = await result.json();
@@ -553,11 +561,15 @@
                 if (result.ok) {
                     const requestId = responseData.id || Date.now();
                     const seniorId = currentUser?.id || 1;
-                    showSuccess('Your request has been posted! Finding the best helper for you...');
+                    showSuccess('Your request has been posted!');
 
                     setTimeout(() => {
-                        window.location.href = 'match.html';
-                    }, 3000);
+                        if (instantMatch) {
+                            window.location.href = "match.html";
+                        } else {
+                            window.location.href = "all-requests.html"; // or "requests.html" depending on your route
+                        }
+                    }, 2000);
 
                 } else {
                     showError(responseData.message || 'Failed to post request.');

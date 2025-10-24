@@ -11,12 +11,14 @@
         .navbar-brand {
             font-weight: bold;
         }
+
         .user-avatar {
             width: 32px;
             height: 32px;
             border-radius: 50%;
             object-fit: cover;
         }
+
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -24,15 +26,18 @@
             margin-bottom: 2rem;
             border-radius: 0.5rem;
         }
+
         .request-card {
             transition: all 0.3s ease;
             border: 1px solid #dee2e6;
             height: 100%;
         }
+
         .request-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
+
         .category-icon {
             width: 50px;
             height: 50px;
@@ -43,24 +48,27 @@
             font-size: 1.5rem;
             margin-bottom: 1rem;
         }
+
         .filter-section {
             background: #f8f9fa;
             padding: 1.5rem;
             border-radius: 0.5rem;
             margin-bottom: 2rem;
         }
+
         .loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255, 255, 255, 0.9);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1050;
         }
+
         .stats-card {
             background: white;
             border-radius: 0.5rem;
@@ -68,49 +76,58 @@
             text-align: center;
             border: 1px solid #dee2e6;
         }
+
         .stats-number {
             font-size: 2rem;
             font-weight: bold;
             color: #667eea;
         }
+
         .empty-state {
             text-align: center;
             padding: 3rem;
             color: #6c757d;
         }
+
         .empty-state i {
             font-size: 4rem;
             margin-bottom: 1rem;
             opacity: 0.5;
         }
+
         .view-toggle {
             background: white;
             padding: 0.5rem;
             border-radius: 0.5rem;
             border: 1px solid #dee2e6;
         }
+
         .view-toggle .btn {
             border: none;
             background: transparent;
             color: #6c757d;
             transition: all 0.3s ease;
         }
+
         .view-toggle .btn.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
+
         .requester-info {
             background: #f8f9fa;
             padding: 0.75rem;
             border-radius: 0.5rem;
             margin-top: 0.75rem;
         }
+
         .requester-avatar {
             width: 30px;
             height: 30px;
             border-radius: 50%;
             object-fit: cover;
         }
+
         .list-view .request-item {
             border: 1px solid #dee2e6;
             border-radius: 0.75rem;
@@ -119,10 +136,12 @@
             background: white;
             transition: all 0.3s ease;
         }
+
         .list-view .request-item:hover {
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             transform: translateX(5px);
         }
+
         .list-view .category-badge {
             display: inline-flex;
             align-items: center;
@@ -130,6 +149,7 @@
             border-radius: 50px;
             font-size: 0.875rem;
         }
+
         .help-btn {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             border: none;
@@ -137,6 +157,7 @@
             font-weight: 600;
             transition: all 0.3s ease;
         }
+
         .help-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
@@ -162,22 +183,25 @@
             <a class="navbar-brand" href="dashboard.html">
                 <i class="fas fa-home me-2"></i>KampungConnect
             </a>
-            
+
             <div class="navbar-nav ms-auto">
                 <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
-                       role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
+                        role="button" data-bs-toggle="dropdown">
                         <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar">
                         <span id="userName">Loading...</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My
+                                Requests</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li><a class="dropdown-item" href="#" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                        </a></li>
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
                     </ul>
                 </div>
             </div>
@@ -319,6 +343,8 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
+
+
         let allRequests = [];
         let currentUser = null;
 
@@ -341,7 +367,7 @@
             });
         }
 
-        document.getElementById("myRequestsBtn").addEventListener("click", function() {
+        document.getElementById("myRequestsBtn").addEventListener("click", function () {
             window.location.href = "my-requests.html";
         });
 
@@ -362,7 +388,7 @@
         // Create request card
         function createRequestCard(req) {
             const categoryInfo = getCategoryIcon(req.category);
-            
+
             const card = document.createElement('div');
             card.className = 'col-md-6 col-lg-4';
             card.innerHTML = `
@@ -386,10 +412,10 @@
                         <p class="card-text text-muted mb-3" style="min-height: 60px;">
                             ${req.description.length > 100 ? req.description.substring(0, 100) + '...' : req.description}
                         </p>
-                        <div class="stats-badge">
-                            <i class="fas fa-reply text-success me-1"></i>
-                            0 Offers Made
-                        </div>
+<div class="stats-badge">
+  <i class="fas fa-reply text-success me-1"></i>
+  ${req.offers_count || 0} Offer${req.offers_count === 1 ? '' : 's'} Made
+</div>
                         <div class="requester-info mb-3">
                             <div class="d-flex align-items-center">
                                 <img src="${req.requester_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.requester_name || 'User')}&background=667eea&color=fff`}" 
@@ -431,7 +457,7 @@
         // Create list view item
         function createListItem(req) {
             const categoryInfo = getCategoryIcon(req.category);
-            
+
             const item = document.createElement('div');
             item.className = 'request-item';
             item.innerHTML = `
@@ -513,11 +539,11 @@
         // Update statistics
         function updateStatistics(requests) {
             document.getElementById('totalRequests').textContent = requests.length;
-            document.getElementById('pendingRequests').textContent = 
+            document.getElementById('pendingRequests').textContent =
                 requests.filter(r => r.status === 'pending').length;
-            document.getElementById('fulfilledRequests').textContent = 
+            document.getElementById('fulfilledRequests').textContent =
                 requests.filter(r => r.status === 'fulfilled').length;
-            document.getElementById('urgentRequests').textContent = 
+            document.getElementById('urgentRequests').textContent =
                 requests.filter(r => r.urgency === 'high').length;
         }
 
@@ -532,30 +558,40 @@
                 const matchCategory = !category || req.category === category;
                 const matchStatus = !status || req.status.toLowerCase() === status;
                 const matchUrgency = !urgency || req.urgency.toLowerCase() === urgency;
-                const matchSearch = !search || 
-                    req.title.toLowerCase().includes(search) || 
+                const matchSearch = !search ||
+                    req.title.toLowerCase().includes(search) ||
                     req.description.toLowerCase().includes(search);
-                
+
                 return matchCategory && matchStatus && matchUrgency && matchSearch;
             });
 
             displayRequests(filtered);
         }
 
+        function updateStatistics(requests) {
+            document.getElementById('totalRequests').textContent = requests.length;
+            document.getElementById('pendingRequests').textContent =
+                requests.filter(r => r.status === 'pending').length;
+            document.getElementById('fulfilledRequests').textContent =
+                requests.filter(r => r.status === 'fulfilled').length;
+            document.getElementById('urgentRequests').textContent =
+                requests.filter(r => r.urgency === 'high').length;
+        }
+
         // Display requests
         function displayRequests(requests) {
             const container = document.getElementById('requestsContainer');
             const emptyState = document.getElementById('emptyState');
-            
+
             container.innerHTML = '';
-            
+
             if (requests.length === 0) {
                 container.style.display = 'none';
                 emptyState.style.display = 'block';
             } else {
                 container.style.display = 'flex';
                 emptyState.style.display = 'none';
-                
+
                 requests.forEach(req => {
                     container.appendChild(createRequestCard(req));
                 });
@@ -568,6 +604,42 @@
             document.getElementById('userName').textContent = user.name || 'User';
             const avatar = document.getElementById('userAvatar');
             avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+        }
+        async function offerHelp(requestId) {
+            if (!currentUser) {
+                alert("Please log in first.");
+                return;
+            }
+
+            // ✅ Only allow helpers
+            const allowedRoles = ['volunteer', 'caregiver', 'admin'];
+            if (!allowedRoles.includes(currentUser.role)) {
+                alert("Only volunteers or caregivers can offer to help.");
+                return;
+            }
+
+            if (!confirm("Are you sure you want to offer help for this request?")) return;
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}/offer`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert("✅ Offer submitted successfully!");
+                    // Optional: refresh requests to reflect status
+                    location.reload();
+                } else {
+                    alert(`⚠️ ${data.error || "Failed to submit offer."}`);
+                }
+            } catch (err) {
+                console.error("Error offering help:", err);
+                alert("An unexpected error occurred.");
+            }
         }
 
         // Initialize

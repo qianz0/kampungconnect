@@ -317,6 +317,9 @@
             </div>
         </div>
 
+ 
+
+
         <!-- Action Buttons -->
         <div class="card detail-card">
             <div class="card-body">
@@ -326,6 +329,16 @@
                 </div>
             </div>
         </div>
+
+               <!-- Offers Section (Visible only for seniors who created the request) -->
+<div class="card detail-card" id="offersCard" style="display: none;">
+  <div class="card-header">
+    <i class="fas fa-hands-helping me-2"></i>Offers Received
+  </div>
+  <div class="card-body" id="offersList">
+    <p class="text-muted mb-0">No offers yet.</p>
+  </div>
+</div>
 
         <!-- Responses Section -->
         <div class="card detail-card">
@@ -356,6 +369,39 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
+
+        async function offerToHelp() {
+  const confirmOffer = confirm("Are you sure you want to offer help for this request?");
+  if (!confirmOffer) return;
+
+  try {
+    const authManager = await waitForAuthManager();
+    const params = new URLSearchParams(window.location.search);
+    const requestId = params.get("id");
+
+    const response = await authManager.authenticatedFetch(
+      `http://localhost:5002/requests/${requestId}/offer`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert("✅ Offer submitted successfully!");
+      console.log("Offer:", data.offer);
+      location.reload(); // refresh to show updated status or offers count
+    } else {
+      alert(`❌ ${data.error || "Failed to offer help."}`);
+    }
+  } catch (err) {
+    console.error("Offer help error:", err);
+    alert("Error submitting offer. Please try again later.");
+  }
+}
+
         let currentUser = null;
         let currentRequest = null;
 
@@ -402,6 +448,8 @@
         // Populate request details
         function populateRequestDetails(req) {
             currentRequest = req;
+
+       
 
             // Basic info
             document.getElementById('posterName').innerHTML = `Posted by <br><br>${req.requester_name} (${req.requester_role})`;
@@ -516,7 +564,7 @@
 
             // senior cant press respond to request button
             let respondBtn;
-            if (user.role !== 'helper') {
+            if (user.role !== 'volunteer' && user.role !== 'caregiver' && user.role !== 'admin') {
                 respondBtn = `
                     <span data-bs-toggle="tooltip" title="Only helpers can respond to requests">
                         <button class="btn btn-success" disabled>
@@ -534,21 +582,21 @@
 
             // Offer to help button (helpers only)
             let offerBtn = '';
-            if (user.role === 'helper') {
-                offerBtn = `
-                    <button class="btn btn-info" onclick="offerToHelp()">
-                        <i class="fas fa-hands-helping me-2"></i>Offer to Help
-                    </button>
-                `;
-            } else {
-                offerBtn = `
-                    <span data-bs-toggle="tooltip" title="Only helpers can offer to help">
-                        <button class="btn btn-info" disabled>
-                            <i class="fas fa-hands-helping me-2"></i>Offer to Help
-                        </button>
-                    </span>
-                `;
-            }
+         if (["volunteer", "caregiver", "admin"].includes(user.role)) {
+    offerBtn = `
+        <button class="btn btn-info" onclick="offerToHelp()">
+            <i class="fas fa-hands-helping me-2"></i>Offer to Help
+        </button>
+    `;
+} else {
+    offerBtn = `
+        <span data-bs-toggle="tooltip" title="Only helpers can offer to help">
+            <button class="btn btn-info" disabled>
+                <i class="fas fa-hands-helping me-2"></i>Offer to Help
+            </button>
+        </span>
+    `;
+}
 
             // Other action buttons
             actions.innerHTML = `
@@ -592,6 +640,84 @@
                 console.error("Error loading responses:", err);
             }
         }
+
+        async function loadOffers(requestId) {
+  try {
+    const authManager = await waitForAuthManager();
+    const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}/offers`);
+    const data = await response.json();
+
+    const offersCard = document.getElementById("offersCard");
+    const offersList = document.getElementById("offersList");
+    offersList.innerHTML = "";
+
+document.querySelector(".stats-badge").innerHTML = `
+  <i class="fas fa-reply text-success me-1"></i>
+  ${data.offers.length} ${data.offers.length === 1 ? 'Offer' : 'Offers'}
+`;
+
+
+    if (!response.ok || !data.offers || data.offers.length === 0) {
+      offersList.innerHTML = `<p class="text-muted mb-0">No offers yet.</p>`;
+      return;
+    }
+
+    offersCard.style.display = "block";
+
+    data.offers.forEach((offer) => {
+      const offerCard = document.createElement("div");
+      offerCard.classList.add("p-3", "border", "rounded", "mb-2", "bg-light");
+
+      offerCard.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${offer.helper_name}</strong><br>
+            <small class="text-muted">${offer.helper_role}</small><br>
+            <small class="text-muted">Offered on ${new Date(offer.created_at).toLocaleString()}</small>
+          </div>
+          <div>
+            ${
+              offer.status === "pending"
+                ? `<button class="btn btn-success btn-sm" onclick="acceptOffer(${offer.id})">
+                    <i class="fas fa-check me-1"></i>Accept Offer
+                   </button>`
+                : `<span class="badge bg-${offer.status === 'accepted' ? 'success' : 'secondary'}">
+                    ${offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
+                   </span>`
+            }
+          </div>
+        </div>
+      `;
+      offersList.appendChild(offerCard);
+    });
+  } catch (err) {
+    console.error("Error loading offers:", err);
+  }
+}
+
+async function acceptOffer(offerId) {
+  if (!confirm("Accept this volunteer's help?")) return;
+
+  try {
+    const authManager = await waitForAuthManager();
+    const response = await authManager.authenticatedFetch(`http://localhost:5002/offers/${offerId}/accept`, {
+      method: "POST",
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert("✅ Offer accepted! Helper assigned.");
+      location.reload();
+    } else {
+      alert(`⚠️ ${data.error || "Failed to accept offer."}`);
+    }
+  } catch (err) {
+    console.error("Error accepting offer:", err);
+    alert("Something went wrong. Please try again.");
+  }
+}
+
 
         // Action functions
         async function respondToRequest() {
@@ -783,6 +909,10 @@
 
                 // fetch and display responses
                 await loadResponses(requestId);
+
+                if (data.request.user_id === currentUser.id) {
+                await loadOffers(requestId);
+                }
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
