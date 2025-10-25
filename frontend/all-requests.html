@@ -273,6 +273,13 @@
             </div>
             <div class="col-md-3 mb-3">
                 <div class="stats-card">
+                    <i class="fas fa-user-friends text-info mb-2"></i>
+                    <div class="stats-number" id="matchedRequests">0</div>
+                    <div class="text-muted small">Matched</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
                     <i class="fas fa-check-circle text-success mb-2"></i>
                     <div class="stats-number" id="fulfilledRequests">0</div>
                     <div class="text-muted small">Fulfilled</div>
@@ -312,6 +319,7 @@
                     <select class="form-select" id="statusFilter">
                         <option value="">All Status</option>
                         <option value="pending">Pending</option>
+                        <option value="matched">Matched</option>
                         <option value="fulfilled">Fulfilled</option>
                     </select>
                 </div>
@@ -344,14 +352,22 @@
                     </div> -->
                 </div>
             </div>
-            <div class="mt-3 d-flex justify-content-between align-items-center">
+            <div class="mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <button class="btn btn-secondary btn-sm" id="clearFilters">
                     <i class="fas fa-times me-1"></i>Clear Filters
                 </button>
-                <button class="btn btn-primary btn-sm" id="myRequestsBtn">
-                    <i class="fas fa-user me-1"></i>My Requests
-                </button>
+
+                <div class="d-flex gap-2">
+                    <a href="/requests.html" class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i>New Request
+                    </a>
+
+                    <button class="btn btn-success" id="myRequestsBtn" style="background-color:#0d6efd; border-color:#0d6efd;">
+                        <i class="fas fa-user me-1"></i>My Requests
+                    </button>
+                </div>
             </div>
+
         </div>
 
         <!-- Requests Grid -->
@@ -612,8 +628,10 @@
             document.getElementById('totalRequests').textContent = requests.length;
             document.getElementById('pendingRequests').textContent =
                 requests.filter(r => r.status === 'pending').length;
+            document.getElementById('matchedRequests').textContent =
+                requests.filter(r => r.status === 'matched').length;
             document.getElementById('fulfilledRequests').textContent =
-                requests.filter(r => r.status === 'fulfilled' || r.status === 'matched').length;
+                requests.filter(r => r.status === 'fulfilled').length;
             document.getElementById('urgentRequests').textContent =
                 requests.filter(r => r.urgency === 'high').length;
         }
