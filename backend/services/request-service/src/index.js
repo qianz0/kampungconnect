@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
-const { connectQueue, publishMessage } = require("./queue");
+const { connectQueue, getChannel, publishMessage } = require("./queue");
 
 
 // Import authentication middleware
@@ -623,6 +623,27 @@ app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) =
 });
 
 
+// DEV ONLY: publish malformed message to test DLQ
+app.post("/_dev/publish-bad", async (req, res) => {
+  try {
+    if (!getChannel()) await connectQueue();
+    const ch = getChannel();
+
+    const q = req.query.q || "request_created";
+
+    // Example 1: Non-JSON
+    ch.sendToQueue(q, Buffer.from("THIS IS NOT JSON"), { persistent: true });
+
+    // Example 2: JSON but wrong schema
+    ch.sendToQueue(q, Buffer.from(JSON.stringify({ wrongKey: 123 })), { persistent: true });
+
+    res.json({ ok: true, sentTo: q });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 // Error handling middleware
 app.use((error, req, res, next) => {
     console.error('Request service error:', error);
@@ -632,6 +653,9 @@ app.use((error, req, res, next) => {
 (async () => {
     try {
         await connectQueue(); // ✅ connect to RabbitMQ when service starts
+        await consumeQueue("request_created", async (data) => {
+            console.log("📥 [request-service] Received message:", data);
+        });
         console.log("✅ Request-service connected to RabbitMQ");
     } catch (err) {
         console.error("❌ Failed to connect to RabbitMQ:", err);

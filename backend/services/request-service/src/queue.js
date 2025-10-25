@@ -43,23 +43,59 @@ async function connectQueue() {
   }
 }
 
+// 👉 DLQ helper: ensure <queue> and <queue>.dlq are created & linked
+async function assertQueueWithDLQ(ch, queueName) {
+  await ch.assertQueue(`${queueName}.dlq`, { durable: true });
+  await ch.assertQueue(queueName, {
+    durable: true,
+    deadLetterExchange: "",                         // default exchange
+    deadLetterRoutingKey: `${queueName}.dlq`,       // where NACKs land
+  });
+}
+
+// async function publishMessage(queueName, message) {
+//   try {
+//     if (!channel) {
+//       console.warn("⚠️ [request-service] No channel yet, retrying...");
+//       await connectQueue(); // try to reconnect
+//       if (!channel) {
+//         console.error("❌ [request-service] Channel still not ready. Message dropped.");
+//         return;
+//       }
+//     }
+
+//     await channel.assertQueue(queueName, { durable: true });
+//     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
+//     console.log(`📤 [request-service] Sent message to queue: ${queueName}`);
+//   } catch (err) {
+//     console.error("❌ [request-service] Failed to publish message:", err);
+//   }
+// }
+
 async function publishMessage(queueName, message) {
   try {
     if (!channel) {
       console.warn("⚠️ [request-service] No channel yet, retrying...");
-      await connectQueue(); // try to reconnect
+      await connectQueue();
       if (!channel) {
         console.error("❌ [request-service] Channel still not ready. Message dropped.");
         return;
       }
     }
 
-    await channel.assertQueue(queueName, { durable: true });
-    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
+    // ensure queue + its DLQ exist
+    await assertQueueWithDLQ(channel, queueName);
+
+    const payload = Buffer.from(JSON.stringify(message));
+    channel.sendToQueue(queueName, payload, { persistent: true });
     console.log(`📤 [request-service] Sent message to queue: ${queueName}`);
   } catch (err) {
     console.error("❌ [request-service] Failed to publish message:", err);
   }
 }
 
-module.exports = { connectQueue, publishMessage };
+function getChannel() {
+  return channel;
+}
+
+module.exports = { connectQueue, getChannel, publishMessage };
