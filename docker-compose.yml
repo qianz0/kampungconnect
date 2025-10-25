@@ -210,7 +210,7 @@ services:
         condition: service_started
     command: >
       sh -c "
-        apk add --no-cache curl netcat-openbsd;
+        apk add --no-cache curl busybox-extras;
         echo '⏳ Waiting for all services to be ready...';
         echo '';
         echo '🔍 Checking PostgreSQL...';
