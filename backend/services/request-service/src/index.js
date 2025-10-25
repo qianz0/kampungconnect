@@ -245,20 +245,18 @@ app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
 
         const result = await db.query(
             `SELECT r.*,
-              CONCAT(poster.firstName, ' ', poster.lastName) AS requester_name,
-              poster.role AS requester_role,
-              CONCAT(helper.firstName, ' ', helper.lastName) AS fulfilled_by_name,
-              helper.rating AS fulfilled_by_rating,
-              COALESCE(
-                (SELECT COUNT(*) FROM offers o WHERE o.request_id = r.id),
-                0
-              ) AS offers_count
-         FROM requests r
-         JOIN users poster ON r.user_id = poster.id
-    LEFT JOIN matches m ON r.id = m.request_id
-    LEFT JOIN users helper ON m.helper_id = helper.id
-        WHERE r.id = $1
-`,
+                    CONCAT(poster.firstName, ' ', poster.lastName) AS requester_name,
+                    poster.role AS requester_role,
+                    poster.email AS requester_email,
+                    CONCAT(helper.firstName, ' ', helper.lastName) AS helper_name,
+                    helper.email AS helper_email,
+                    m.status AS match_status,
+                    m.matched_at
+             FROM requests r
+             JOIN users poster ON r.user_id = poster.id
+        LEFT JOIN matches m ON r.id = m.request_id
+        LEFT JOIN users helper ON m.helper_id = helper.id
+            WHERE r.id = $1`,
             [requestId]
         );
 
@@ -282,8 +280,9 @@ app.post('/requests/:id/respond', authMiddleware.authenticateToken, async (req, 
         const { message } = req.body;
         const requestId = req.params.id;
 
-        if (userRole !== 'helper') {
-            return res.status(403).json({ error: 'Only helpers can respond to requests' });
+        // Only helpers allowed
+        if (!["volunteer", "caregiver", "admin"].includes(userRole)) {
+            return res.status(403).json({ error: "Only helpers can respond to requests" });
         }
 
         if (!message) {
@@ -424,9 +423,24 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
         // 5️⃣ Mark accepted offer
         await db.query(`UPDATE offers SET status = 'accepted' WHERE id = $1`, [offerId]);
 
+        // 6 fetch contact details of both side
+        const helper = await db.query(
+            `SELECT id, CONCAT(firstName, ' ', lastName) AS name, email FROM users WHERE id = $1`,
+            [helper_id]
+        );
+
+        const senior = await db.query(
+            `SELECT id, CONCAT(firstName, ' ', lastName) AS name, email FROM users WHERE id = $1`,
+            [requester_id]
+        );
+
         res.json({
             message: "Offer accepted successfully! Helper has been assigned.",
             match: match.rows[0],
+            contact: {
+                helper: helper.rows[0],
+                senior: senior.rows[0],
+            }
         });
     } catch (error) {
         console.error("Accept offer error:", error);
@@ -528,6 +542,84 @@ ORDER BY m.matched_at DESC
     }
 });
 
+
+// Update a request (only by the owner senior or admin, and only if not matched/fulfilled)
+app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const { title, category, description, urgency } = req.body;
+
+        // Ensure the request exists
+        const check = await db.query("SELECT * FROM requests WHERE id = $1", [requestId]);
+        if (check.rowCount === 0) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        const request = check.rows[0];
+
+        // Only allow seniors (who own the request) or admins
+        if (!(userRole === 'admin' || (userRole === 'senior' && request.user_id === userId))) {
+            return res.status(403).json({ error: 'You are not allowed to edit this request' });
+        }
+
+        // Block editing if already matched or fulfilled
+        if (['matched', 'fulfilled'].includes(request.status)) {
+            return res.status(400).json({ error: 'Cannot edit a request that has already been matched or fulfilled' });
+        }
+
+        // Proceed with update
+        const result = await db.query(
+            `UPDATE requests 
+             SET title = $1, category = $2, description = $3, urgency = $4
+             WHERE id = $5
+             RETURNING id, user_id, title, category, description, urgency, status, created_at`,
+            [title, category, description, urgency, requestId]
+        );
+
+        res.json({ message: "Request updated successfully", request: result.rows[0] });
+    } catch (error) {
+        console.error("Update request error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// Delete a request (only by the owner senior or admin, and only if not matched/fulfilled)
+app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Ensure the request exists
+        const check = await db.query("SELECT * FROM requests WHERE id = $1", [requestId]);
+        if (check.rowCount === 0) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        const request = check.rows[0];
+
+        // Permission check
+        if (!(userRole === 'admin' || (userRole === 'senior' && request.user_id === userId))) {
+            return res.status(403).json({ error: 'You are not allowed to delete this request' });
+        }
+
+        // Block deleting if already matched or fulfilled
+        if (['matched', 'fulfilled'].includes(request.status)) {
+            return res.status(400).json({ error: 'Cannot delete a request that has already been matched or fulfilled' });
+        }
+
+        // Delete from DB
+        await db.query("DELETE FROM requests WHERE id = $1", [requestId]);
+
+        res.json({ message: "Request deleted successfully" });
+    } catch (error) {
+        console.error("Delete request error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 // Error handling middleware
