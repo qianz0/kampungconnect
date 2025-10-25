@@ -46,14 +46,35 @@ async function connectQueue() {
   }
 }
 
+// 👉 DLQ helper
+async function assertQueueWithDLQ(ch, queueName) {
+  await ch.assertQueue(`${queueName}.dlq`, { durable: true });
+  await ch.assertQueue(queueName, {
+    durable: true,
+    deadLetterExchange: "",
+    deadLetterRoutingKey: `${queueName}.dlq`,
+  });
+}
+
 /**
  * Publish message to a queue
  */
+// async function publishMessage(queueName, message) {
+//   try {
+//     if (!channel) await connectQueue();
+//     await channel.assertQueue(queueName, { durable: true });
+//     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
+//     console.log(`📤 [matching-service] Sent message to queue: ${queueName}`);
+//   } catch (err) {
+//     console.error("❌ [matching-service] Failed to publish message:", err);
+//   }
+// }
+
 async function publishMessage(queueName, message) {
   try {
     if (!channel) await connectQueue();
-    await channel.assertQueue(queueName, { durable: true });
-    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
+    await assertQueueWithDLQ(channel, queueName); // ensure both main & DLQ exist
+    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), { persistent: true });
     console.log(`📤 [matching-service] Sent message to queue: ${queueName}`);
   } catch (err) {
     console.error("❌ [matching-service] Failed to publish message:", err);
@@ -63,29 +84,79 @@ async function publishMessage(queueName, message) {
 /**
  * Consume messages from a queue
  */
+// async function consumeQueue(queueName, callback) {
+//   // this inner function is async, so awaits are legal
+//   onConnectedCallback = async (ch) => {
+//     await ch.assertQueue(queueName, { durable: true });
+//     console.log(`👂 [matching-service] Listening on queue: ${queueName}`);
+
+//     ch.consume(queueName, async (msg) => {
+//       if (!msg) return;
+//       try {
+//         const data = JSON.parse(msg.content.toString());
+//         await callback(data);
+//         ch.ack(msg);
+//       } catch (err) {
+//         console.error("❌ [matching-service] Error handling message:", err);
+//       }
+//     });
+//   };
+
+//   if (channel) {
+//     await onConnectedCallback(channel);
+//   } else {
+//     console.warn("⚠️ [matching-service] Channel not ready yet, will listen after connect.");
+//   }
+// }
+
 async function consumeQueue(queueName, callback) {
-  // this inner function is async, so awaits are legal
   onConnectedCallback = async (ch) => {
-    await ch.assertQueue(queueName, { durable: true });
+    await assertQueueWithDLQ(ch, queueName);
     console.log(`👂 [matching-service] Listening on queue: ${queueName}`);
 
-    ch.consume(queueName, async (msg) => {
-      if (!msg) return;
-      try {
-        const data = JSON.parse(msg.content.toString());
-        await callback(data);
-        ch.ack(msg);
-      } catch (err) {
-        console.error("❌ [matching-service] Error handling message:", err);
-      }
-    });
+    ch.consume(
+      queueName,
+      async (msg) => {
+        if (!msg) return;
+
+        try {
+          let data;
+          const body = msg.content.toString();
+
+          // Step 1: Try parse JSON
+          try {
+            data = JSON.parse(body);
+          } catch (e) {
+            console.error(`❌ Invalid JSON on ${queueName}:`, body);
+            return ch.nack(msg, false, false); // → DLQ
+          }
+
+          // Step 2: Schema validation (example: must have request_id + helper_id)
+          if (!data.request_id || !data.helper_id) {
+            console.error(`❌ Bad schema on ${queueName}:`, data);
+            return ch.nack(msg, false, false); // → DLQ
+          }
+
+          // Step 3: Call business logic
+          await callback(data);
+          ch.ack(msg);
+
+        } catch (err) {
+          console.error("❌ Error handling message:", err);
+          ch.nack(msg, false, false); // → DLQ
+        }
+      },
+      { noAck: false }
+    );
   };
 
   if (channel) {
     await onConnectedCallback(channel);
   } else {
-    console.warn("⚠️ [matching-service] Channel not ready yet, will listen after connect.");
+    console.warn("⚠️ Channel not ready yet, will listen after connect.");
   }
 }
+
+
 
 module.exports = { connectQueue, publishMessage, consumeQueue };
