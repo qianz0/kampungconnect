@@ -62,3 +62,11 @@ CREATE TABLE IF NOT EXISTS responses (
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE offers (
+  id SERIAL PRIMARY KEY,
+  request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+  helper_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(50) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW()
+);

@@ -22,8 +22,8 @@ app.use(cookieParser());
 
 // Health check endpoint (public)
 app.get('/', (req, res) => {
-    res.json({ 
-        service: "request-service", 
+    res.json({
+        service: "request-service",
         status: "running",
         auth_required: true
     });
@@ -45,44 +45,59 @@ app.get('/info', (req, res) => {
 });
 
 // Protected endpoints - require authentication
-app.post('/postRequest', authMiddleware.authenticateToken, async(req, res) => {
+app.post('/postRequest', authMiddleware.authenticateToken, async (req, res) => {
     try {
-        const { title, category, description, urgency } = req.body;
+        const { title, category, description, urgency, instantMatch } = req.body;
         const userId = req.user.id; // Get from authenticated user
-        
+
+        // Determine request status
+        // If instant match selected, start as 'matching'; else default to 'pending'
+        const status = instantMatch ? 'matching' : 'pending';
+
         // Validate required fields
         if (!title || !category || !description || !urgency) {
             return res.status(400).json({
                 error: 'Missing required fields: title, category, description, urgency'
             });
         }
-        
+
         // Database insertion
         const result = await db.query(
             `INSERT INTO requests (user_id, title, category, description, urgency, status, created_at)
-             VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
              RETURNING id, user_id, title, category, description, urgency, status, created_at`,
-            [userId, title, category, description, urgency]
+            [userId, title, category, description, urgency, status]
         );
 
-         // 2️⃣ Publish event to matching-service via RabbitMQ
-        try {
-            await publishMessage("request_created", {
-                id: result.rows[0].id,
-                user_id: userId,
-                title,
-                category,
-                description,
-                urgency,
-        });
-        console.log("📤 [request-service] Sent message to queue: request_created");
-        }   catch (err) {
-        console.error("❌ [request-service] Failed to publish message:", err);
+        const newRequest = result.rows[0];
+
+
+        // 2️⃣ Publish event to matching-service via RabbitMQ
+        if (instantMatch) {
+            try {
+                await publishMessage("request_created", {
+                    id: result.rows[0].id,
+                    user_id: userId,
+                    title,
+                    category,
+                    description,
+                    urgency,
+                    instantMatch: true,
+                    status: 'matching',
+                });
+                console.log("📤 [request-service] Sent message to queue: request_created (instant match)");
+            } catch (err) {
+                console.error("❌ [request-service] Failed to publish message:", err);
+            }
+        } else {
+            console.log("🕓 [request-service] Skipped queue publish — normal post request.");
         }
-        
-        res.json({ 
-            message: "Request posted successfully", 
-            request: result.rows[0]
+
+        res.json({
+            message: instantMatch
+                ? "Request posted and instant matching initiated!"
+                : "Request posted successfully. Waiting for volunteers...",
+            request: newRequest
         });
     } catch (error) {
         console.error('Post request error:', error);
@@ -94,13 +109,13 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
     try {
         const { description, location, emergency_type } = req.body;
         const userId = req.user.id;
-        
+
         if (!description) {
-            return res.status(400).json({ 
-                error: 'Description is required for panic requests' 
+            return res.status(400).json({
+                error: 'Description is required for panic requests'
             });
         }
-        
+
         // Create high-priority panic request
         const panicRequest = {
             id: Math.floor(Math.random() * 10000), // Mock ID
@@ -115,14 +130,14 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
             status: 'active',
             createdAt: new Date().toISOString()
         };
-        
+
         // Here you would typically:
         // 1. Save to database with high priority
         // 2. Trigger immediate notifications to nearby users
         // 3. Alert emergency responders if configured
-        
-        res.json({ 
-            message: "Panic request received and being processed", 
+
+        res.json({
+            message: "Panic request received and being processed",
             request: panicRequest,
             alert: "Emergency services and nearby community members have been notified"
         });
@@ -136,13 +151,20 @@ app.post('/panicRequest', authMiddleware.authenticateToken, (req, res) => {
 app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const results = await db.query(
-            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
-             FROM requests r
-             JOIN users u ON r.user_id = u.id
-             ORDER BY r.created_at DESC`
+            ` SELECT r.*, 
+         CONCAT(u.firstName, ' ', u.lastName) AS requester_name, 
+         u.role AS requester_role,
+         COALESCE(
+           (SELECT COUNT(*) FROM offers o WHERE o.request_id = r.id),
+           0
+         ) AS offers_count
+  FROM requests r
+  JOIN users u ON r.user_id = u.id
+  ORDER BY r.created_at DESC
+`
         );
 
-        res.json({ 
+        res.json({
             requests: results.rows,
             total: results.rowCount
         });
@@ -156,11 +178,13 @@ app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
 app.get('/requests/latest3/all', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const results = await db.query(
-            `SELECT r.*, u.name AS requester_name, u.role AS requester_role
-             FROM requests r
-             JOIN users u ON r.user_id = u.id
-             ORDER BY r.created_at DESC
-             LIMIT 3`
+            `SELECT r.*, 
+       CONCAT(u.firstName, ' ', u.lastName) AS requester_name, 
+       u.role AS requester_role
+FROM requests r
+JOIN users u ON r.user_id = u.id
+ORDER BY r.created_at DESC
+LIMIT 3`
         );
 
         res.json({
@@ -174,16 +198,16 @@ app.get('/requests/latest3/all', authMiddleware.authenticateToken, async (req, r
 });
 
 // Get user's requests only
-app.get('/requests', authMiddleware.authenticateToken, async(req, res) => {
+app.get('/requests', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        
+
         const results = await db.query(
             "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC",
             [userId]
         );
-    
-        res.json({ 
+
+        res.json({
             requests: results.rows,
             total: results.rowCount
         });
@@ -194,10 +218,10 @@ app.get('/requests', authMiddleware.authenticateToken, async(req, res) => {
 });
 
 // Get latest 3 requests
-app.get('/requests/latest3', authMiddleware.authenticateToken, async(req, res) => {
+app.get('/requests/latest3', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        
+
         const results = await db.query(
             "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 3",
             [userId]
@@ -221,15 +245,20 @@ app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
 
         const result = await db.query(
             `SELECT r.*,
-                    poster.name   AS requester_name,
-                    poster.role   AS requester_role,
-                    helper.name   AS fulfilled_by_name,
-                    helper.rating AS fulfilled_by_rating
-             FROM requests r
-             JOIN users poster ON r.user_id = poster.id
-             LEFT JOIN matches m ON r.id = m.request_id
-             LEFT JOIN users helper ON m.helper_id = helper.id
-             WHERE r.id = $1`,
+              CONCAT(poster.firstName, ' ', poster.lastName) AS requester_name,
+              poster.role AS requester_role,
+              CONCAT(helper.firstName, ' ', helper.lastName) AS fulfilled_by_name,
+              helper.rating AS fulfilled_by_rating,
+              COALESCE(
+                (SELECT COUNT(*) FROM offers o WHERE o.request_id = r.id),
+                0
+              ) AS offers_count
+         FROM requests r
+         JOIN users poster ON r.user_id = poster.id
+    LEFT JOIN matches m ON r.id = m.request_id
+    LEFT JOIN users helper ON m.helper_id = helper.id
+        WHERE r.id = $1
+`,
             [requestId]
         );
 
@@ -246,34 +275,163 @@ app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
 
 // Respond to a request
 app.post('/requests/:id/respond', authMiddleware.authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const userRole = req.user.role;
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
 
-    const { message } = req.body;
-    const requestId = req.params.id;
+        const { message } = req.body;
+        const requestId = req.params.id;
 
-    if (userRole !== 'helper') {
-      return res.status(403).json({ error: 'Only helpers can respond to requests' });
-    }
+        if (userRole !== 'helper') {
+            return res.status(403).json({ error: 'Only helpers can respond to requests' });
+        }
 
-    if (!message) {
-      return res.status(400).json({ error: 'Response message is required' });
-    }
+        if (!message) {
+            return res.status(400).json({ error: 'Response message is required' });
+        }
 
-    // Save response in DB
-    const result = await db.query(
-      `INSERT INTO responses (request_id, user_id, message, created_at)
+        // Save response in DB
+        const result = await db.query(
+            `INSERT INTO responses (request_id, user_id, message, created_at)
        VALUES ($1, $2, $3, NOW())
        RETURNING id, request_id, user_id, message, created_at`,
-      [requestId, userId, message]
-    );
+            [requestId, userId, message]
+        );
 
-    res.json({ message: 'Response added successfully', response: result.rows[0] });
-  } catch (error) {
-    console.error('Respond to request error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+        res.json({ message: 'Response added successfully', response: result.rows[0] });
+    } catch (error) {
+        console.error('Respond to request error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// Offer to help with a request
+app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+        const helperId = req.user.id;
+        const userRole = req.user.role;
+
+        // Only helpers allowed
+        if (!["volunteer", "caregiver", "admin"].includes(userRole)) {
+            return res.status(403).json({ error: "Only helpers can offer to help." });
+        }
+
+        // Check request validity
+        const reqCheck = await db.query("SELECT status FROM requests WHERE id = $1", [requestId]);
+        if (reqCheck.rowCount === 0) return res.status(404).json({ error: "Request not found." });
+        if (reqCheck.rows[0].status !== "pending") {
+            return res.status(400).json({ error: "This request is not open for help." });
+        }
+
+        // Prevent duplicate offers
+        const exists = await db.query(
+            "SELECT id FROM offers WHERE request_id = $1 AND helper_id = $2",
+            [requestId, helperId]
+        );
+        if (exists.rowCount > 0) return res.status(400).json({ error: "You already offered to help." });
+
+        // Save offer
+        const insert = await db.query(
+            `INSERT INTO offers (request_id, helper_id, status, created_at)
+       VALUES ($1, $2, 'pending', NOW())
+       RETURNING id, request_id, helper_id, status, created_at`,
+            [requestId, helperId]
+        );
+
+        // Optional: notify matching-service
+        try {
+            await publishMessage("offer_created", insert.rows[0]);
+            console.log("📤 [request-service] Sent offer_created event");
+        } catch (err) {
+            console.warn("⚠️ Failed to publish offer_created:", err.message);
+        }
+
+        res.json({ message: "Offer submitted successfully!", offer: insert.rows[0] });
+    } catch (error) {
+        console.error("Offer to help error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+// Get all offers for a specific request
+app.get("/requests/:id/offers", authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const requestId = req.params.id;
+        const results = await db.query(`
+      SELECT o.id, o.helper_id, o.status, o.created_at,
+             CONCAT(u.firstName, ' ', u.lastName) AS helper_name,
+             u.role AS helper_role
+      FROM offers o
+      JOIN users u ON o.helper_id = u.id
+      WHERE o.request_id = $1
+      ORDER BY o.created_at ASC
+    `, [requestId]);
+
+        res.json({ offers: results.rows });
+    } catch (error) {
+        console.error("Get offers error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+// Senior accepts an offer (assign a helper)
+app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const offerId = req.params.id;
+        const seniorId = req.user.id;
+
+        // 1️⃣ Get offer info
+        const offer = await db.query(
+            `SELECT o.*, r.user_id AS requester_id
+       FROM offers o
+       JOIN requests r ON o.request_id = r.id
+       WHERE o.id = $1`,
+            [offerId]
+        );
+
+        if (offer.rowCount === 0) {
+            return res.status(404).json({ error: "Offer not found." });
+        }
+
+        const { request_id, helper_id, requester_id } = offer.rows[0];
+
+        // Ensure only the senior who posted the request can accept
+        if (requester_id !== seniorId) {
+            return res.status(403).json({ error: "You are not allowed to accept this offer." });
+        }
+
+        // 2️⃣ Create a match
+        const match = await db.query(
+            `INSERT INTO matches (request_id, helper_id, matched_at, status)
+       VALUES ($1, $2, NOW(), 'active')
+       RETURNING *`,
+            [request_id, helper_id]
+        );
+
+        // 3️⃣ Update request status
+        await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);
+
+        // 4️⃣ Reject other offers for this request
+        await db.query(
+            `UPDATE offers SET status = 'rejected' WHERE request_id = $1 AND id <> $2`,
+            [request_id, offerId]
+        );
+
+        // 5️⃣ Mark accepted offer
+        await db.query(`UPDATE offers SET status = 'accepted' WHERE id = $1`, [offerId]);
+
+        res.json({
+            message: "Offer accepted successfully! Helper has been assigned.",
+            match: match.rows[0],
+        });
+    } catch (error) {
+        console.error("Accept offer error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 
@@ -321,11 +479,13 @@ app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req,
 
         const result = await db.query(
             `SELECT r.id, r.message, r.created_at, r.parent_id,
-                    u.name AS responder_name, u.role as responder_role
-             FROM responses r
-             JOIN users u ON r.user_id = u.id
-             WHERE r.request_id = $1
-             ORDER BY r.created_at ASC`,
+       CONCAT(u.firstName, ' ', u.lastName) AS responder_name,
+       u.role as responder_role
+FROM responses r
+JOIN users u ON r.user_id = u.id
+WHERE r.request_id = $1
+ORDER BY r.created_at ASC
+`,
             [requestId]
         );
 
@@ -339,30 +499,33 @@ app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req,
 
 // Get all matches for the logged-in helper
 app.get('/matches', authMiddleware.authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const userRole = req.user.role;
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
 
-    if (userRole !== 'helper') {
-      return res.status(403).json({ error: 'Only helpers can view their matches' });
-    }
+        if (userRole !== 'volunteer' && userRole !== 'caregiver' && userRole !== 'admin') {
+            return res.status(403).json({ error: 'Only helpers can view their matches' });
+        }
 
-    const results = await db.query(`
+
+        const results = await db.query(`
       SELECT m.*, 
-             r.id AS request_id, r.title, r.category, r.description, r.urgency,
-             u.name AS requester_name, u.email AS requester_email
-      FROM matches m
-      JOIN requests r ON m.request_id = r.id
-      JOIN users u ON r.user_id = u.id
-      WHERE m.helper_id = $1
-      ORDER BY m.matched_at DESC
+       r.id AS request_id, r.title, r.category, r.description, r.urgency,
+       CONCAT(u.firstName, ' ', u.lastName) AS requester_name,
+       u.email AS requester_email
+FROM matches m
+JOIN requests r ON m.request_id = r.id
+JOIN users u ON r.user_id = u.id
+WHERE m.helper_id = $1
+ORDER BY m.matched_at DESC
+
     `, [userId]);
 
-    res.json({ matches: results.rows, total: results.rowCount });
-  } catch (error) {
-    console.error('Get helper matches error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+        res.json({ matches: results.rows, total: results.rowCount });
+    } catch (error) {
+        console.error('Get helper matches error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 
@@ -374,12 +537,12 @@ app.use((error, req, res, next) => {
 });
 
 (async () => {
-  try {
-    await connectQueue(); // ✅ connect to RabbitMQ when service starts
-    console.log("✅ Request-service connected to RabbitMQ");
-  } catch (err) {
-    console.error("❌ Failed to connect to RabbitMQ:", err);
-  }
+    try {
+        await connectQueue(); // ✅ connect to RabbitMQ when service starts
+        console.log("✅ Request-service connected to RabbitMQ");
+    } catch (err) {
+        console.error("❌ Failed to connect to RabbitMQ:", err);
+    }
 })();
 
 const PORT = process.env.PORT || 5000;

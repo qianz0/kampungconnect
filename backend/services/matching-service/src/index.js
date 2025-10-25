@@ -36,14 +36,14 @@ app.get("/matches", authMiddleware.authenticateToken, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT m.*, 
-             r.title, r.category, r.urgency,
-             s.name AS senior_name,
-             h.name AS helper_name
-      FROM matches m
-      JOIN requests r ON m.request_id = r.id
-      JOIN users s ON r.user_id = s.id
-      JOIN users h ON m.helper_id = h.id
-      ORDER BY m.matched_at DESC
+       r.title, r.category, r.urgency,
+       CONCAT(s.firstName, ' ', s.lastName) AS senior_name,
+       CONCAT(h.firstName, ' ', h.lastName) AS helper_name
+FROM matches m
+JOIN requests r ON m.request_id = r.id
+JOIN users s ON r.user_id = s.id
+JOIN users h ON m.helper_id = h.id
+ORDER BY m.matched_at DESC
     `);
     res.json({ matches: result.rows });
   } catch (err) {
@@ -60,14 +60,16 @@ app.get("/matches/senior", authMiddleware.authenticateToken, async (req, res) =>
     const userId = req.user.id;
     const result = await db.query(
       `
-      SELECT m.*, 
-             r.title, r.category, r.urgency, r.status AS request_status,
-             h.name AS helper_name, h.rating AS helper_rating
-      FROM matches m
-      JOIN requests r ON m.request_id = r.id
-      JOIN users h ON m.helper_id = h.id
-      WHERE r.user_id = $1
-      ORDER BY m.matched_at DESC
+    SELECT m.*, 
+       r.title, r.category, r.urgency, r.status AS request_status,
+       CONCAT(h.firstName, ' ', h.lastName) AS helper_name,
+       h.rating AS helper_rating
+FROM matches m
+JOIN requests r ON m.request_id = r.id
+JOIN users h ON m.helper_id = h.id
+WHERE r.user_id = $1
+ORDER BY m.matched_at DESC
+
     `,
       [userId]
     );
@@ -86,14 +88,16 @@ app.get("/matches/helper", authMiddleware.authenticateToken, async (req, res) =>
     const userId = req.user.id;
     const result = await db.query(
       `
-      SELECT m.*, 
-             r.title, r.category, r.urgency, r.status AS request_status,
-             s.name AS senior_name, s.rating AS senior_rating
-      FROM matches m
-      JOIN requests r ON m.request_id = r.id
-      JOIN users s ON r.user_id = s.id
-      WHERE m.helper_id = $1
-      ORDER BY m.matched_at DESC
+    SELECT m.*, 
+       r.title, r.category, r.urgency, r.status AS request_status,
+       CONCAT(s.firstName, ' ', s.lastName) AS senior_name,
+       s.rating AS senior_rating
+FROM matches m
+JOIN requests r ON m.request_id = r.id
+JOIN users s ON r.user_id = s.id
+WHERE m.helper_id = $1
+ORDER BY m.matched_at DESC
+
     `,
       [userId]
     );
@@ -137,8 +141,28 @@ app.post("/matches/assign", authMiddleware.authenticateToken, async (req, res) =
 app.post("/matches/:id/complete", authMiddleware.authenticateToken, async (req, res) => {
   try {
     const matchId = req.params.id;
+    const helperId = req.user.id;
+
+     // Validate match ownership
+    const match = await db.query(
+      `SELECT * FROM matches WHERE id = $1 AND helper_id = $2`,
+      [matchId, helperId]
+    );
+
+    
+
+    if (match.rowCount === 0) {
+      return res.status(404).json({ error: "Match not found or not assigned to you." });
+    }
+
+    const requestId = match.rows[0].request_id;
+
+
+     // Update match and request status
     await db.query(`UPDATE matches SET status = 'completed' WHERE id = $1`, [matchId]);
-    res.json({ message: "Match marked as completed" });
+    await db.query(`UPDATE requests SET status = 'fulfilled' WHERE id = $1`, [requestId]);
+
+    res.json({ message: "Request marked as completed successfully." });
   } catch (err) {
     console.error("Error completing match:", err);
     res.status(500).json({ error: "Internal server error" });

@@ -127,9 +127,9 @@
 
     function populateUserInfo(user) {
       if (!user) return;
-      document.getElementById('userName').textContent = user.name || 'User';
+      document.getElementById('userName').textContent = user.firstName + " " + user.lastName || 'User';
       const avatar = document.getElementById('userAvatar');
-      avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+      avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName + " " + user.lastName || 'User')}&background=6c757d&color=fff`;
     }
 
     const apiBase = "http://localhost:5003";
@@ -241,11 +241,14 @@ document.addEventListener("click", async (e) => {
         populateUserInfo(currentUser);
 
         // ✅ Helper-only access
-        if (!currentUser || currentUser.role !== 'helper') {
-          alert('Access denied. This page is for helpers only.');
-          window.location.href = 'dashboard.html';
-          return;
-        }
+       if (!currentUser || 
+   (currentUser.role !== 'volunteer' && 
+    currentUser.role !== 'caregiver' && 
+    currentUser.role !== 'admin')) {
+  alert('Access denied. This page is for caregivers, volunteers, or admins only.');
+  window.location.href = 'dashboard.html';
+  return;
+}
 
         await loadMatches(authManager);
 
