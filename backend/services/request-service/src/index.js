@@ -250,6 +250,7 @@ app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
                     poster.email AS requester_email,
                     CONCAT(helper.firstName, ' ', helper.lastName) AS helper_name,
                     helper.email AS helper_email,
+                    m.helper_id,
                     m.status AS match_status,
                     m.matched_at
              FROM requests r
