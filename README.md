@@ -8,7 +8,7 @@ KampungConnect is a microservices-based web application that facilitates communi
 
 ### Key Features
 
-- 🔐 **Secure Authentication** - OIDC/SSO integration with Google, Azure AD, and Auth0
+- 🔐 **Secure Authentication** - OIDC/SSO integration with Google and Azure AD
 - 🤝 **Community Matching** - Intelligent matching system between seniors and helpers
 - 📱 **Responsive Design** - Mobile-friendly interface built with Bootstrap 5
 - 🔔 **Real-time Notifications** - Keep users updated on request status
@@ -80,7 +80,7 @@ kampungconnect/
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- An OIDC provider account (Google, Azure AD, or Auth0)
+- An OIDC provider account (Google/Azure AD)
 - Basic knowledge of environment variables
 
 ### 1. Clone the Repository
@@ -95,7 +95,7 @@ cd kampungconnect
 Create a `.env` file in the project root:
 
 ```env
-# Choose your OIDC provider (google, azure, or auth0)
+# Choose your OIDC provider (google/azure)
 OIDC_PROVIDER=google
 
 # Google OAuth Configuration (if using Google)
@@ -108,12 +108,6 @@ AZURE_CLIENT_ID=your-azure-client-id
 AZURE_CLIENT_SECRET=your-azure-client-secret
 AZURE_TENANT_ID=your-tenant-id
 AZURE_REDIRECT_URI=http://localhost:5001/auth/azure/callback
-
-# Auth0 Configuration (if using Auth0)
-AUTH0_DOMAIN=your-domain.auth0.com
-AUTH0_CLIENT_ID=your-auth0-client-id
-AUTH0_CLIENT_SECRET=your-auth0-client-secret
-AUTH0_REDIRECT_URI=http://localhost:5001/auth/auth0/callback
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -142,13 +136,6 @@ Follow the set up instructions for each providers:
 3. Create new registration
 4. Add redirect URI: `http://localhost:5001/auth/azure/callback`
 5. Create client secret
-
-#### Auth0 Setup
-
-1. Visit [Auth0 Dashboard](https://auth0.com/)
-2. Create new application (Single Page Application)
-3. Add callback URL: `http://localhost:5001/auth/auth0/callback`
-4. Note domain, client ID, and secret
 
 ### 4. Build and Run
 
@@ -369,7 +356,7 @@ ratings (
 
 **Key Features:**
 
-- **Multi-Provider Auth**: Supports Google, Azure AD, Auth0, and email/password
+- **Multi-Provider Auth**: Supports Google, Azure AD and email/password
 - **Role-Based Access**: Senior, volunteer, and caregiver roles
 - **Request Types**: Normal and urgent requests with different priority handling
 - **Rating System**: 5-star rating system with comments for community trust

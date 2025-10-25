@@ -94,10 +94,10 @@ class DatabaseService {
             const findResult = await client.query(findQuery, [userData.id, userData.email]);
             
             if (findResult.rows.length > 0) {
-                // Update existing user (for OIDC users)
+                // Update existing user (for OIDC users) and mark email as verified
                 const updateQuery = `
                     UPDATE users 
-                    SET firstname = $1, lastname = $2, picture = $3, updated_at = CURRENT_TIMESTAMP 
+                    SET firstname = $1, lastname = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
                     WHERE provider_id = $4 OR email = $5
                     RETURNING id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
@@ -118,10 +118,10 @@ class DatabaseService {
                 
                 return updateResult.rows[0];
             } else {
-                // Create new user (for OIDC users) - no default role assigned
+                // Create new user (for OIDC users) with email automatically verified
                 const insertQuery = `
-                    INSERT INTO users (provider_id, email, firstname, lastname, picture, provider, role)
-                    VALUES ($1, $2, $3, $4, $5, $6, NULL)
+                    INSERT INTO users (provider_id, email, firstname, lastname, picture, provider, role, email_verified)
+                    VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE)
                     RETURNING id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
                 
@@ -381,6 +381,31 @@ class DatabaseService {
                 WHERE email = $1 AND provider = 'email' AND is_active = TRUE
             `;
             const result = await client.query(query, [email]);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async updateUserProfile(userId, profileData) {
+        const client = await this.pool.connect();
+        
+        try {
+            const query = `
+                UPDATE users 
+                SET firstname = $1, lastname = $2, location = $3, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = $4
+                RETURNING id, email, firstname as "firstName", lastname as "lastName", provider, role, location, picture, email_verified, created_at, updated_at
+            `;
+            const result = await client.query(query, [
+                profileData.firstName,
+                profileData.lastName,
+                profileData.location || null,
+                userId
+            ]);
             return result.rows[0] || null;
         } catch (error) {
             console.error('Database error:', error);

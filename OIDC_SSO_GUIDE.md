@@ -11,7 +11,7 @@ This document describes the OpenID Connect (OIDC) and Single Sign-On (SSO) imple
 1. **Auth Service** (Port 5001) - Central authentication service handling OIDC flows
 2. **Shared Auth Middleware** - Reusable JWT validation for all microservices
 3. **Frontend Auth Manager** - Client-side authentication with robust error handling
-4. **OIDC Providers** - External identity providers (Google, Azure AD, Auth0)
+4. **OIDC Providers** - External identity providers (Google and Azure AD)
 5. **Database Service** - User data persistence and management
 6. **JWT Utils** - Token generation and validation utilities
 
@@ -67,21 +67,12 @@ Choose one of the supported providers and obtain credentials:
 6. Go to "Certificates & secrets" > "New client secret"
 7. Note Application ID, Tenant ID, and Client Secret
 
-#### Auth0
-1. Go to [Auth0 Dashboard](https://auth0.com/)
-2. Create new application (Regular Web Application)
-3. Configure settings:
-   - Allowed Callback URLs: `http://localhost:5001/auth/auth0/callback`
-   - Allowed Web Origins: `http://localhost:8080`
-   - Allowed Logout URLs: `http://localhost:8080/login.html`
-4. Note Domain, Client ID, and Client Secret
-
 ### 2. Environment Configuration
 
 Create a `.env` file in the project root with your provider credentials:
 
 ```env
-# Choose your OIDC provider (google, azure, or auth0)
+# Choose your OIDC provider (google and azure)
 OIDC_PROVIDER=google
 
 # Google Configuration (if using Google)
@@ -94,12 +85,6 @@ AZURE_CLIENT_ID=your-azure-client-id
 AZURE_CLIENT_SECRET=your-azure-client-secret
 AZURE_TENANT_ID=your-tenant-id
 AZURE_REDIRECT_URI=http://localhost:5001/auth/azure/callback
-
-# Auth0 Configuration (if using Auth0)
-AUTH0_DOMAIN=your-domain.auth0.com
-AUTH0_CLIENT_ID=your-auth0-client-id
-AUTH0_CLIENT_SECRET=your-auth0-client-secret
-AUTH0_REDIRECT_URI=http://localhost:5001/auth/auth0/callback
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -265,7 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 - **Standard OAuth2/OIDC Flow**: Authorization code grant with PKCE support
 - **Server-Side Token Handling**: Sensitive operations performed server-side only
 - **Secure User Storage**: User data validated and stored in PostgreSQL with proper constraints
-- **Multiple Provider Support**: Google, Azure AD, Auth0 with provider-specific configurations
+- **Multiple Provider Support**: Google and Azure AD with provider-specific configurations
 - **Redirect URI Validation**: Strict callback URL validation for security
 
 ### Enhanced Service-to-Service Security
@@ -420,7 +405,7 @@ CMD ["npm", "start"]
 #### 1. **"OIDC provider not configured"**
 **Symptoms**: Login page shows development notice instead of login buttons
 **Solutions**:
-- Check `.env` file has correct `OIDC_PROVIDER` value (google/azure/auth0)
+- Check `.env` file has correct `OIDC_PROVIDER` value (google/azure)
 - Verify all provider credentials are set correctly
 - Ensure Docker Compose can read the `.env` file
 - Check auth service logs: `docker-compose logs auth-service`
@@ -505,7 +490,7 @@ curl -b "auth_token=TOKEN" http://localhost:5001/me
 1. **Clear existing state**: Visit debug page and clear all tokens
 2. **Visit login**: `http://localhost:8080/login.html`
 3. **Check provider button**: Should show "Continue with [Provider]" button
-4. **Click authentication**: Should redirect to provider (Google/Azure/Auth0)
+4. **Click authentication**: Should redirect to provider (Google/Azure)
 5. **Complete provider auth**: Login with your provider account
 6. **Verify callback**: Should redirect back to `localhost:5001/auth/{provider}/callback`
 7. **Check redirect**: Should end up at `localhost:8080/dashboard.html?authenticated=true`
@@ -523,7 +508,6 @@ curl -b "auth_token=TOKEN" http://localhost:5001/me
 FRONTEND_URL=https://yourdomain.com
 GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/google/callback
 AZURE_REDIRECT_URI=https://yourdomain.com/auth/azure/callback
-AUTH0_REDIRECT_URI=https://yourdomain.com/auth/auth0/callback
 ```
 
 #### 2. **Secure Cookie Configuration**
@@ -810,7 +794,6 @@ docker-compose exec frontend curl http://auth-service:5000
 ### Provider-Specific Guides
 - [Google OAuth 2.0](https://developers.google.com/identity/protocols/oauth2) - Google implementation
 - [Microsoft Identity Platform](https://docs.microsoft.com/en-us/azure/active-directory/develop/) - Azure AD integration
-- [Auth0 Documentation](https://auth0.com/docs) - Auth0 setup and configuration
 
 ### Development Tools
 - [JWT.io Debugger](https://jwt.io/) - Decode and verify JWT tokens

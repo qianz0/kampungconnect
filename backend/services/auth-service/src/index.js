@@ -672,6 +672,72 @@ app.post('/update-role', jwtUtils.authenticateToken.bind(jwtUtils), async (req, 
     }
 });
 
+// Update user profile (name and location)
+app.post('/update-profile', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
+    try {
+        const { firstName, lastName, location } = req.body;
+        const userId = req.user.id;
+
+        // Input validation
+        if (!firstName || !lastName) {
+            return res.status(400).json({
+                error: 'First name and last name are required'
+            });
+        }
+
+        // Update user profile
+        const updatedUser = await dbService.updateUserProfile(userId, {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            location: location?.trim() || null
+        });
+        
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Generate new JWT token with updated profile
+        const tokenPayload = {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            firstName: updatedUser.firstName,
+            lastName: updatedUser.lastName,
+            provider: updatedUser.provider,
+            role: updatedUser.role
+        };
+
+        const token = jwtUtils.generateToken(tokenPayload);
+
+        // Set updated token in cookie
+        res.cookie('auth_token', token, {
+            httpOnly: false,
+            secure: false, // Set to true in production with HTTPS
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                role: updatedUser.role,
+                provider: updatedUser.provider,
+                location: updatedUser.location,
+                picture: updatedUser.picture,
+                email_verified: updatedUser.email_verified,
+                created_at: updatedUser.created_at
+            }
+        });
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ error: 'Failed to update profile. Please try again.' });
+    }
+});
+
 // Get current authenticated user
 app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
     try {

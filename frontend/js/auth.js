@@ -439,11 +439,6 @@ class AuthManager {
                 icon: 'fab fa-microsoft',
                 className: 'microsoft-btn'
             },
-            auth0: {
-                text: 'Continue with Auth0',
-                icon: 'fas fa-key',
-                className: 'auth0-btn'
-            }
         };
         
         return configs[provider] || {

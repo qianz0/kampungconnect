@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     lastName VARCHAR(255),
     password_hash VARCHAR(255), -- NULL for OAuth users
     picture VARCHAR(500),
-    provider VARCHAR(50) NOT NULL DEFAULT 'email', -- email, google, azure, auth0
+    provider VARCHAR(50) NOT NULL DEFAULT 'email', -- email, google, azure
     role VARCHAR(20) CHECK (role IN ('senior', 'volunteer', 'caregiver', 'admin')) DEFAULT NULL, -- Allow NULL for incomplete registrations
     rating DECIMAL(3,2) DEFAULT 5.0, -- average rating out of 5
     location VARCHAR(100), -- can be a postal code or simple text area

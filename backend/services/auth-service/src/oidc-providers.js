@@ -1,7 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const AzureAdOAuth2Strategy = require('passport-azure-ad').OIDCStrategy;
-const Auth0Strategy = require('passport-auth0');
 
 /**
  * OIDC Provider Configurations
@@ -32,12 +31,6 @@ class OIDCProviders {
             }
         }
 
-        if (this.isAuth0Configured()) {
-            this.setupAuth0Strategy();
-            providersInitialized++;
-            console.log('✅ Auth0 strategy initialized');
-        }
-
         if (providersInitialized === 0) {
             console.warn('⚠️  No OIDC providers configured. Please set provider credentials in environment variables.');
         } else {
@@ -66,13 +59,6 @@ class OIDCProviders {
                  process.env.AZURE_CLIENT_SECRET && 
                  process.env.AZURE_TENANT_ID &&
                  process.env.AZURE_REDIRECT_URI);
-    }
-
-    isAuth0Configured() {
-        return !!(process.env.AUTH0_DOMAIN && 
-                 process.env.AUTH0_CLIENT_ID && 
-                 process.env.AUTH0_CLIENT_SECRET &&
-                 process.env.AUTH0_REDIRECT_URI);
     }
 
     setupGoogleStrategy() {
@@ -224,51 +210,6 @@ class OIDCProviders {
         }
     }
 
-    setupAuth0Strategy() {
-        passport.use('auth0', new Auth0Strategy({
-            domain: process.env.AUTH0_DOMAIN,
-            clientID: process.env.AUTH0_CLIENT_ID,
-            clientSecret: process.env.AUTH0_CLIENT_SECRET,
-            callbackURL: process.env.AUTH0_REDIRECT_URI
-        }, async (accessToken, refreshToken, extraParams, profile, done) => {
-            try {
-                // Helper function to parse full name into first and last name
-                const parseFullName = (fullName) => {
-                    if (!fullName) return { firstName: '', lastName: '' };
-                    
-                    const nameParts = fullName.trim().split(' ');
-                    if (nameParts.length === 1) {
-                        return { firstName: nameParts[0], lastName: '' };
-                    } else if (nameParts.length === 2) {
-                        return { firstName: nameParts[0], lastName: nameParts[1] };
-                    } else {
-                        // For names with more than 2 parts, take first as firstName and rest as lastName
-                        return { 
-                            firstName: nameParts[0], 
-                            lastName: nameParts.slice(1).join(' ') 
-                        };
-                    }
-                };
-
-                const fullName = profile.displayName || '';
-                const { firstName, lastName } = parseFullName(fullName);
-
-                const user = {
-                    id: profile.id,
-                    email: profile.emails[0].value,
-                    name: fullName,
-                    firstName: firstName,
-                    lastName: lastName,
-                    picture: profile.picture,
-                    provider: 'auth0'
-                };
-                return done(null, user);
-            } catch (error) {
-                return done(error, null);
-            }
-        }));
-    }
-
     getAuthRoutes() {
         const availableRoutes = {};
 
@@ -288,14 +229,6 @@ class OIDCProviders {
             };
         }
 
-        if (this.isAuth0Configured()) {
-            availableRoutes.auth0 = {
-                auth: '/auth/auth0',
-                callback: '/auth/auth0/callback',
-                scope: ['openid', 'email', 'profile']
-            };
-        }
-
         return availableRoutes;
     }
 
@@ -304,7 +237,6 @@ class OIDCProviders {
         
         if (this.isGoogleConfigured()) providers.push('google');
         if (this.isAzureConfigured()) providers.push('azure');
-        if (this.isAuth0Configured()) providers.push('auth0');
         
         return providers;
     }

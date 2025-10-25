@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid #667eea;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .profile-section {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .info-value {
+            color: #6c757d;
+        }
+
+        .badge-role {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            border-radius: 20px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading profile...</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="./dashboard.html">
+                <i class="fas fa-home me-2"></i>KampungConnect
+            </a>
+
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
+                        role="button" data-bs-toggle="dropdown">
+                        <img id="navUserAvatar" class="user-avatar me-2" src="" alt="User Avatar">
+                        <span id="navUserName">Loading...</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item active" href="./profile.html"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="#" id="switchAccountBtn">
+                                <i class="fas fa-user-friends me-2"></i>Switch Account
+                            </a></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="container text-center">
+            <img id="profileAvatar" class="profile-avatar mb-3" src="" alt="Profile Avatar">
+            <h1 class="mb-1" id="profileName">Loading...</h1>
+            <p class="lead mb-0" id="profileEmail">email@example.com</p>
+            <span id="profileRoleBadge" class="badge badge-role bg-primary mt-2">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mb-5">
+        <div class="row">
+            <!-- Account Information -->
+            <div class="col-lg-6">
+                <div class="profile-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-user-circle me-2"></i>Account Information
+                    </h3>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-signature me-2"></i>First Name
+                        </span>
+                        <span class="info-value" id="infoFirstName">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-signature me-2"></i>Last Name
+                        </span>
+                        <span class="info-value" id="infoLastName">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-envelope me-2"></i>Email
+                        </span>
+                        <span class="info-value" id="infoEmail">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-shield-alt me-2"></i>Authentication
+                        </span>
+                        <span class="info-value" id="infoProvider">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-user-tag me-2"></i>Role
+                        </span>
+                        <span class="info-value" id="infoRole">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-map-marker-alt me-2"></i>Location
+                        </span>
+                        <span class="info-value" id="infoLocation">-</span>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button class="btn btn-primary" id="editProfileBtn">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="col-lg-6">
+                <!-- Account Statistics -->
+                <div class="profile-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-chart-bar me-2"></i>Account Statistics
+                    </h3>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-calendar-alt me-2"></i>Member Since
+                        </span>
+                        <span class="info-value" id="infoMemberSince">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-check-circle me-2"></i>Email Verified
+                        </span>
+                        <span class="info-value" id="infoEmailVerified">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-clock me-2"></i>Last Login
+                        </span>
+                        <span class="info-value" id="infoLastLogin">-</span>
+                    </div>
+                </div>
+
+                <!-- Security Options -->
+                <div class="profile-section" id="securitySection" style="display: none;">
+                    <h3 class="section-title">
+                        <i class="fas fa-lock me-2"></i>Security
+                    </h3>
+                    <p class="text-muted mb-3">Manage your account security settings</p>
+                    <button class="btn btn-outline-primary w-100" id="changePasswordBtn">
+                        <i class="fas fa-key me-2"></i>Change Password
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>Edit Profile
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editProfileForm">
+                    <div class="modal-body">
+                        <div id="editAlert" class="alert alert-danger" style="display: none;"></div>
+                        
+                        <div class="mb-3">
+                            <label for="editFirstName" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="editFirstName" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editLastName" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="editLastName" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editLocation" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="editLocation" 
+                                   placeholder="e.g., Kampung Dato Ahmad Razali">
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Email and role cannot be changed. 
+                            <br>
+                            Contact support (kampungconnectsit@gmail.com) if you need to modify these.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-key me-2"></i>Change Password
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="changePasswordForm">
+                    <div class="modal-body">
+                        <div id="passwordAlert" class="alert alert-danger" style="display: none;"></div>
+                        
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="currentPassword" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                            <div class="form-text">
+                                Password must be at least 8 characters with uppercase, lowercase, number, and special character.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="savePasswordBtn">
+                            <i class="fas fa-save me-2"></i>Change Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        let currentUser = null;
+        let isRedirecting = false;
+        let editProfileModal = null;
+        let changePasswordModal = null;
+
+        // Wait for AuthManager to be available
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50;
+
+                function checkAuthManager() {
+                    attempts++;
+                    console.log(`[Profile] Checking for AuthManager (attempt ${attempts}/${maxAttempts})...`);
+
+                    if (window.AuthManager &&
+                        typeof window.AuthManager === 'object' &&
+                        typeof window.AuthManager.initialize === 'function') {
+                        console.log('[Profile] AuthManager found and ready');
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        console.error('[Profile] AuthManager not available after maximum attempts');
+                        reject(new Error('AuthManager not available after timeout'));
+                    } else {
+                        setTimeout(checkAuthManager, 100);
+                    }
+                }
+
+                checkAuthManager();
+            });
+        }
+
+        // Initialize profile page
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('[Profile] Initializing profile page...');
+
+            try {
+                // Initialize Bootstrap modals
+                editProfileModal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+                changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+
+                console.log('[Profile] Waiting for AuthManager...');
+                const authManager = await waitForAuthManager();
+
+                console.log('[Profile] Initializing AuthManager...');
+                await authManager.initialize();
+
+                console.log('[Profile] Checking authentication...');
+                const isAuthenticated = await authManager.checkAuthentication();
+                console.log('[Profile] Authentication result:', isAuthenticated);
+
+                if (!isAuthenticated) {
+                    console.log('[Profile] User not authenticated, redirecting to login...');
+                    if (!isRedirecting) {
+                        isRedirecting = true;
+                        authManager.removeToken();
+                        setTimeout(() => {
+                            window.location.href = '/login.html';
+                        }, 100);
+                    }
+                    return;
+                }
+
+                console.log('[Profile] Getting user info...');
+                currentUser = authManager.getCurrentUser();
+                console.log('[Profile] Current user:', currentUser);
+
+                if (!currentUser) {
+                    console.error('[Profile] No user data available');
+                    throw new Error('No user data available');
+                }
+
+                populateProfile(currentUser);
+
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+            } catch (error) {
+                console.error('[Profile] Profile initialization error:', error);
+                showErrorMessage('Failed to load profile. Please try logging in again.');
+
+                if (!isRedirecting) {
+                    isRedirecting = true;
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 3000);
+                }
+            }
+        });
+
+        // Populate profile with user data
+        function populateProfile(user) {
+            if (!user) return;
+
+            const displayName = user.firstName && user.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : user.firstName || user.name || user.email || 'User';
+
+            const avatarUrl = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=150`;
+
+            // Navigation
+            document.getElementById('navUserName').textContent = displayName;
+            document.getElementById('navUserAvatar').src = avatarUrl;
+
+            // Profile header
+            document.getElementById('profileName').textContent = displayName;
+            document.getElementById('profileEmail').textContent = user.email || '-';
+            document.getElementById('profileAvatar').src = avatarUrl;
+
+            // Role badge
+            const roleBadge = document.getElementById('profileRoleBadge');
+            const roleText = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Not Set';
+            roleBadge.textContent = roleText;
+            
+            const roleBadgeClass = {
+                'senior': 'bg-primary',
+                'volunteer': 'bg-success',
+                'caregiver': 'bg-info',
+                'admin': 'bg-danger'
+            };
+            roleBadge.className = `badge badge-role ${roleBadgeClass[user.role] || 'bg-secondary'} mt-2`;
+
+            // Account information
+            document.getElementById('infoFirstName').textContent = user.firstName || '-';
+            document.getElementById('infoLastName').textContent = user.lastName || '-';
+            document.getElementById('infoEmail').textContent = user.email || '-';
+            
+            const providerName = {
+                'email': 'Email/Password',
+                'google': 'Google',
+                'azure': 'Microsoft'
+            };
+            document.getElementById('infoProvider').textContent = providerName[user.provider] || user.provider || '-';
+            document.getElementById('infoRole').textContent = roleText;
+            document.getElementById('infoLocation').textContent = user.location || 'Not specified';
+
+            // Statistics
+            document.getElementById('infoMemberSince').textContent = user.created_at 
+                ? new Date(user.created_at).toLocaleDateString() 
+                : 'Unknown';
+            
+            document.getElementById('infoEmailVerified').textContent = user.email_verified 
+                ? '✅ Verified' 
+                : '⚠️ Not Verified';
+            
+            document.getElementById('infoLastLogin').textContent = user.last_login 
+                ? new Date(user.last_login).toLocaleString() 
+                : 'Just now';
+
+            // Show password change option only for email/password users
+            if (user.provider === 'email') {
+                document.getElementById('securitySection').style.display = 'block';
+            }
+        }
+
+        // Edit profile button handler
+        document.getElementById('editProfileBtn').addEventListener('click', () => {
+            if (!currentUser) return;
+
+            // Pre-fill form with current values
+            document.getElementById('editFirstName').value = currentUser.firstName || '';
+            document.getElementById('editLastName').value = currentUser.lastName || '';
+            document.getElementById('editLocation').value = currentUser.location || '';
+            
+            // Clear any previous alerts
+            document.getElementById('editAlert').style.display = 'none';
+            
+            editProfileModal.show();
+        });
+
+        // Edit profile form submission
+        document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const firstName = document.getElementById('editFirstName').value.trim();
+            const lastName = document.getElementById('editLastName').value.trim();
+            const location = document.getElementById('editLocation').value.trim();
+            
+            if (!firstName || !lastName) {
+                showEditAlert('First name and last name are required');
+                return;
+            }
+            
+            try {
+                const saveBtn = document.getElementById('saveProfileBtn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+                
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch('http://localhost:5001/update-profile', {
+                    method: 'POST',
+                    body: JSON.stringify({ firstName, lastName, location })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update current user data
+                    currentUser = data.user;
+                    populateProfile(currentUser);
+                    
+                    editProfileModal.hide();
+                    showSuccessMessage('Profile updated successfully!');
+                } else {
+                    showEditAlert(data.error || 'Failed to update profile');
+                }
+                
+            } catch (error) {
+                console.error('[Profile] Update error:', error);
+                showEditAlert('Network error. Please try again.');
+            } finally {
+                const saveBtn = document.getElementById('saveProfileBtn');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Changes';
+            }
+        });
+
+        // Change password button handler
+        document.getElementById('changePasswordBtn')?.addEventListener('click', () => {
+            // Clear form
+            document.getElementById('changePasswordForm').reset();
+            document.getElementById('passwordAlert').style.display = 'none';
+            
+            changePasswordModal.show();
+        });
+
+        // Change password form submission
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                showPasswordAlert('New passwords do not match');
+                return;
+            }
+            
+            try {
+                const saveBtn = document.getElementById('savePasswordBtn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Changing...';
+                
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch('http://localhost:5001/change-password', {
+                    method: 'POST',
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    changePasswordModal.hide();
+                    showSuccessMessage('Password changed successfully!');
+                    document.getElementById('changePasswordForm').reset();
+                } else {
+                    showPasswordAlert(data.error || 'Failed to change password');
+                }
+                
+            } catch (error) {
+                console.error('[Profile] Password change error:', error);
+                showPasswordAlert('Network error. Please try again.');
+            } finally {
+                const saveBtn = document.getElementById('savePasswordBtn');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Change Password';
+            }
+        });
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to logout?')) {
+                try {
+                    const authManager = await waitForAuthManager();
+                    await authManager.logout();
+                } catch (error) {
+                    console.error('[Profile] Logout error:', error);
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+                    localStorage.removeItem('auth_token');
+                    window.location.href = '/login.html';
+                }
+            }
+        });
+
+        // Switch Account handler
+        document.getElementById('switchAccountBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to switch to a different account?')) {
+                try {
+                    const authManager = await waitForAuthManager();
+                    authManager.removeToken();
+                    window.location.href = '/login.html?switch_account=true';
+                } catch (error) {
+                    console.error('[Profile] Switch account error:', error);
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+                    localStorage.removeItem('auth_token');
+                    window.location.href = '/login.html?switch_account=true';
+                }
+            }
+        });
+
+        // Utility functions
+        function showSuccessMessage(message) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alert.style.cssText = 'top: 20px; right: 20px; z-index: 1055; min-width: 300px;';
+            alert.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alert);
+
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+
+        function showErrorMessage(message) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+            alert.style.cssText = 'top: 20px; right: 20px; z-index: 1055; min-width: 300px;';
+            alert.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alert);
+        }
+
+        function showEditAlert(message) {
+            const alert = document.getElementById('editAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+        }
+
+        function showPasswordAlert(message) {
+            const alert = document.getElementById('passwordAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>
