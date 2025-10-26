@@ -190,7 +190,7 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at FROM users WHERE email = $1 AND is_active = TRUE';
+            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE email = $1 AND is_active = TRUE';
             const result = await client.query(query, [email]);
             const user = result.rows[0];
             
@@ -272,7 +272,7 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at FROM users WHERE id = $1';
+            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE id = $1';
             const result = await client.query(query, [userId]);
             const user = result.rows[0];
             
@@ -409,6 +409,38 @@ class DatabaseService {
             return result.rows[0] || null;
         } catch (error) {
             console.error('Database error:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async updateLastLogin(userId) {
+        const client = await this.pool.connect();
+        
+        try {
+            // First get the current last_login (which is the PREVIOUS login time)
+            const getCurrentQuery = `
+                SELECT last_login 
+                FROM users 
+                WHERE id = $1
+            `;
+            const currentResult = await client.query(getCurrentQuery, [userId]);
+            const previousLogin = currentResult.rows[0]?.last_login || null;
+            
+            // Now update to current timestamp
+            const updateQuery = `
+                UPDATE users 
+                SET last_login = CURRENT_TIMESTAMP 
+                WHERE id = $1
+                RETURNING last_login
+            `;
+            await client.query(updateQuery, [userId]);
+            
+            // Return the PREVIOUS login time (before the update)
+            return previousLogin;
+        } catch (error) {
+            console.error('Database error updating last login:', error);
             throw error;
         } finally {
             client.release();

@@ -119,9 +119,11 @@
                         <span id="navUserName">Loading...</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item active" href="./profile.html"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item active" href="./profile.html"><i
+                                    class="fas fa-user me-2"></i>Profile</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
+                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My
+                                Requests</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
@@ -215,7 +217,7 @@
                     </div>
                     <div class="info-row">
                         <span class="info-label">
-                            <i class="fas fa-check-circle me-2"></i>Email Verified
+                            <i class="fas fa-check-circle me-2"></i>Email Verification
                         </span>
                         <span class="info-value" id="infoEmailVerified">-</span>
                     </div>
@@ -254,28 +256,40 @@
                 <form id="editProfileForm">
                     <div class="modal-body">
                         <div id="editAlert" class="alert alert-danger" style="display: none;"></div>
-                        
-                        <div class="mb-3">
-                            <label for="editFirstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="editFirstName" required>
+
+                        <div class="mb-3 row">
+                            <div class="col-md-6">
+                                <label for="editFirstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="editFirstName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editLastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="editLastName" required>
+                            </div>
                         </div>
-                        
+
                         <div class="mb-3">
-                            <label for="editLastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="editLastName" required>
+                            <label for="editEmail" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="editEmail" value="user@example.com" disabled>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="editLocation" class="form-label">Location</label>
-                            <input type="text" class="form-control" id="editLocation" 
-                                   placeholder="e.g., Kampung Dato Ahmad Razali">
+
+                        <div class="mb-3 row">
+                            <div class="col-md-6">
+                                <label for="editLocation" class="form-label">My Location</label>
+                                <input type="text" class="form-control" id="editLocation" placeholder="e.g., Ang Mo Kio">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editRole" class="form-label">My Role</label>
+                                <input type="text" class="form-control" id="editRole" placeholder="e.g. Senior" disabled>
+                            </div>
                         </div>
-                        
+
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
-                            Email and role cannot be changed. 
+                            <strong>Note:</strong> Email and role are fixed.
                             <br>
-                            Contact support (kampungconnectsit@gmail.com) if you need to modify these.
+                            For changes, please contact
+                            <a href="mailto:kampungconnectsit@gmail.com">kampungconnectsit@gmail.com</a>.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -302,23 +316,35 @@
                 <form id="changePasswordForm">
                     <div class="modal-body">
                         <div id="passwordAlert" class="alert alert-danger" style="display: none;"></div>
-                        
+
                         <div class="mb-3">
                             <label for="currentPassword" class="form-label">Current Password</label>
-                            <input type="password" class="form-control" id="currentPassword" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">New Password</label>
-                            <input type="password" class="form-control" id="newPassword" required>
-                            <div class="form-text">
-                                Password must be at least 8 characters with uppercase, lowercase, number, and special character.
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="currentPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleCurrentPassword">
+                                    <i class="fas fa-eye" id="toggleCurrentPasswordIcon"></i>
+                                </button>
                             </div>
                         </div>
-                        
+
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="newPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleNewPassword">
+                                    <i class="fas fa-eye" id="toggleNewPasswordIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-control" id="confirmPassword" required>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="confirmPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                    <i class="fas fa-eye" id="toggleConfirmPasswordIcon"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -448,7 +474,7 @@
             const roleBadge = document.getElementById('profileRoleBadge');
             const roleText = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Not Set';
             roleBadge.textContent = roleText;
-            
+
             const roleBadgeClass = {
                 'senior': 'bg-primary',
                 'volunteer': 'bg-success',
@@ -461,7 +487,7 @@
             document.getElementById('infoFirstName').textContent = user.firstName || '-';
             document.getElementById('infoLastName').textContent = user.lastName || '-';
             document.getElementById('infoEmail').textContent = user.email || '-';
-            
+
             const providerName = {
                 'email': 'Email/Password',
                 'google': 'Google',
@@ -472,16 +498,26 @@
             document.getElementById('infoLocation').textContent = user.location || 'Not specified';
 
             // Statistics
-            document.getElementById('infoMemberSince').textContent = user.created_at 
-                ? new Date(user.created_at).toLocaleDateString() 
+            document.getElementById('infoMemberSince').textContent = user.created_at
+                ? new Date(user.created_at).toLocaleDateString('en-SG', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                })
                 : 'Unknown';
-            
-            document.getElementById('infoEmailVerified').textContent = user.email_verified 
-                ? '✅ Verified' 
+
+            document.getElementById('infoEmailVerified').textContent = user.email_verified === true || user.email_verified === 1
+                ? '✅ Verified'
                 : '⚠️ Not Verified';
-            
-            document.getElementById('infoLastLogin').textContent = user.last_login 
-                ? new Date(user.last_login).toLocaleString() 
+
+            document.getElementById('infoLastLogin').textContent = user.last_login
+                ? new Date(user.last_login).toLocaleString('en-SG', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
                 : 'Just now';
 
             // Show password change option only for email/password users
@@ -497,51 +533,55 @@
             // Pre-fill form with current values
             document.getElementById('editFirstName').value = currentUser.firstName || '';
             document.getElementById('editLastName').value = currentUser.lastName || '';
+            document.getElementById('editEmail').value = currentUser.email || '';
+            document.getElementById('editRole').value = currentUser.role
+                ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)
+                : 'Not Set';
             document.getElementById('editLocation').value = currentUser.location || '';
-            
+
             // Clear any previous alerts
             document.getElementById('editAlert').style.display = 'none';
-            
+
             editProfileModal.show();
         });
 
         // Edit profile form submission
         document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const firstName = document.getElementById('editFirstName').value.trim();
             const lastName = document.getElementById('editLastName').value.trim();
             const location = document.getElementById('editLocation').value.trim();
-            
+
             if (!firstName || !lastName) {
                 showEditAlert('First name and last name are required');
                 return;
             }
-            
+
             try {
                 const saveBtn = document.getElementById('saveProfileBtn');
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
-                
+
                 const authManager = await waitForAuthManager();
                 const response = await authManager.authenticatedFetch('http://localhost:5001/update-profile', {
                     method: 'POST',
                     body: JSON.stringify({ firstName, lastName, location })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     // Update current user data
                     currentUser = data.user;
                     populateProfile(currentUser);
-                    
+
                     editProfileModal.hide();
                     showSuccessMessage('Profile updated successfully!');
                 } else {
                     showEditAlert(data.error || 'Failed to update profile');
                 }
-                
+
             } catch (error) {
                 console.error('[Profile] Update error:', error);
                 showEditAlert('Network error. Please try again.');
@@ -557,36 +597,67 @@
             // Clear form
             document.getElementById('changePasswordForm').reset();
             document.getElementById('passwordAlert').style.display = 'none';
-            
+
             changePasswordModal.show();
+        });
+
+        // Password toggle functionality
+        function setupPasswordToggle(toggleButtonId, passwordFieldId, iconId) {
+            const toggleButton = document.getElementById(toggleButtonId);
+            const passwordField = document.getElementById(passwordFieldId);
+            const icon = document.getElementById(iconId);
+
+            if (toggleButton && passwordField && icon) {
+                toggleButton.addEventListener('click', function() {
+                    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordField.setAttribute('type', type);
+                    
+                    // Toggle icon
+                    if (type === 'text') {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            }
+        }
+
+        // Initialize password toggles when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup password toggles
+            setupPasswordToggle('toggleCurrentPassword', 'currentPassword', 'toggleCurrentPasswordIcon');
+            setupPasswordToggle('toggleNewPassword', 'newPassword', 'toggleNewPasswordIcon');
+            setupPasswordToggle('toggleConfirmPassword', 'confirmPassword', 'toggleConfirmPasswordIcon');
         });
 
         // Change password form submission
         document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            
+
             if (newPassword !== confirmPassword) {
                 showPasswordAlert('New passwords do not match');
                 return;
             }
-            
+
             try {
                 const saveBtn = document.getElementById('savePasswordBtn');
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Changing...';
-                
+
                 const authManager = await waitForAuthManager();
                 const response = await authManager.authenticatedFetch('http://localhost:5001/change-password', {
                     method: 'POST',
                     body: JSON.stringify({ currentPassword, newPassword })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     changePasswordModal.hide();
                     showSuccessMessage('Password changed successfully!');
@@ -594,7 +665,7 @@
                 } else {
                     showPasswordAlert(data.error || 'Failed to change password');
                 }
-                
+
             } catch (error) {
                 console.error('[Profile] Password change error:', error);
                 showPasswordAlert('Network error. Please try again.');

@@ -105,6 +105,9 @@ availableProviders.forEach(provider => {
                     // Store user in database
                     const dbUser = await dbService.findOrCreateUser(req.user);
 
+                    // Update last login timestamp (returns previous login time)
+                    const previousLogin = await dbService.updateLastLogin(dbUser.id);
+
                     // Generate JWT token
                     const tokenPayload = {
                         id: dbUser.id,
@@ -112,7 +115,8 @@ availableProviders.forEach(provider => {
                         firstName: dbUser.firstName,
                         lastName: dbUser.lastName,
                         provider: dbUser.provider,
-                        role: dbUser.role
+                        role: dbUser.role,
+                        lastLogin: previousLogin
                     };
 
                     const token = jwtUtils.generateToken(tokenPayload);
@@ -255,6 +259,9 @@ app.post('/verify-email', async (req, res) => {
         // Verify email in database
         await dbService.verifyUserEmail(newUser.id);
 
+        // Update last login timestamp (returns previous login time, which is null for new users)
+        const previousLogin = await dbService.updateLastLogin(newUser.id);
+
         // Generate JWT token
         const tokenPayload = {
             id: newUser.id,
@@ -262,7 +269,8 @@ app.post('/verify-email', async (req, res) => {
             firstName: newUser.firstName,
             lastName: newUser.lastName,
             provider: 'email',
-            role: newUser.role
+            role: newUser.role,
+            lastLogin: previousLogin
         };
 
         const token = jwtUtils.generateToken(tokenPayload);
@@ -384,6 +392,9 @@ app.post('/login', async (req, res) => {
             });
         }
 
+        // Update last login timestamp (returns previous login time)
+        const previousLogin = await dbService.updateLastLogin(user.id);
+
         // Generate JWT token
         const tokenPayload = {
             id: user.id,
@@ -391,7 +402,8 @@ app.post('/login', async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             provider: user.provider,
-            role: user.role
+            role: user.role,
+            lastLogin: previousLogin
         };
 
         const token = jwtUtils.generateToken(tokenPayload);
@@ -755,7 +767,11 @@ app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
             picture: user.picture,
             provider: user.provider,
             role: user.role,
-            location: user.location
+            location: user.location,
+            email_verified: user.email_verified,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            last_login: user.last_login
         });
     } catch (error) {
         console.error('Get user error:', error);
