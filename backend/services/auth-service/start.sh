@@ -1,10 +1,7 @@
 #!/bin/sh
-set -e
 
-# Run admin user creation script
-echo "📝 Creating admin user..."
-node create-admin.js
+echo "Creating admin user..."
+node create-admin.js || echo "Warning: Admin user creation failed or skipped"
 
-# Start the main auth service
-echo "🔐 Starting Auth Service..."
+echo "Starting Auth Service..."
 exec node src/index.js

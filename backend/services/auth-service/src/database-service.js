@@ -14,6 +14,38 @@ class DatabaseService {
         });
     }
 
+    /**
+     * Transform database row from snake_case/lowercase to camelCase
+     */
+    transformUserRow(row) {
+        if (!row) return null;
+        
+        return {
+            id: row.id,
+            providerId: row.provider_id,
+            email: row.email,
+            firstName: row.firstname,
+            lastName: row.lastname,
+            passwordHash: row.password_hash,
+            picture: row.picture,
+            provider: row.provider,
+            role: row.role,
+            rating: row.rating,
+            location: row.location,
+            emailVerified: row.email_verified,
+            isActive: row.is_active,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            lastLogin: row.last_login,
+            // Keep backwards compatibility
+            password_hash: row.password_hash,
+            email_verified: row.email_verified,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            last_login: row.last_login
+        };
+    }
+
     async waitForDatabase(maxRetries = 30, retryInterval = 2000) {
         let retries = 0;
         
@@ -97,9 +129,9 @@ class DatabaseService {
                 // Update existing user (for OIDC users) and mark email as verified
                 const updateQuery = `
                     UPDATE users 
-                    SET firstName = $1, lastName = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
+                    SET firstname = $1, lastname = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
                     WHERE provider_id = $4 OR email = $5
-                    RETURNING id, provider_id, email, firstName, lastName, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
+                    RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
                 
                 // Use provided firstName and lastName, or parse from name if not available
@@ -116,7 +148,7 @@ class DatabaseService {
                     userData.email
                 ]);
                 
-                return updateResult.rows[0];
+                return this.transformUserRow(updateResult.rows[0]);
             } else {
                 // Create new user (for OIDC users) with email automatically verified
                 const insertQuery = `
@@ -139,7 +171,7 @@ class DatabaseService {
                     userData.picture || null,
                     userData.provider
                 ]);
-                return insertResult.rows[0];
+                return this.transformUserRow(insertResult.rows[0]);
             }
         } catch (error) {
             console.error('Database error:', error);
@@ -177,7 +209,7 @@ class DatabaseService {
                 userData.location || null,
                 false
             ]);
-            return insertResult.rows[0];
+            return this.transformUserRow(insertResult.rows[0]);
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -196,7 +228,7 @@ class DatabaseService {
             
             if (user) {
                 // Map database fields to camelCase for API response
-                return user;
+                return this.transformUserRow(user);
             }
             
             return null;
@@ -236,10 +268,10 @@ class DatabaseService {
                 UPDATE users 
                 SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $1
-                RETURNING id, email, firstName, lastName, email_verified
+                RETURNING id, email, firstname, lastname, email_verified
             `;
             const result = await client.query(query, [userId]);
-            return result.rows[0] || null;
+            return this.transformUserRow(result.rows[0]);
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -256,10 +288,10 @@ class DatabaseService {
                 UPDATE users 
                 SET role = $1, location = $2, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $3
-                RETURNING id, email, firstName, lastName, provider, role, location
+                RETURNING id, email, firstname, lastname, provider, role, location
             `;
             const result = await client.query(query, [role, location, userId]);
-            return result.rows[0] || null;
+            return this.transformUserRow(result.rows[0]);
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -277,7 +309,7 @@ class DatabaseService {
             const user = result.rows[0];
             
             if (user) {
-                return user;
+                return this.transformUserRow(user);
             }
             
             return null;
@@ -379,7 +411,7 @@ class DatabaseService {
                 WHERE email = $1 AND provider = 'email' AND is_active = TRUE
             `;
             const result = await client.query(query, [email]);
-            return result.rows[0] || null;
+            return this.transformUserRow(result.rows[0]);
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -404,7 +436,7 @@ class DatabaseService {
                 profileData.location || null,
                 userId
             ]);
-            return result.rows[0] || null;
+            return this.transformUserRow(result.rows[0]);
         } catch (error) {
             console.error('Database error:', error);
             throw error;

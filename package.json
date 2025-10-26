@@ -3,10 +3,8 @@
   "version": "1.0.0",
   "description": "Setup scripts for KampungConnect",
   "scripts": {
-    "test-network": "node test-network.js",
     "test-connection": "node test-connection.js",
     "setup-db": "node setup-aurora-db.js",
-    "db-viewer": "node secure-database-viewer.js",
     "db-viewer-aws": "node aws-rds-database-viewer.js",
     "sync-to-aws": "node sync-to-aws-rds.js",
     "test-aws": "node sync-to-aws-rds.js test",

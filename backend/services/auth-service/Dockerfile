@@ -12,8 +12,10 @@ RUN npm install --omit=dev
 # Copy the rest of your application (node_modules excluded via .dockerignore)
 COPY . .
 
-# Make startup script executable
-RUN chmod +x start.sh
+# Make startup script executable and fix line endings
+RUN chmod +x start.sh && \
+    # Convert Windows line endings to Unix line endings if present
+    sed -i 's/\r$//' start.sh || true
 
 # Start the service with the startup script
-CMD ["./start.sh"]
+CMD ["sh", "start.sh"]

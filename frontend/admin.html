@@ -989,13 +989,6 @@
                 return;
             }
 
-            // Update navbar with admin user info
-            const adminUserName = document.getElementById('adminUserName');
-            if (adminUserName && user) {
-                const displayName = user.firstName || user.email?.split('@')[0] || 'Admin';
-                adminUserName.textContent = displayName;
-            }
-
             // Initialize admin dashboard
             await adminDashboard.init();
         });

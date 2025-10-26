@@ -96,12 +96,16 @@
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <li><a class="dropdown-item" href="#" id="switchAccountBtn">
+                        <li>
+                            <a class="dropdown-item" href="#" id="switchAccountBtn">
                                 <i class="fas fa-user-friends me-2"></i>Switch Account
-                            </a></li>
-                        <li><a class="dropdown-item" href="#" id="logoutBtn">
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="logoutBtn">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
-                            </a></li>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -345,7 +349,7 @@
             // Create display name from firstName and lastName, fallback to email
             const displayName = user.firstName && user.lastName
                 ? `${user.firstName} ${user.lastName}`
-                : user.firstName || user.name || user.email || 'User';
+                : user.firstName || user.email || 'User';
 
             // Update navigation
             document.getElementById('userName').textContent = displayName;

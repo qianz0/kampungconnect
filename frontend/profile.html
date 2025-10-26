@@ -119,20 +119,30 @@
                         <span id="navUserName">Loading...</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item active" href="./profile.html"><i
-                                    class="fas fa-user me-2"></i>Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My
-                                Requests</a></li>
+                        <li>
+                            <a class="dropdown-item active" href="./profile.html"><i
+                                    class="fas fa-user me-2"></i>Profile</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My
+                                Requests</a>
+                        </li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <li><a class="dropdown-item" href="#" id="switchAccountBtn">
+                        <li>
+                            <a class="dropdown-item" href="#" id="switchAccountBtn">
                                 <i class="fas fa-user-friends me-2"></i>Switch Account
-                            </a></li>
-                        <li><a class="dropdown-item" href="#" id="logoutBtn">
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="logoutBtn">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
-                            </a></li>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -457,7 +467,7 @@
 
             const displayName = user.firstName && user.lastName
                 ? `${user.firstName} ${user.lastName}`
-                : user.firstName || user.name || user.email || 'User';
+                : user.email || 'User';
 
             const avatarUrl = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=150`;
 
@@ -679,35 +689,89 @@
         // Logout handler
         document.getElementById('logoutBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            if (confirm('Are you sure you want to logout?')) {
+
+            showConfirmModal('Are you sure you want to log out?', async () => {
                 try {
                     const authManager = await waitForAuthManager();
                     await authManager.logout();
+                    showSuccessMessage('You have been logged out successfully.');
                 } catch (error) {
-                    console.error('[Profile] Logout error:', error);
+                    console.error('[Dashboard] Logout error:', error);
                     document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
                     localStorage.removeItem('auth_token');
                     window.location.href = '/login.html';
                 }
-            }
+            });
         });
 
         // Switch Account handler
         document.getElementById('switchAccountBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            if (confirm('Are you sure you want to switch to a different account?')) {
+
+            showConfirmModal('Are you sure you want to switch accounts?', async () => {
                 try {
                     const authManager = await waitForAuthManager();
                     authManager.removeToken();
-                    window.location.href = '/login.html?switch_account=true';
+                    showSuccessMessage('Switching account...');
+                    setTimeout(() => {
+                        window.location.href = '/login.html?switch_account=true';
+                    }, 1000);
                 } catch (error) {
-                    console.error('[Profile] Switch account error:', error);
+                    console.error('[Dashboard] Switch account error:', error);
                     document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
                     localStorage.removeItem('auth_token');
                     window.location.href = '/login.html?switch_account=true';
                 }
-            }
+            });
         });
+
+        // Reusable modal confirmation
+        function showConfirmModal(message, onConfirm) {
+            // Remove existing modal if present
+            const existingModal = document.getElementById('customConfirmModal');
+            if (existingModal) existingModal.remove();
+
+            // Create modal HTML
+            const modalHTML = `
+                <div class="modal fade" id="customConfirmModal" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-3 shadow">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> Confirm Action
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <p class="mb-0 fs-6">${message}</p>
+                            </div>
+                            <div class="modal-footer d-flex justify-content-center gap-2">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-danger btn-sm confirm-btn">Yes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            const modalElement = document.getElementById('customConfirmModal');
+            const modal = new bootstrap.Modal(modalElement);
+
+            // Bind confirm button
+            modalElement.querySelector('.confirm-btn').addEventListener('click', () => {
+                modal.hide();
+                if (typeof onConfirm === 'function') onConfirm();
+            });
+
+            modal.show();
+
+            // Remove modal from DOM when hidden
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                modalElement.remove();
+            });
+        }
 
         // Utility functions
         function showSuccessMessage(message) {
