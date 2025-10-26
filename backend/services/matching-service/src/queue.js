@@ -18,6 +18,10 @@ async function connectQueue() {
   try {
     connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
+
+    await assertQueueWithDLQ(channel, "request_created");
+    await setupRetryQueue(channel); // 🧩 add this line
+
     console.log("✅ [matching-service] Connected to RabbitMQ");
 
     isConnecting = false;
@@ -49,10 +53,23 @@ async function connectQueue() {
 // 👉 DLQ helper
 async function assertQueueWithDLQ(ch, queueName) {
   await ch.assertQueue(`${queueName}.dlq`, { durable: true });
-  await ch.assertQueue(queueName, {
+   await ch.assertQueue(queueName, {
     durable: true,
-    deadLetterExchange: "",
-    deadLetterRoutingKey: `${queueName}.dlq`,
+    arguments: {
+      "x-dead-letter-exchange": "",
+      "x-dead-letter-routing-key": `${queueName}.dlq`,
+    },
+  });
+}
+
+async function setupRetryQueue(ch) {
+  await ch.assertQueue("request_retry", {
+    durable: true,
+    arguments: {
+      "x-dead-letter-exchange": "",
+      "x-dead-letter-routing-key": "request_created",
+      "x-message-ttl": 30000 // retry every 30 seconds
+    }
   });
 }
 
@@ -130,11 +147,20 @@ async function consumeQueue(queueName, callback) {
             console.error(`❌ Invalid JSON on ${queueName}:`, body);
             return ch.nack(msg, false, false); // → DLQ
           }
-
+        
+        // ✅ Smart schema validation depending on queue type
+          if (queueName === "request_created") {
+            if (!data.id || !data.user_id) {
+              console.error(`❌ Bad schema for request_created:`, data);
+              return ch.nack(msg, false, false);
+            }
+        }
           // Step 2: Schema validation (example: must have request_id + helper_id)
-          if (!data.request_id || !data.helper_id) {
-            console.error(`❌ Bad schema on ${queueName}:`, data);
-            return ch.nack(msg, false, false); // → DLQ
+           else if (queueName === "offer_created") {
+            if (!data.request_id || !data.helper_id) {
+              console.error(`❌ Bad schema for offer_created:`, data);
+              return ch.nack(msg, false, false);
+            }
           }
 
           // Step 3: Call business logic

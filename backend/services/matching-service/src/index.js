@@ -189,8 +189,9 @@ async function handleNewRequest(request) {
     const helper = await findBestHelper(request);
 
     if (!helper) {
-      console.log("No suitable helper found for request:", request.id);
-      return;
+        console.log(`⚠️ No helper found for request ${request.id}. Retrying in 30s...`);
+        await channel.sendToQueue("request_retry", Buffer.from(JSON.stringify(request)), { persistent: true });
+        return;
     }
 
     // Insert match into DB

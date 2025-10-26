@@ -48,8 +48,10 @@ async function assertQueueWithDLQ(ch, queueName) {
   await ch.assertQueue(`${queueName}.dlq`, { durable: true });
   await ch.assertQueue(queueName, {
     durable: true,
-    deadLetterExchange: "",                         // default exchange
-    deadLetterRoutingKey: `${queueName}.dlq`,       // where NACKs land
+    arguments: {
+      "x-dead-letter-exchange": "", // default exchange
+      "x-dead-letter-routing-key": `${queueName}.dlq`,
+    },
   });
 }
 
