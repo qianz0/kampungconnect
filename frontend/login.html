@@ -360,12 +360,23 @@
                     console.log('[Login] Authentication check result:', isAuthenticated);
                     
                     if (isAuthenticated && !isRedirecting) {
-                        console.log('[Login] User already authenticated, redirecting to dashboard...');
+                        const user = authManager.getCurrentUser();
+                        console.log('[Login] User already authenticated:', user);
+                        
                         isRedirecting = true;
-                        // Add a delay to prevent immediate redirect loops
-                        setTimeout(() => {
-                            window.location.href = '/dashboard.html';
-                        }, 500);
+                        
+                        // Redirect based on user role
+                        if (user && user.role === 'admin') {
+                            console.log('[Login] Admin user detected, redirecting to admin dashboard...');
+                            setTimeout(() => {
+                                window.location.href = '/admin.html';
+                            }, 500);
+                        } else {
+                            console.log('[Login] Regular user, redirecting to dashboard...');
+                            setTimeout(() => {
+                                window.location.href = '/dashboard.html';
+                            }, 500);
+                        }
                         return;
                     }
                 }

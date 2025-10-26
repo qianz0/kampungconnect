@@ -134,7 +134,12 @@ availableProviders.forEach(provider => {
                     if (!dbUser.role || dbUser.role === 'undefined' || dbUser.role === '') {
                         console.log(`User ${dbUser.email} needs to select a role, redirecting to role selection`);
                         res.redirect(`${frontendUrl}/role-selection.html?first_login=true`);
-                    } else {
+                    } 
+                    else if (dbUser.role === 'admin') {
+                        console.log(`Admin user ${dbUser.email} logged in, redirecting to admin dashboard`);
+                        res.redirect(`${frontendUrl}/admin.html?authenticated=true`);
+                    }
+                    else {
                         console.log(`User ${dbUser.email} has role ${dbUser.role}, redirecting to dashboard`);
                         res.redirect(`${frontendUrl}/dashboard.html?authenticated=true`);
                     }

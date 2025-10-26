@@ -48,7 +48,8 @@
 
         .modal-dialog-centered {
             align-items: flex-start !important;
-            margin-top: 80px; /* adjust how far from the top */
+            margin-top: 80px;
+            /* adjust how far from the top */
         }
     </style>
 </head>
@@ -79,14 +80,22 @@
                         <span id="userName">Loading...</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="./profile.html"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="./profile.html"><i class="fas fa-user me-2"></i>Profile</a>
+                        </li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
                         <li id="myRequestsMenuItem" style="display: none;">
                             <a class="dropdown-item" href="./my-requests.html">
                                 <i class="fas fa-list me-2"></i>My Requests
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li id="adminDashboardMenuItem" style="display: none;">
+                            <a class="dropdown-item" href="./admin.html">
+                                <i class="fas fa-user-shield me-2"></i>Admin Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li><a class="dropdown-item" href="#" id="switchAccountBtn">
                                 <i class="fas fa-user-friends me-2"></i>Switch Account
                             </a></li>
@@ -296,8 +305,14 @@
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
 
-                if(currentUser.role === "senior") {
+                if (currentUser.role === "senior") {
                     document.getElementById("myRequestsMenuItem").style.display = "block";
+                }
+
+                // Show admin dashboard link for admin users
+                if (currentUser.role === "admin") {
+                    document.getElementById("adminDashboardMenuItem").style.display = "block";
+                    document.getElementById("adminFeatureCard").style.display = "block";
                 }
 
             } catch (error) {
@@ -492,6 +507,7 @@
                 tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
             }
         }
+
         function showMatchButton(user) {
             console.log("[showMatchButton] user.role =", user.role);
 
@@ -508,7 +524,7 @@
                 <i class="fas fa-user-friends me-1"></i>View My Helpers
             </a>
         `;
-            } else if (user.role === "volunteer" || role === "caregiver") {
+            } else if (user.role === "volunteer" || user.role === "caregiver") {
                 matchContainer.innerHTML = `
             <a href="match-helper.html" class="btn btn-success">
                 <i class="fas fa-handshake me-1"></i>View My Seniors
@@ -516,7 +532,7 @@
         `;
 
             }
-            else if (role === "admin") {
+            else if (user.role === "admin") {
                 matchContainer.innerHTML = `
             <a href="admin-dashboard.html" class="btn btn-danger">
                 <i class="fas fa-tools me-1"></i>Admin Panel

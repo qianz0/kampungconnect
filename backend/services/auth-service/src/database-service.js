@@ -61,8 +61,8 @@ class DatabaseService {
                 CREATE TABLE IF NOT EXISTS pending_users (
                     id SERIAL PRIMARY KEY,
                     email VARCHAR(255) NOT NULL UNIQUE,
-                    firstname VARCHAR(100) NOT NULL,
-                    lastname VARCHAR(100) NOT NULL,
+                    firstName VARCHAR(100) NOT NULL,
+                    lastName VARCHAR(100) NOT NULL,
                     password_hash TEXT NOT NULL,
                     role VARCHAR(50),
                     location VARCHAR(100),
@@ -97,9 +97,9 @@ class DatabaseService {
                 // Update existing user (for OIDC users) and mark email as verified
                 const updateQuery = `
                     UPDATE users 
-                    SET firstname = $1, lastname = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
+                    SET firstName = $1, lastName = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
                     WHERE provider_id = $4 OR email = $5
-                    RETURNING id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
+                    RETURNING id, provider_id, email, firstName, lastName, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
                 
                 // Use provided firstName and lastName, or parse from name if not available
@@ -122,7 +122,7 @@ class DatabaseService {
                 const insertQuery = `
                     INSERT INTO users (provider_id, email, firstname, lastname, picture, provider, role, email_verified)
                     VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE)
-                    RETURNING id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
+                    RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
                 
                 // Split name into firstName and lastName for OIDC users
@@ -165,7 +165,7 @@ class DatabaseService {
             const insertQuery = `
                 INSERT INTO users (email, firstname, lastname, password_hash, provider, role, location, email_verified)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING id, email, firstname as "firstName", lastname as "lastName", provider, role, location, email_verified, created_at
+                RETURNING id, email, firstname, lastname, provider, role, location, email_verified, created_at
             `;
             const insertResult = await client.query(insertQuery, [
                 userData.email,
@@ -190,7 +190,7 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE email = $1 AND is_active = TRUE';
+            const query = 'SELECT id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE email = $1 AND is_active = TRUE';
             const result = await client.query(query, [email]);
             const user = result.rows[0];
             
@@ -216,7 +216,7 @@ class DatabaseService {
                 UPDATE users 
                 SET password_hash = $1, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $2
-                RETURNING id, email, firstname as "firstName", lastname as "lastName"
+                RETURNING id, email, firstname, lastname
             `;
             const result = await client.query(query, [passwordHash, userId]);
             return result.rows[0] || null;
@@ -236,7 +236,7 @@ class DatabaseService {
                 UPDATE users 
                 SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $1
-                RETURNING id, email, firstname as "firstName", lastname as "lastName", email_verified
+                RETURNING id, email, firstName, lastName, email_verified
             `;
             const result = await client.query(query, [userId]);
             return result.rows[0] || null;
@@ -256,7 +256,7 @@ class DatabaseService {
                 UPDATE users 
                 SET role = $1, location = $2, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $3
-                RETURNING id, email, firstname as "firstName", lastname as "lastName", provider, role, location
+                RETURNING id, email, firstName, lastName, provider, role, location
             `;
             const result = await client.query(query, [role, location, userId]);
             return result.rows[0] || null;
@@ -272,12 +272,11 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT id, provider_id, email, firstname as "firstName", lastname as "lastName", password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE id = $1';
+            const query = 'SELECT id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE id = $1';
             const result = await client.query(query, [userId]);
             const user = result.rows[0];
             
             if (user) {
-                // Map database fields to camelCase for API response
                 return user;
             }
             
@@ -301,7 +300,7 @@ class DatabaseService {
             const insertQuery = `
                 INSERT INTO pending_users (email, firstname, lastname, password_hash, role, location)
                 VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING id, email, firstname as "firstName", lastname as "lastName", role, location, created_at
+                RETURNING id, email, firstname, lastname, role, location, created_at
             `;
             
             const result = await client.query(insertQuery, [
@@ -327,8 +326,7 @@ class DatabaseService {
         
         try {
             const query = `
-                SELECT id, email, firstname as "firstName", lastname as "lastName", 
-                       password_hash, role, location, created_at, expires_at
+                SELECT id, email, firstname, lastname, password_hash, role, location, created_at, expires_at
                 FROM pending_users 
                 WHERE email = $1 AND expires_at > NOW()
             `;
@@ -376,7 +374,7 @@ class DatabaseService {
         
         try {
             const query = `
-                SELECT id, email, firstname as "firstName", lastname as "lastName", provider 
+                SELECT id, email, firstname, lastname, provider 
                 FROM users 
                 WHERE email = $1 AND provider = 'email' AND is_active = TRUE
             `;
@@ -398,7 +396,7 @@ class DatabaseService {
                 UPDATE users 
                 SET firstname = $1, lastname = $2, location = $3, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = $4
-                RETURNING id, email, firstname as "firstName", lastname as "lastName", provider, role, location, picture, email_verified, created_at, updated_at
+                RETURNING id, email, firstname, lastname, provider, role, location, picture, email_verified, created_at, updated_at
             `;
             const result = await client.query(query, [
                 profileData.firstName,

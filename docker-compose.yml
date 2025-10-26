@@ -164,6 +164,27 @@ services:
     volumes:
       - ./backend/shared:/app/shared
 
+  admin-service:
+    build: ./backend/services/admin-service
+    ports:
+      - "5007:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    volumes:
+      - ./backend/shared:/app/shared
+
   db:
     image: postgres:14
     environment:
@@ -200,6 +221,8 @@ services:
         condition: service_started
       rating-service:
         condition: service_started
+      admin-service:
+        condition: service_started
       frontend:
         condition: service_started
     command: >
@@ -234,6 +257,10 @@ services:
         echo '🔍 Checking Matching Service...';
         while ! nc -z matching-service 5003; do sleep 1; done;
         echo '✅ Matching Service is ready';
+        echo '';
+        echo '🔍 Checking Admin Service...';
+        while ! nc -z admin-service 5000; do sleep 1; done;
+        echo '✅ Admin Service is ready';
         echo '';
         echo '🎉 All services are ready and operational!';
       "

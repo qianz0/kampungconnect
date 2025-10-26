@@ -12,5 +12,8 @@ RUN npm install --omit=dev
 # Copy the rest of your application (node_modules excluded via .dockerignore)
 COPY . .
 
-# Start the service
-CMD ["npm", "start"]
+# Make startup script executable
+RUN chmod +x start.sh
+
+# Start the service with the startup script
+CMD ["./start.sh"]

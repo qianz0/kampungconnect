@@ -265,8 +265,12 @@ class AuthManager {
                 console.log('[AuthManager] Email login successful:', data);
                 this.currentUser = data.user;
                 
-                // Redirect to dashboard
-                window.location.href = '/dashboard.html?authenticated=true';
+                // Redirect based on user role
+                if (data.user.role === 'admin') {
+                    window.location.href = '/admin.html?authenticated=true';
+                } else {
+                    window.location.href = '/dashboard.html?authenticated=true';
+                }
             } else {
                 this.showError(data.error || 'Login failed');
             }
@@ -379,7 +383,12 @@ class AuthManager {
                     this.currentUser = data.user;
                     this.showSuccess('Registration successful! Welcome to KampungConnect.');
                     setTimeout(() => {
-                        window.location.href = '/dashboard.html?authenticated=true';
+                        // Redirect based on user role
+                        if (data.user.role === 'admin') {
+                            window.location.href = '/admin.html?authenticated=true';
+                        } else {
+                            window.location.href = '/dashboard.html?authenticated=true';
+                        }
                     }, 1500);
                 }
             } else {
@@ -522,11 +531,6 @@ class AuthManager {
         
         // Fallback to localStorage
         const localToken = localStorage.getItem('auth_token');
-        if (localToken) {
-            console.log('[AuthManager] Token found in localStorage');
-        } else {
-            console.log('[AuthManager] No token found');
-        }
         return localToken;
     }
 
