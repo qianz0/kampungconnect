@@ -17,12 +17,10 @@
             border-radius: 50%;
             object-fit: cover;
         }
-        .page-header {
+        .welcome-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-            border-radius: 0.5rem;
+            border: none;
         }
         .detail-card {
             border: none;
@@ -197,7 +195,11 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="./profile.html"><i class="fas fa-user me-2"></i>Profile</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                        <li><a class="dropdown-item" href="./my-requests.html"><i class="fas fa-list me-2"></i>My Requests</a></li>
+                        <li id="myRequestsMenuItem" style="display: none;">
+                            <a class="dropdown-item" href="./my-requests.html">
+                                <i class="fas fa-list me-2"></i>My Requests
+                            </a>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" id="logoutBtn">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -211,6 +213,34 @@
     <!-- Main Content -->
     <div class="container mt-4">
         <!-- Page Header -->
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card welcome-card">
+                    <div class="card-body">
+                        <h2 class="card-title mb-3">
+                            <i class="fas fa-hand-wave me-2"></i>
+                            Welcome back, <span id="welcomeName">User</span>!
+                        </h2>
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <i class="fas fa-shield-alt fa-2x mb-2"></i>
+                                <p class="small">Secure Authentication</p>
+                            </div>
+                            <div class="col-md-4">
+                                <i class="fas fa-key fa-2x mb-2"></i>
+                                <p class="small">Single Sign-On</p>
+                            </div>
+                            <div class="col-md-4">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <p class="small">Connected Community</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="page-header">
             <div class="container">
                 <div class="d-flex justify-content-between align-items-center">
@@ -226,7 +256,7 @@
                 </div>
             </div>
         </div>
-
+        <br>
         <!-- Request Overview Card -->
         <div class="card detail-card">
             <div class="card-header">
@@ -255,7 +285,7 @@
                 </div>
                 <div class="stats-badge">
                     <i class="fas fa-reply text-success me-1"></i>
-                    0 offers
+                    Loading offers...
                 </div>
 
                 <div class="info-row">
@@ -331,14 +361,25 @@
         </div>
 
                <!-- Offers Section (Visible only for seniors who created the request) -->
-<div class="card detail-card" id="offersCard" style="display: none;">
-  <div class="card-header">
-    <i class="fas fa-hands-helping me-2"></i>Offers Received
-  </div>
-  <div class="card-body" id="offersList">
-    <p class="text-muted mb-0">No offers yet.</p>
-  </div>
-</div>
+        <div class="card detail-card" id="offersCard" style="display: none;">
+        <div class="card-header">
+            <i class="fas fa-hands-helping me-2"></i>Offers Received
+        </div>
+        <div class="card-body" id="offersList">
+            <p class="text-muted mb-0">No offers yet.</p>
+        </div>
+        </div>
+
+        <!-- Contact Info Section (Visible only if request is matched and accepted) -->
+        <div class="card detail-card" id="contactInfoCard" style="display: none;">
+        <div class="card-header">
+            <i class="fas fa-phone me-2"></i>Contact Information
+        </div>
+        <div class="card-body">
+            <p><strong>Helper:</strong> <span id="helperContact"></span></p>
+            <p><strong>Senior:</strong> <span id="seniorContact"></span></p>
+        </div>
+        </div>
 
         <!-- Responses Section -->
         <div class="card detail-card">
@@ -437,12 +478,23 @@
             return categories[category] || categories['Other'];
         }
 
-        // Populate user info
+        // Populate user information
         function populateUserInfo(user) {
             if (!user) return;
-            document.getElementById('userName').textContent = user.name || 'User';
+
+            // Create display name from firstName and lastName, fallback to email
+            const displayName = user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user.firstName || user.name || user.email || 'User';
+
+            // Update navigation
+            document.getElementById('userName').textContent = displayName;
             const avatar = document.getElementById('userAvatar');
-            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=6c757d&color=fff`;
+            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
+            avatar.alt = displayName;
+
+            // Update welcome section
+            document.getElementById('welcomeName').textContent = displayName;
         }
 
         // Populate request details
@@ -489,6 +541,23 @@
                 statusBadge.innerHTML = '<i class="fas fa-clock me-2"></i>Pending';
             }
 
+            // Contact info if matched
+            if (req.status === 'matched') {
+
+                const isSeniorOwner = (currentUser.role === 'senior' && currentUser.id === req.user_id);
+                const isAcceptedHelper = (["volunteer", "caregiver", "admin"].includes(currentUser.role) && currentUser.id === req.helper_id);
+
+                if(isSeniorOwner || isAcceptedHelper){
+                    document.getElementById("contactInfoCard").style.display = "block";
+
+                    document.getElementById("helperContact").textContent =
+                        `${req.helper_name} (${req.helper_email || "no email"})`;
+
+                    document.getElementById("seniorContact").textContent =
+                        `${req.requester_name} (${req.requester_email || "no email"})`;
+                }
+            }
+
             // Fulfillment info
             if (req.fulfilledAt && req.fulfilledBy) {
                 document.getElementById('fulfillmentCard').style.display = 'block';
@@ -511,7 +580,7 @@
         }
 
         // Create activity timeline
-        function createTimeline(req) {
+        async function createTimeline(req) {
             const timeline = document.getElementById('timeline');
             timeline.innerHTML = '';
 
@@ -525,16 +594,51 @@
                 }
             ];
 
-            if (req.fulfilledAt) {
+            // Load offers for timeline
+            try {
+                const authManager = await waitForAuthManager();
+                const offersRes = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/offers`);
+                const offersData = await offersRes.json();
+
+                if (offersRes.ok && offersData.offers) {
+                    offersData.offers.forEach(offer => {
+                        events.push({
+                            icon: 'fa-handshake',
+                            color: 'info',
+                            title: 'Offer Received',
+                            time: offer.created_at,
+                            description: `${offer.helper_name} (${offer.helper_role}) offered help`
+                        });
+
+                        if (offer.status === "accepted") {
+                            events.push({
+                                icon: 'fa-check',
+                                color: 'success',
+                                title: 'Offer Accepted',
+                                time: offer.created_at,
+                                description: `Offer from ${offer.helper_name} was accepted`
+                            });
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Timeline offers load error:", err);
+            }
+
+            if (req.status === "fulfilled") {
                 events.push({
                     icon: 'fa-check-circle',
                     color: 'success',
                     title: 'Request Fulfilled',
-                    time: req.fulfilledAt,
-                    description: `Fulfilled by ${req.fulfilledBy?.name || 'volunteer'}`
+                    time: '',
+                    description: `Request was marked as fulfilled`
                 });
             }
 
+            // Sort all events by time
+            events.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            // Render
             events.forEach((event, index) => {
                 const item = document.createElement('div');
                 item.className = 'timeline-item';
@@ -549,7 +653,7 @@
                                 <i class="fas ${event.icon} me-2 text-${event.color}"></i>
                                 ${event.title}
                             </strong>
-                            <small class="text-muted">${new Date(event.time).toLocaleString()}</small>
+                            <small class="text-muted">${event.time ? new Date(event.time).toLocaleString() : ''}</small>
                         </div>
                         <p class="text-muted mb-0">${event.description}</p>
                     </div>
@@ -557,6 +661,7 @@
                 timeline.appendChild(item);
             });
         }
+
 
         function showActionButtons(user) {
             const actions = document.querySelector('.action-buttons');
@@ -604,10 +709,7 @@
                 ${offerBtn}
                 <button class="btn btn-primary" onclick="shareRequest()">
                     <i class="fas fa-share-alt me-2"></i>Share
-                </button>
-                <button class="btn btn-warning" onclick="reportRequest()">
-                    <i class="fas fa-flag me-2"></i>Report
-                </button>
+                </button>             
             `;
 
             // Initialize Bootstrap tooltips
@@ -641,82 +743,108 @@
             }
         }
 
-        async function loadOffers(requestId) {
-  try {
-    const authManager = await waitForAuthManager();
-    const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}/offers`);
-    const data = await response.json();
+        async function loadOffers(requestId, request, user) {
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}/offers`);
+                const data = await response.json();
 
-    const offersCard = document.getElementById("offersCard");
-    const offersList = document.getElementById("offersList");
-    offersList.innerHTML = "";
+                const offersCard = document.getElementById("offersCard");
+                const offersList = document.getElementById("offersList");
+                offersList.innerHTML = "";
 
-document.querySelector(".stats-badge").innerHTML = `
-  <i class="fas fa-reply text-success me-1"></i>
-  ${data.offers.length} ${data.offers.length === 1 ? 'Offer' : 'Offers'}
-`;
+                document.querySelector(".stats-badge").innerHTML = `
+                    <i class="fas fa-reply text-success me-1"></i>
+                    ${data.offers.length} ${data.offers.length === 1 ? 'Offer' : 'Offers'}
+                    `;
 
 
-    if (!response.ok || !data.offers || data.offers.length === 0) {
-      offersList.innerHTML = `<p class="text-muted mb-0">No offers yet.</p>`;
-      return;
-    }
+                if (!response.ok || !data.offers || data.offers.length === 0) {
+                    offersList.innerHTML = `<p class="text-muted mb-0">No offers yet.</p>`;
+                    return;
+                }
 
-    offersCard.style.display = "block";
+                offersCard.style.display = "block";
 
-    data.offers.forEach((offer) => {
-      const offerCard = document.createElement("div");
-      offerCard.classList.add("p-3", "border", "rounded", "mb-2", "bg-light");
+                data.offers.forEach((offer) => {
+                    const offerCard = document.createElement("div");
+                    offerCard.classList.add("p-3", "border", "rounded", "mb-2", "bg-light");
 
-      offerCard.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <strong>${offer.helper_name}</strong><br>
-            <small class="text-muted">${offer.helper_role}</small><br>
-            <small class="text-muted">Offered on ${new Date(offer.created_at).toLocaleString()}</small>
-          </div>
-          <div>
-            ${
-              offer.status === "pending"
-                ? `<button class="btn btn-success btn-sm" onclick="acceptOffer(${offer.id})">
-                    <i class="fas fa-check me-1"></i>Accept Offer
-                   </button>`
-                : `<span class="badge bg-${offer.status === 'accepted' ? 'success' : 'secondary'}">
-                    ${offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
-                   </span>`
+                    let actionHtml = "";
+                        if (request.user_id === user.id && offer.status === "pending") {
+                            // Only the senior who owns the request can accept pending offers
+                            actionHtml = `
+                            <button class="btn btn-success btn-sm" onclick="acceptOffer(${offer.id})">
+                                <i class="fas fa-check me-1"></i>Accept Offer
+                            </button>
+                            `;
+                        } else {
+                            // For everyone else, just show status badge
+                            actionHtml = `
+                            <span class="badge bg-${
+                                offer.status === "accepted" ? "success" : "secondary"
+                            }">
+                                ${offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
+                            </span>
+                            `;
+                    }
+                    offerCard.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${offer.helper_name}</strong> <span style="font-size: 14px;">(${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)})</span><br>
+                            <small class ="text-muted">${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)}'s Location: ${currentUser.location}</small><br>
+                            <small class="text-muted">Offered on ${new Date(offer.created_at).toLocaleString()}</small>
+                        </div>
+                        <div>
+                           ${actionHtml}
+                        </div>
+                        </div>
+                `;
+                offersList.appendChild(offerCard);
+                });
+            } catch (err) {
+                console.error("Error loading offers:", err);
             }
-          </div>
-        </div>
-      `;
-      offersList.appendChild(offerCard);
-    });
-  } catch (err) {
-    console.error("Error loading offers:", err);
-  }
-}
+        }
 
-async function acceptOffer(offerId) {
-  if (!confirm("Accept this volunteer's help?")) return;
+        async function acceptOffer(offerId) {
+            if (!confirm("Accept this volunteer's help?")) return;
 
-  try {
-    const authManager = await waitForAuthManager();
-    const response = await authManager.authenticatedFetch(`http://localhost:5002/offers/${offerId}/accept`, {
-      method: "POST",
-    });
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(`http://localhost:5002/offers/${offerId}/accept`, {
+                    method: "POST",
+                });
 
-    const data = await response.json();
+                const data = await response.json();
 
-    if (response.ok) {
-      alert("✅ Offer accepted! Helper assigned.");
-      location.reload();
-    } else {
-      alert(`⚠️ ${data.error || "Failed to accept offer."}`);
-    }
-  } catch (err) {
-    console.error("Error accepting offer:", err);
-    alert("Something went wrong. Please try again.");
-  }
-}
+                if (response.ok) {
+                    alert("✅ Offer accepted! Helper assigned.");
+
+                    if (data.contact) {
+                        showContactInfo(data.contact.helper, data.contact.senior);
+                    }
+
+                    // location.reload();
+                } else {
+                    alert(`⚠️ ${data.error || "Failed to accept offer."}`);
+                }
+            } catch (err) {
+                console.error("Error accepting offer:", err);
+                alert("Something went wrong. Please try again.");
+            }
+        }
+
+        function showContactInfo(helper, senior) {
+            document.getElementById("contactInfoCard").style.display = "block";
+
+            document.getElementById("helperContact").textContent =
+                `${helper.firstName || helper.name || helper.helper_name || "Unknown"} (${helper.email || "no email"})`;
+
+            document.getElementById("seniorContact").textContent =
+                `${senior.firstName || senior.name || senior.requester_name || "Unknown"} (${senior.email || "no email"})`;
+        
+        }
 
 
         // Action functions
@@ -726,6 +854,8 @@ async function acceptOffer(offerId) {
 
             try {
                 const authManager = await waitForAuthManager();
+                await authManager.initialize();
+
                 const params = new URLSearchParams(window.location.search);
                 const requestId = params.get("id");
 
@@ -733,6 +863,7 @@ async function acceptOffer(offerId) {
                     `http://localhost:5002/requests/${requestId}/respond`,
                     {
                         method: "POST",
+                        headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ message })
                     }
                 );
@@ -866,11 +997,11 @@ async function acceptOffer(offerId) {
             }
         }
 
-        function reportRequest() {
-            if (confirm('Are you sure you want to report this request?')) {
-                alert('Report feature - This will send a report to moderators');
-            }
-        }
+        // function reportRequest() {
+        //     if (confirm('Are you sure you want to report this request?')) {
+        //         alert('Report feature - This will send a report to moderators');
+        //     }
+        // }
 
         // Initialize
         document.addEventListener("DOMContentLoaded", async () => {
@@ -910,10 +1041,13 @@ async function acceptOffer(offerId) {
                 // fetch and display responses
                 await loadResponses(requestId);
 
+                await loadOffers(requestId, data.request, currentUser);
+
                 if (data.request.user_id === currentUser.id) {
-                await loadOffers(requestId);
+                    document.getElementById("offersCard").style.display = "block";
                 }
 
+                
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
 
@@ -925,6 +1059,10 @@ async function acceptOffer(offerId) {
                     }
                 });
 
+                if(currentUser.role === "senior") {
+                    document.getElementById("myRequestsMenuItem").style.display = "block";
+                }
+                
             } catch (err) {
                 console.error("Error loading request details:", err);
                 document.getElementById('loadingOverlay').innerHTML = `
