@@ -109,6 +109,26 @@ ORDER BY m.matched_at DESC
 });
 
 // ==================
+// Get available helpers
+// ==================
+app.get("/helpers/available", authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, firstName, lastName, rating, role
+      FROM users
+      WHERE role IN ('volunteer', 'caregiver')
+        AND is_active = TRUE
+      ORDER BY rating DESC;
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching available helpers:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ==================
 // Manual match assignment
 // ==================
 app.post("/matches/assign", authMiddleware.authenticateToken, async (req, res) => {
@@ -162,6 +182,9 @@ app.post("/matches/:id/complete", authMiddleware.authenticateToken, async (req, 
     await db.query(`UPDATE matches SET status = 'completed' WHERE id = $1`, [matchId]);
     await db.query(`UPDATE requests SET status = 'fulfilled' WHERE id = $1`, [requestId]);
 
+    // Update helper availability to 'available'
+    await db.query(`UPDATE users SET availability = 'available' WHERE id = $1`, [helperId]);
+
     res.json({ message: "Request marked as completed successfully." });
   } catch (err) {
     console.error("Error completing match:", err);
@@ -204,6 +227,9 @@ async function handleNewRequest(request) {
 
     // Update the request to 'matched'
     await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
+
+    // Update the helper availability to 'busy'
+    await db.query(`UPDATE users SET availability = 'busy' WHERE id = $1`, [helper.id]);
 
     console.log("✅ Match created:", result.rows[0]);
   } catch (err) {
