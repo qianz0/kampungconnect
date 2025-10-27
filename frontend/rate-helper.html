@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Your Helper - KampungConnect</title>
+    <link rel="stylesheet" href="../css/rate-helper.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⭐ Rate Your Helpers</h1>
+            <p>Your feedback helps us improve our community!</p>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+
+        <div class="pending-section">
+            <h2>Pending Ratings</h2>
+            <div id="pendingList" class="pending-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px; color: #666;">Loading pending ratings...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="ratingModal" class="modal">
+            <div class="modal-content">
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+                
+                <div class="modal-header">
+                    <h3>Rate Your Helper</h3>
+                    <p class="modal-helper-name" id="modalHelperName"></p>
+                    <p style="color: #666; margin-top: 5px;" id="modalRequestTitle"></p>
+                </div>
+
+                <form id="ratingForm" onsubmit="submitRating(event)">
+                    <input type="hidden" id="currentMatchId">
+                    
+                    <div class="star-rating" id="starRating">
+                        <span class="star" data-value="1" onclick="setRating(1)">★</span>
+                        <span class="star" data-value="2" onclick="setRating(2)">★</span>
+                        <span class="star" data-value="3" onclick="setRating(3)">★</span>
+                        <span class="star" data-value="4" onclick="setRating(4)">★</span>
+                        <span class="star" data-value="5" onclick="setRating(5)">★</span>
+                    </div>
+
+                    <div class="comment-section">
+                        <label for="ratingComment">Share your experience (optional)</label>
+                        <textarea 
+                            id="ratingComment" 
+                            class="comment-textarea" 
+                            placeholder="Tell us about your experience..."></textarea>
+                    </div>
+
+                    <button type="submit" class="submit-rating-btn" id="submitBtn">
+                        Submit Rating
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/rate-helper.js"></script>
+</body>
+</html>
