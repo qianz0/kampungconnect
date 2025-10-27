@@ -1,9 +1,9 @@
 import express from "express";
 import cors from "cors";
+import pool from "./db.js";
 import axios from "axios";
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -11,93 +11,66 @@ app.get('/', (req, res) => {
     res.json({ service: "priority-router-service", status: "running" });
 });
 
-// Priority queues
-const queues = {
-  urgent: [],
-  high: [],
-  medium: [],
-  low: []
-};
-
-// Delay to slow down queue processing
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Function to process queues in order of urgency
-async function processQueues() {
-  for (const level of ['urgent', 'high', 'medium', 'low']) {
-    while (queues[level].length > 0) {
-      const request = queues[level].shift();
-      const { request_id, authHeader } = request;
-
-      console.log(`Processing ${level.toUpperCase()} request ${request_id}...`);
-
-      try {
-        // Get available helpers from matching-service
-        const availableHelpers = await axios.get(
-          `${process.env.MATCHING_SERVICE_URL}/helpers/available`,
-          {
-            headers: {
-              Authorization: authHeader
-            }
-          }
-        );
-
-        const helpers = availableHelpers.data;
-
-        if (!helpers || helpers.length === 0) {
-          console.warn(`No available helpers for request ${request_id}. Requeuing...`);
-          // Put it back in queue
-          queues[level].push(request); 
-          // Delay 2 seconds before retry
-          await delay(2000); 
-          continue;
-        }
-
-        // Randomly pick a helper
-        const assignedHelper = helpers[Math.floor(Math.random() * helpers.length)];
-
-        // Assign the helper to the request
-        await axios.post(
-          `${process.env.MATCHING_SERVICE_URL}/matches/assign`,
-          {
-            request_id,
-            helper_id: assignedHelper.id
-          },
-          {
-            headers: {
-              Authorization: authHeader
-            }
-          }
-        );
-
-        console.log(`Assigned helper ${assignedHelper.id} to request ${request_id}`);
-
-      } catch (err) {
-        console.error(`Error processing request ${request_id}: ${err.message}`);
-      }
-
-      // Small delay between assignments
-      await delay(500);
-    }
-  }
-}
-
-// Route to receive new request from request service
+// Assign helper based on priority
 app.post("/route", async (req, res) => {
-    const { request_id, urgency } = req.body;
+    try {
+        // Get pending requests ordered by urgency
+        const { rows: requests } = await pool.query(`
+            SELECT * FROM requests 
+            WHERE status = 'pending'
+            ORDER BY 
+                CASE urgency 
+                    WHEN 'urgent' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    WHEN 'low' THEN 4
+                END ASC,
+                created_at ASC
+            LIMIT 1;
+        `);
+        if (requests.length === 0) {
+            return res.json({ message: "No pending requests found." });
+        }
+        const request = requests[0];
 
-  if (!request_id || !urgency || !queues.hasOwnProperty(urgency)) {
-    return res.status(400).json({ error: 'Invalid request_id or urgency' });
-  }
+        // Find available helpers (random available helper and fairness)
+        const { rows: helpers } = await pool.query(`
+            SELECT u.id
+            FROM users u
+            LEFT JOIN matches m 
+            ON u.id = m.helper_id AND m.status = 'active'
+            WHERE u.role = 'helper' AND u.is_active = TRUE
+            GROUP BY u.id
+            ORDER BY COUNT(m.id) ASC, RANDOM()
+            LIMIT 1;
+        `);
+        if (helpers.length === 0) {
+            return res.status(503).json({ message: "No available helpers." });
+        }
+        const helperId = helpers[0].id;
 
-  // Save request in the appropriate queue along with auth header
-  queues[urgency].push({ request_id, authHeader: req.headers.authorization });
+        // Assign and call matching service
+        await pool.query(`
+            INSERT INTO matches (request_id, helper_id, status)
+            VALUES ($1, $2, 'active')`,
+            [request.id, helperId]
+        );
+        await axios.post("http://matching-service:5000/createMatch", {
+            request_id: request.id,
+            helper_id: helperId,
+        });
 
-  console.log(`Queued request ${request_id} with urgency ${urgency}`);
-
-  processQueues();
-
-  res.json({ success: true, message: `Request ${request_id} queued with urgency ${urgency}` });
+        // Respond
+        res.json({
+            message: "Request assigned successfully.",
+            request_id: request.id,
+            helper_id: helperId,
+            urgency: request.urgency,
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal server error." });
+    }
 });
 
 const PORT = process.env.PORT || 5000;
