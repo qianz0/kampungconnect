@@ -3,8 +3,9 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     provider_id VARCHAR(255) UNIQUE, -- NULL for email/password users
     email VARCHAR(255) UNIQUE NOT NULL,
-    firstName VARCHAR(255), -- Split name into firstName and lastName for better handling
-    lastName VARCHAR(255),
+    firstname VARCHAR(255), -- Split name into firstname and lastname for better handling (used all lowercaps for postgres sensitivity issues)
+    lastname VARCHAR(255),
+    dob VARCHAR(10), -- YYYY-MM-DD format
     password_hash VARCHAR(255), -- NULL for OAuth users
     picture VARCHAR(500),
     provider VARCHAR(50) NOT NULL DEFAULT 'email', -- email, google, azure

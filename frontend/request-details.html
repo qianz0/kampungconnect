@@ -212,35 +212,6 @@
 
     <!-- Main Content -->
     <div class="container mt-4">
-        <!-- Page Header -->
-
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card welcome-card">
-                    <div class="card-body">
-                        <h2 class="card-title mb-3">
-                            <i class="fas fa-hand-wave me-2"></i>
-                            Welcome back, <span id="welcomeName">User</span>!
-                        </h2>
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <i class="fas fa-shield-alt fa-2x mb-2"></i>
-                                <p class="small">Secure Authentication</p>
-                            </div>
-                            <div class="col-md-4">
-                                <i class="fas fa-key fa-2x mb-2"></i>
-                                <p class="small">Single Sign-On</p>
-                            </div>
-                            <div class="col-md-4">
-                                <i class="fas fa-users fa-2x mb-2"></i>
-                                <p class="small">Connected Community</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="page-header">
             <div class="container">
                 <div class="d-flex justify-content-between align-items-center">
@@ -482,10 +453,10 @@
         function populateUserInfo(user) {
             if (!user) return;
 
-            // Create display name from firstName and lastName, fallback to email
-            const displayName = user.firstName && user.lastName 
-                ? `${user.firstName} ${user.lastName}` 
-                : user.firstName || user.name || user.email || 'User';
+            // Create display name from firstname and lastname, fallback to email
+            const displayName = user.firstname && user.lastname 
+                ? `${user.firstname} ${user.lastname}` 
+                : user.firstname || user.name || user.email || 'User';
 
             // Update navigation
             document.getElementById('userName').textContent = displayName;
@@ -839,10 +810,10 @@
             document.getElementById("contactInfoCard").style.display = "block";
 
             document.getElementById("helperContact").textContent =
-                `${helper.firstName || helper.name || helper.helper_name || "Unknown"} (${helper.email || "no email"})`;
+                `${helper.firstname || helper.name || helper.helper_name || "Unknown"} (${helper.email || "no email"})`;
 
             document.getElementById("seniorContact").textContent =
-                `${senior.firstName || senior.name || senior.requester_name || "Unknown"} (${senior.email || "no email"})`;
+                `${senior.firstname || senior.name || senior.requester_name || "Unknown"} (${senior.email || "no email"})`;
         
         }
 

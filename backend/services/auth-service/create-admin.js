@@ -32,8 +32,8 @@ async function createAdminUser() {
 
         const email = 'kampungconnectsit@gmail.com';
         const password = 'Admin123!';
-        const firstName = 'System';
-        const lastName = 'Admin';
+        const firstname = 'System';
+        const lastname = 'Admin';
 
         console.log('🔐 Setting up admin user...');
 
@@ -70,11 +70,11 @@ async function createAdminUser() {
             // Insert new admin user
             const insertResult = await client.query(
                 `INSERT INTO users (
-                    provider_id, email, firstName, lastName, password_hash, 
+                    provider_id, email, firstname, lastname, password_hash, 
                     picture, provider, role, email_verified, is_active
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                RETURNING id, email, firstName, lastName, role`,
-                [null, email, firstName, lastName, passwordHash, null, 'email', 'admin', true, true]
+                RETURNING id, email, firstname, lastname, role`,
+                [null, email, firstname, lastname, passwordHash, null, 'email', 'admin', true, true]
             );
 
             console.log('✅ Admin user created successfully!');

@@ -132,7 +132,7 @@
          // Populate user info
         function populateUserInfo(user) {
            if (!user) return;
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
+  const fullName = [user.firstname, user.lastname].filter(Boolean).join(' ') || 'User';
   document.getElementById('userName').textContent = fullName;
 
   const avatar = document.getElementById('userAvatar');

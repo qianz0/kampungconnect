@@ -14,38 +14,6 @@ class DatabaseService {
         });
     }
 
-    /**
-     * Transform database row from snake_case/lowercase to camelCase
-     */
-    transformUserRow(row) {
-        if (!row) return null;
-        
-        return {
-            id: row.id,
-            providerId: row.provider_id,
-            email: row.email,
-            firstName: row.firstname,
-            lastName: row.lastname,
-            passwordHash: row.password_hash,
-            picture: row.picture,
-            provider: row.provider,
-            role: row.role,
-            rating: row.rating,
-            location: row.location,
-            emailVerified: row.email_verified,
-            isActive: row.is_active,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-            lastLogin: row.last_login,
-            // Keep backwards compatibility
-            password_hash: row.password_hash,
-            email_verified: row.email_verified,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-            last_login: row.last_login
-        };
-    }
-
     async waitForDatabase(maxRetries = 30, retryInterval = 2000) {
         let retries = 0;
         
@@ -93,8 +61,8 @@ class DatabaseService {
                 CREATE TABLE IF NOT EXISTS pending_users (
                     id SERIAL PRIMARY KEY,
                     email VARCHAR(255) NOT NULL UNIQUE,
-                    firstName VARCHAR(100) NOT NULL,
-                    lastName VARCHAR(100) NOT NULL,
+                    firstname VARCHAR(100) NOT NULL,
+                    lastname VARCHAR(100) NOT NULL,
                     password_hash TEXT NOT NULL,
                     role VARCHAR(50),
                     location VARCHAR(100),
@@ -121,12 +89,15 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            // First, try to find existing user
-            const findQuery = 'SELECT * FROM users WHERE provider_id = $1 OR email = $2';
+            // Try to find existing user
+            const findQuery = `
+                SELECT * FROM users 
+                WHERE provider_id = $1 OR email = $2
+            `;
             const findResult = await client.query(findQuery, [userData.id, userData.email]);
             
+            // If user exists → update
             if (findResult.rows.length > 0) {
-                // Update existing user (for OIDC users) and mark email as verified
                 const updateQuery = `
                     UPDATE users 
                     SET firstname = $1, lastname = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
@@ -134,45 +105,48 @@ class DatabaseService {
                     RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
                 `;
                 
-                // Use provided firstName and lastName, or parse from name if not available
-                const firstName = userData.firstName || 
+                // Extract names
+                const firstname = userData.firstname || 
                                 (userData.name ? userData.name.trim().split(' ')[0] : '') || '';
-                const lastName = userData.lastName || 
-                               (userData.name ? userData.name.trim().split(' ').slice(1).join(' ') : '') || '';
+                const lastname = userData.lastname || 
+                            (userData.name ? userData.name.trim().split(' ').slice(1).join(' ') : '') || '';
                 
                 const updateResult = await client.query(updateQuery, [
-                    firstName,
-                    lastName,
+                    firstname,
+                    lastname,
                     userData.picture || null,
                     userData.id,
                     userData.email
                 ]);
-                
-                return this.transformUserRow(updateResult.rows[0]);
-            } else {
-                // Create new user (for OIDC users) with email automatically verified
-                const insertQuery = `
-                    INSERT INTO users (provider_id, email, firstname, lastname, picture, provider, role, email_verified)
-                    VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE)
-                    RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
-                `;
-                
-                // Split name into firstName and lastName for OIDC users
-                const nameStr = (typeof userData.name === 'string' && userData.name) ? userData.name.trim() : '';
-                const nameParts = nameStr ? nameStr.split(' ') : ['', ''];
-                const firstName = userData.firstName || nameParts[0] || '';
-                const lastName = userData.lastName || nameParts.slice(1).join(' ') || '';
-                
-                const insertResult = await client.query(insertQuery, [
-                    userData.id,
-                    userData.email,
-                    firstName,
-                    lastName,
-                    userData.picture || null,
-                    userData.provider
-                ]);
-                return this.transformUserRow(insertResult.rows[0]);
+
+                // Return the raw DB row directly
+                return updateResult.rows[0];
             }
+
+            // Otherwise → insert a new user
+            const insertQuery = `
+                INSERT INTO users (provider_id, email, firstname, lastname, picture, provider, role, email_verified)
+                VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE)
+                RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
+            `;
+            
+            const nameStr = (typeof userData.name === 'string' && userData.name) ? userData.name.trim() : '';
+            const nameParts = nameStr ? nameStr.split(' ') : ['', ''];
+            const firstname = userData.firstname || nameParts[0] || '';
+            const lastname = userData.lastname || nameParts.slice(1).join(' ') || '';
+
+            const insertResult = await client.query(insertQuery, [
+                userData.id,
+                userData.email,
+                firstname,
+                lastname,
+                userData.picture || null,
+                userData.provider
+            ]);
+
+            // Return the raw DB row directly
+            return insertResult.rows[0];
+
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -201,15 +175,18 @@ class DatabaseService {
             `;
             const insertResult = await client.query(insertQuery, [
                 userData.email,
-                userData.firstName,
-                userData.lastName,
+                userData.firstname,
+                userData.lastname,
                 userData.passwordHash,
                 'email',
                 userData.role || 'senior',
                 userData.location || null,
                 false
             ]);
-            return this.transformUserRow(insertResult.rows[0]);
+
+            // Return raw row (all lowercase fields)
+            return insertResult.rows[0];
+
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -222,16 +199,15 @@ class DatabaseService {
         const client = await this.pool.connect();
         
         try {
-            const query = 'SELECT id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE email = $1 AND is_active = TRUE';
+            const query = `
+                SELECT id, provider_id, email, firstname, lastname, password_hash, picture, provider, role,
+                    rating, location, email_verified, is_active, created_at, updated_at, last_login
+                FROM users
+                WHERE email = $1 AND is_active = TRUE
+            `;
             const result = await client.query(query, [email]);
-            const user = result.rows[0];
-            
-            if (user) {
-                // Map database fields to camelCase for API response
-                return this.transformUserRow(user);
-            }
-            
-            return null;
+            return result.rows[0] || null;  // Return raw DB row
+
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -271,7 +247,7 @@ class DatabaseService {
                 RETURNING id, email, firstname, lastname, email_verified
             `;
             const result = await client.query(query, [userId]);
-            return this.transformUserRow(result.rows[0]);
+            return result.rows[0];  // Return raw DB row
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -291,7 +267,7 @@ class DatabaseService {
                 RETURNING id, email, firstname, lastname, provider, role, location
             `;
             const result = await client.query(query, [role, location, userId]);
-            return this.transformUserRow(result.rows[0]);
+            return result.rows[0];  // Return raw DB row
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -306,13 +282,7 @@ class DatabaseService {
         try {
             const query = 'SELECT id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at, last_login FROM users WHERE id = $1';
             const result = await client.query(query, [userId]);
-            const user = result.rows[0];
-            
-            if (user) {
-                return this.transformUserRow(user);
-            }
-            
-            return null;
+            return result.rows[0] || null;  // Return raw DB row or null
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -337,8 +307,8 @@ class DatabaseService {
             
             const result = await client.query(insertQuery, [
                 userData.email,
-                userData.firstName,
-                userData.lastName,
+                userData.firstname,
+                userData.lastname,
                 userData.passwordHash,
                 userData.role || 'senior',
                 userData.location || null
@@ -411,7 +381,7 @@ class DatabaseService {
                 WHERE email = $1 AND provider = 'email' AND is_active = TRUE
             `;
             const result = await client.query(query, [email]);
-            return this.transformUserRow(result.rows[0]);
+            return result.rows[0] || null;  // Return raw DB row
         } catch (error) {
             console.error('Database error:', error);
             throw error;
@@ -431,12 +401,12 @@ class DatabaseService {
                 RETURNING id, email, firstname, lastname, provider, role, location, picture, email_verified, created_at, updated_at
             `;
             const result = await client.query(query, [
-                profileData.firstName,
-                profileData.lastName,
+                profileData.firstname,
+                profileData.lastname,
                 profileData.location || null,
                 userId
             ]);
-            return this.transformUserRow(result.rows[0]);
+            return result.rows[0] || null; // Return raw DB row or null
         } catch (error) {
             console.error('Database error:', error);
             throw error;

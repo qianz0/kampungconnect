@@ -59,7 +59,7 @@ services:
         retries: 10
         start_period: 15s
       restart: always
-
+      user: "999:999"
 
   request-service:
     build: ./backend/services/request-service
