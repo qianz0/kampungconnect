@@ -1,13 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-let authMiddlewarePath;
-if (process.env.NODE_ENV === 'docker') {
-  authMiddlewarePath = '/app/shared/auth-middleware';
-} else {
-  authMiddlewarePath = '../../../../shared/auth-middleware';
-}
-const AuthMiddleware = require(authMiddlewarePath);
+const AuthMiddleware = require('../middleware/auth');
 
 // Import individual controller functions
 const createRating = require('../controllers/createRating');

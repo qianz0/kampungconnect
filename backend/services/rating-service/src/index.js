@@ -1,17 +1,15 @@
-require('dotenv').config();
+// Load environment variables. The monorepo/service layout places a single .env at the repo root
+// so resolve the file path relative to this file's location so dotenv can find it when
+// the service is started from its own folder.
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '..', '..', '.env') });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
 const ratingRoutes = require('./routes/ratingRoutes');
 
-let authMiddlewarePath;
-if (process.env.NODE_ENV === 'docker') {
-  authMiddlewarePath = '/app/shared/auth-middleware';
-} else {
-  authMiddlewarePath = '../../../shared/auth-middleware';
-}
-const AuthMiddleware = require(authMiddlewarePath);
+const AuthMiddleware = require('./middleware/auth');
 
 const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);

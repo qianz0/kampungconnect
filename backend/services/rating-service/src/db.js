@@ -3,6 +3,8 @@ const { Pool } = require('pg');
 // Determine which database to use
 const useAWS = process.env.USE_AWS_DB === 'true';
 
+// console.log('DB_PASSWORD:', process.env.DB_PASSWORD, typeof process.env.DB_PASSWORD);
+
 const pool = new Pool({
   host: useAWS ? process.env.AWS_DB_HOST : process.env.DB_HOST,
   port: useAWS ? process.env.AWS_DB_PORT : process.env.DB_PORT,
