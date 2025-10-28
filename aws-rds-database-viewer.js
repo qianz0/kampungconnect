@@ -304,7 +304,7 @@ app.get('/api/query/:queryName', authenticateSession, async (req, res) => {
     const allowedQueries = {
       userStats: 'SELECT role, COUNT(*) as count FROM users GROUP BY role',
       requestsByCategory: 'SELECT category, COUNT(*) as count FROM requests GROUP BY category',
-      recentUsers: 'SELECT id, email, firstName, lastName, role, created_at FROM users ORDER BY created_at DESC LIMIT 10',
+      recentUsers: 'SELECT id, email, firstname, lastname, role, created_at FROM users ORDER BY created_at DESC LIMIT 10',
       activeRequests: 'SELECT id, category, type, status, created_at FROM requests WHERE status = $1 ORDER BY created_at DESC LIMIT 20'
     };
     

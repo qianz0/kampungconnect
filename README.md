@@ -333,7 +333,7 @@ The application uses PostgreSQL with the following main tables:
 ```sql
 -- Users table: Supports both OAuth and email/password authentication
 users (
-    id, provider_id, email, firstName, lastName, password_hash,
+    id, provider_id, email, firstname, lastname, password_hash,
     picture, provider, role, rating, location, email_verified,
     is_active, created_at, updated_at
 )

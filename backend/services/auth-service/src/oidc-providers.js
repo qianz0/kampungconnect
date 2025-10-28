@@ -70,31 +70,31 @@ class OIDCProviders {
             try {
                 // Helper function to parse full name into first and last name
                 const parseFullName = (fullName) => {
-                    if (!fullName) return { firstName: '', lastName: '' };
+                    if (!fullName) return { firstname: '', lastname: '' };
                     
                     const nameParts = fullName.trim().split(' ');
                     if (nameParts.length === 1) {
-                        return { firstName: nameParts[0], lastName: '' };
+                        return { firstname: nameParts[0], lastname: '' };
                     } else if (nameParts.length === 2) {
-                        return { firstName: nameParts[0], lastName: nameParts[1] };
+                        return { firstname: nameParts[0], lastname: nameParts[1] };
                     } else {
-                        // For names with more than 2 parts, take first as firstName and rest as lastName
+                        // For names with more than 2 parts, take first as firstname and rest as lastname
                         return { 
-                            firstName: nameParts[0], 
-                            lastName: nameParts.slice(1).join(' ') 
+                            firstname: nameParts[0], 
+                            lastname: nameParts.slice(1).join(' ') 
                         };
                     }
                 };
 
                 const fullName = profile.displayName || '';
-                const { firstName, lastName } = parseFullName(fullName);
+                const { firstname, lastname } = parseFullName(fullName);
 
                 const user = {
                     id: profile.id,
                     email: profile.emails[0].value,
                     name: fullName,
-                    firstName: firstName,
-                    lastName: lastName,
+                    firstname: firstname,
+                    lastname: lastname,
                     picture: profile.photos[0].value,
                     provider: 'google'
                 };
@@ -144,18 +144,18 @@ class OIDCProviders {
 
                     // Helper function to parse full name into first and last name
                     const parseFullName = (fullName) => {
-                        if (!fullName) return { firstName: '', lastName: '' };
+                        if (!fullName) return { firstname: '', lastname: '' };
                         
                         const nameParts = fullName.trim().split(' ');
                         if (nameParts.length === 1) {
-                            return { firstName: nameParts[0], lastName: '' };
+                            return { firstname: nameParts[0], lastname: '' };
                         } else if (nameParts.length === 2) {
-                            return { firstName: nameParts[0], lastName: nameParts[1] };
+                            return { firstname: nameParts[0], lastname: nameParts[1] };
                         } else {
-                            // For names with more than 2 parts, take first as firstName and rest as lastName
+                            // For names with more than 2 parts, take first as firstname and rest as lastname
                             return { 
-                                firstName: nameParts[0], 
-                                lastName: nameParts.slice(1).join(' ') 
+                                firstname: nameParts[0], 
+                                lastname: nameParts.slice(1).join(' ') 
                             };
                         }
                     };
@@ -170,15 +170,15 @@ class OIDCProviders {
                                     `${profile._json.given_name} ${profile._json.family_name}` : '') ||
                                    '';
                     
-                    const { firstName, lastName } = parseFullName(fullName);
+                    const { firstname, lastname } = parseFullName(fullName);
                     
                     // Try to get more specific first/last names from Azure profile
-                    const finalFirstName = firstName || 
+                    const finalFirstName = firstname || 
                                          profile._json?.given_name || 
                                          profile._json?.givenName ||
                                          profile.givenName || '';
                     
-                    const finalLastName = lastName || 
+                    const finallastname = lastname || 
                                         profile._json?.family_name || 
                                         profile._json?.familyName ||
                                         profile.familyName || '';
@@ -191,8 +191,8 @@ class OIDCProviders {
                                profile._json?.upn ||
                                profile.emails?.[0]?.value,
                         name: fullName,
-                        firstName: finalFirstName,
-                        lastName: finalLastName,
+                        firstname: finalFirstName,
+                        lastname: finallastname,
                         provider: 'azure',
                         tenantId: profile.tid || profile._json?.tid,
                         picture: profile._json?.picture || profile.picture

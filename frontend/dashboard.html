@@ -346,10 +346,10 @@
         function populateUserInfo(user) {
             if (!user) return;
 
-            // Create display name from firstName and lastName, fallback to email
-            const displayName = user.firstName && user.lastName
-                ? `${user.firstName} ${user.lastName}`
-                : user.firstName || user.email || 'User';
+            // Create display name from firstname and lastname, fallback to email
+            const displayName = user.firstname && user.lastname
+                ? `${user.firstname} ${user.lastname}`
+                : user.firstname || user.email || 'User';
 
             // Update navigation
             document.getElementById('userName').textContent = displayName;

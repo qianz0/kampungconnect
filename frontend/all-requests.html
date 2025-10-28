@@ -210,35 +210,6 @@
 
     <!-- Main Content -->
     <div class="container mt-4">
-        <!-- Page Header -->
-
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card welcome-card">
-                    <div class="card-body">
-                        <h2 class="card-title mb-3">
-                            <i class="fas fa-hand-wave me-2"></i>
-                            Welcome back, <span id="welcomeName">User</span>!
-                        </h2>
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <i class="fas fa-shield-alt fa-2x mb-2"></i>
-                                <p class="small">Secure Authentication</p>
-                            </div>
-                            <div class="col-md-4">
-                                <i class="fas fa-key fa-2x mb-2"></i>
-                                <p class="small">Single Sign-On</p>
-                            </div>
-                            <div class="col-md-4">
-                                <i class="fas fa-users fa-2x mb-2"></i>
-                                <p class="small">Connected Community</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <br>
         <div class="page-header">
             <div class="container">
                 <div class="d-flex justify-content-between align-items-center">
@@ -358,11 +329,11 @@
                 </button>
 
                 <div class="d-flex gap-2">
-                    <a href="/requests.html" class="btn btn-success">
+                    <a href="/requests.html" id="newRequestBtn" class="btn btn-success" style="display: None">
                         <i class="fas fa-plus me-1"></i>New Request
                     </a>
 
-                    <button class="btn btn-success" id="myRequestsBtn" style="background-color:#0d6efd; border-color:#0d6efd;">
+                    <button class="btn btn-success" id="myRequestsBtn" style="background-color:#0d6efd; border-color:#0d6efd; display: None;">
                         <i class="fas fa-user me-1"></i>My Requests
                     </button>
                 </div>
@@ -387,8 +358,6 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
-
-
         let allRequests = [];
         let currentUser = null;
 
@@ -426,6 +395,7 @@
 
                 if(currentUser.role === "senior") {
                     document.getElementById("myRequestsMenuItem").style.display = "block";
+                    document.getElementById('newRequestBtn').style.display = 'block';
                 }
 
                 const myRequestsBtn = document.getElementById("myRequestsBtn");
@@ -434,14 +404,6 @@
                     myRequestsBtn.addEventListener("click", function () {
                         window.location.href = "my-requests.html";
                     });
-                } else {
-                     myRequestsBtn.outerHTML = `
-                        <span data-bs-toggle="tooltip" title="Only seniors can access this feature">
-                            <button id="myRequestsBtn" class="btn btn-primary" disabled>
-                                <i class="fas fa-user me-1"></i>My Requests
-                            </button>
-                        </span>
-                    `;
                 }
 
                 // Initialize Bootstrap tooltips
@@ -681,27 +643,25 @@
         function populateUserInfo(user) {
             if (!user) return;
 
-            // Create display name from firstName and lastName, fallback to email
-            const displayName = user.firstName && user.lastName 
-                ? `${user.firstName} ${user.lastName}` 
-                : user.firstName || user.name || user.email || 'User';
+            // Create display name from firstname and lastname, fallback to email
+            const displayName = user.firstname && user.lastname 
+                ? `${user.firstname} ${user.lastname}` 
+                : user.firstname || user.name || user.email || 'User';
 
             // Update navigation
             document.getElementById('userName').textContent = displayName;
             const avatar = document.getElementById('userAvatar');
             avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
             avatar.alt = displayName;
-
-            // Update welcome section
-            document.getElementById('welcomeName').textContent = displayName;
         }
+
         async function offerHelp(requestId) {
             if (!currentUser) {
                 alert("Please log in first.");
                 return;
             }
 
-            // ✅ Only allow helpers
+            // Only allow helpers
             const allowedRoles = ['volunteer', 'caregiver', 'admin'];
             if (!allowedRoles.includes(currentUser.role)) {
                 alert("Only volunteers or caregivers can offer to help.");

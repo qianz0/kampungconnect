@@ -290,8 +290,8 @@ class AuthManager {
         console.log('[AuthManager] registerWithEmail() called');
         try {
             // Check if form elements exist
-            const firstNameEl = document.getElementById('regFirstName');
-            const lastNameEl = document.getElementById('regLastName');
+            const firstnameEl = document.getElementById('regFirstName');
+            const lastnameEl = document.getElementById('reglastname');
             const emailEl = document.getElementById('regEmail');
             const passwordEl = document.getElementById('regPassword');
             const confirmPasswordEl = document.getElementById('regConfirmPassword');
@@ -299,8 +299,8 @@ class AuthManager {
             const locationEl = document.getElementById('regLocation');
             
             console.log('[AuthManager] Form elements found:', {
-                firstName: !!firstNameEl,
-                lastName: !!lastNameEl,
+                firstname: !!firstnameEl,
+                lastname: !!lastnameEl,
                 email: !!emailEl,
                 password: !!passwordEl,
                 confirmPassword: !!confirmPasswordEl,
@@ -308,8 +308,8 @@ class AuthManager {
                 location: !!locationEl
             });
 
-            const firstName = firstNameEl?.value?.trim();
-            const lastName = lastNameEl?.value?.trim();
+            const firstname = firstnameEl?.value?.trim();
+            const lastname = lastnameEl?.value?.trim();
             const email = emailEl?.value?.trim();
             const password = passwordEl?.value;
             const confirmPassword = confirmPasswordEl?.value;
@@ -317,11 +317,11 @@ class AuthManager {
             const location = locationEl?.value?.trim();
 
             // Client-side validation
-            console.log('[AuthManager] Form values:', { firstName, lastName, email, password: '***', confirmPassword: '***', role, location });
+            console.log('[AuthManager] Form values:', { firstname, lastname, email, password: '***', confirmPassword: '***', role, location });
             
             const missingFields = [];
-            if (!firstName) missingFields.push('First Name');
-            if (!lastName) missingFields.push('Last Name');
+            if (!firstname) missingFields.push('First Name');
+            if (!lastname) missingFields.push('Last Name');
             if (!email) missingFields.push('Email');
             if (!password) missingFields.push('Password');
             if (!confirmPassword) missingFields.push('Confirm Password');
@@ -361,8 +361,8 @@ class AuthManager {
                 },
                 credentials: 'include',
                 body: JSON.stringify({ 
-                    firstName: firstName.trim(), 
-                    lastName: lastName.trim(),
+                    firstname: firstname.trim(), 
+                    lastname: lastname.trim(),
                     email: email.trim(), 
                     password: password, 
                     role: role || 'senior', 

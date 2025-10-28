@@ -18,7 +18,7 @@ async function findBestHelper(request) {
     // Fallback: any top-rated active helper
     const fallback = await db.query(`
       SELECT id,
-             CONCAT(firstName, ' ', lastName) AS name,
+             CONCAT(firstname, ' ', lastname) AS name,
              role,
              rating,
              location
@@ -36,7 +36,7 @@ async function findBestHelper(request) {
   // 2️. Find best helpers near or in same location
   const result = await db.query(`
     SELECT id,
-           CONCAT(firstName, ' ', lastName) AS name,
+           CONCAT(firstname, ' ', lastname) AS name,
            role,
            rating,
            location
@@ -53,7 +53,7 @@ async function findBestHelper(request) {
     console.warn(`⚠️ No helpers found in location '${seniorLocation}', using fallback`);
     const fallback = await db.query(`
       SELECT id,
-             CONCAT(firstName, ' ', lastName) AS name,
+             CONCAT(firstname, ' ', lastname) AS name,
              role,
              rating,
              location

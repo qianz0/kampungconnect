@@ -112,8 +112,8 @@ availableProviders.forEach(provider => {
                     const tokenPayload = {
                         id: dbUser.id,
                         email: dbUser.email,
-                        firstName: dbUser.firstName,
-                        lastName: dbUser.lastName,
+                        firstname: dbUser.firstname,
+                        lastname: dbUser.lastname,
                         provider: dbUser.provider,
                         role: dbUser.role,
                         lastLogin: previousLogin
@@ -159,10 +159,10 @@ availableProviders.forEach(provider => {
 // Register new user with email and password (Step 1: Create pending user and send OTP)
 app.post('/register', async (req, res) => {
     try {
-        const { email, password, firstName, lastName, role, location } = req.body;
+        const { email, password, firstname, lastname, role, location } = req.body;
 
         // Input validation
-        if (!email || !password || !firstName || !lastName) {
+        if (!email || !password || !firstname || !lastname) {
             return res.status(400).json({
                 error: 'Email, password, first name, and last name are required'
             });
@@ -197,8 +197,8 @@ app.post('/register', async (req, res) => {
         // Store as pending user
         await dbService.createPendingUser({
             email: email.toLowerCase(),
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
+            firstname: firstname.trim(),
+            lastname: lastname.trim(),
             passwordHash,
             role: role || 'senior',
             location: location?.trim() || null
@@ -209,8 +209,8 @@ app.post('/register', async (req, res) => {
         otpService.storeOTP(email.toLowerCase(), otp, 'signup');
         
         await otpService.sendOTP(email.toLowerCase(), otp, 'signup', {
-            firstName: firstName.trim(),
-            lastName: lastName.trim()
+            firstname: firstname.trim(),
+            lastname: lastname.trim()
         });
 
         res.status(200).json({
@@ -251,8 +251,8 @@ app.post('/verify-email', async (req, res) => {
         // Create actual user in database
         const newUser = await dbService.createEmailUser({
             email: pendingUser.email,
-            firstName: pendingUser.firstName,
-            lastName: pendingUser.lastName,
+            firstname: pendingUser.firstname,
+            lastname: pendingUser.lastname,
             passwordHash: pendingUser.password_hash,
             role: pendingUser.role,
             location: pendingUser.location
@@ -271,8 +271,8 @@ app.post('/verify-email', async (req, res) => {
         const tokenPayload = {
             id: newUser.id,
             email: newUser.email,
-            firstName: newUser.firstName,
-            lastName: newUser.lastName,
+            firstname: newUser.firstname,
+            lastname: newUser.lastname,
             provider: 'email',
             role: newUser.role,
             lastLogin: previousLogin
@@ -293,8 +293,8 @@ app.post('/verify-email', async (req, res) => {
             user: {
                 id: newUser.id,
                 email: newUser.email,
-                firstName: newUser.firstName,
-                lastName: newUser.lastName,
+                firstname: newUser.firstname,
+                lastname: newUser.lastname,
                 role: newUser.role,
                 provider: 'email',
                 location: newUser.location
@@ -326,8 +326,8 @@ app.post('/resend-otp', async (req, res) => {
             }
 
             const result = await otpService.resendOTP(email.toLowerCase(), otpType, {
-                firstName: pendingUser.firstName,
-                lastName: pendingUser.lastName
+                firstname: pendingUser.firstname,
+                lastname: pendingUser.lastname
             });
 
             if (!result.success) {
@@ -343,8 +343,8 @@ app.post('/resend-otp', async (req, res) => {
             }
 
             const result = await otpService.resendOTP(email.toLowerCase(), otpType, {
-                firstName: user.firstName,
-                lastName: user.lastName
+                firstname: user.firstname,
+                lastname: user.lastname
             });
 
             if (!result.success) {
@@ -404,8 +404,8 @@ app.post('/login', async (req, res) => {
         const tokenPayload = {
             id: user.id,
             email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
+            firstname: user.firstname,
+            lastname: user.lastname,
             provider: user.provider,
             role: user.role,
             lastLogin: previousLogin
@@ -426,8 +426,8 @@ app.post('/login', async (req, res) => {
             user: {
                 id: user.id,
                 email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
+                firstname: user.firstname,
+                lastname: user.lastname,
                 role: user.role,
                 provider: user.provider,
                 location: user.location
@@ -524,8 +524,8 @@ app.post('/request-password-reset', async (req, res) => {
         otpService.storeOTP(email.toLowerCase(), otp, 'password_reset');
         
         await otpService.sendOTP(email.toLowerCase(), otp, 'password_reset', {
-            firstName: user.firstName,
-            lastName: user.lastName
+            firstname: user.firstname,
+            lastname: user.lastname
         });
 
         res.json({
@@ -654,8 +654,8 @@ app.post('/update-role', jwtUtils.authenticateToken.bind(jwtUtils), async (req, 
         const tokenPayload = {
             id: updatedUser.id,
             email: updatedUser.email,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
+            firstname: updatedUser.firstname,
+            lastname: updatedUser.lastname,
             provider: updatedUser.provider,
             role: updatedUser.role
         };
@@ -675,8 +675,8 @@ app.post('/update-role', jwtUtils.authenticateToken.bind(jwtUtils), async (req, 
             user: {
                 id: updatedUser.id,
                 email: updatedUser.email,
-                firstName: updatedUser.firstName,
-                lastName: updatedUser.lastName,
+                firstname: updatedUser.firstname,
+                lastname: updatedUser.lastname,
                 role: updatedUser.role,
                 provider: updatedUser.provider,
                 location: updatedUser.location
@@ -692,11 +692,11 @@ app.post('/update-role', jwtUtils.authenticateToken.bind(jwtUtils), async (req, 
 // Update user profile (name and location)
 app.post('/update-profile', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
     try {
-        const { firstName, lastName, location } = req.body;
+        const { firstname, lastname, location } = req.body;
         const userId = req.user.id;
 
         // Input validation
-        if (!firstName || !lastName) {
+        if (!firstname || !lastname) {
             return res.status(400).json({
                 error: 'First name and last name are required'
             });
@@ -704,8 +704,8 @@ app.post('/update-profile', jwtUtils.authenticateToken.bind(jwtUtils), async (re
 
         // Update user profile
         const updatedUser = await dbService.updateUserProfile(userId, {
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
+            firstname: firstname.trim(),
+            lastname: lastname.trim(),
             location: location?.trim() || null
         });
         
@@ -717,8 +717,8 @@ app.post('/update-profile', jwtUtils.authenticateToken.bind(jwtUtils), async (re
         const tokenPayload = {
             id: updatedUser.id,
             email: updatedUser.email,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
+            firstname: updatedUser.firstname,
+            lastname: updatedUser.lastname,
             provider: updatedUser.provider,
             role: updatedUser.role
         };
@@ -738,8 +738,8 @@ app.post('/update-profile', jwtUtils.authenticateToken.bind(jwtUtils), async (re
             user: {
                 id: updatedUser.id,
                 email: updatedUser.email,
-                firstName: updatedUser.firstName,
-                lastName: updatedUser.lastName,
+                firstname: updatedUser.firstname,
+                lastname: updatedUser.lastname,
                 role: updatedUser.role,
                 provider: updatedUser.provider,
                 location: updatedUser.location,
@@ -767,8 +767,8 @@ app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
         res.json({
             id: user.id,
             email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
+            firstname: user.firstname,
+            lastname: user.lastname,
             picture: user.picture,
             provider: user.provider,
             role: user.role,
