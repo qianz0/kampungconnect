@@ -71,28 +71,6 @@ app.post('/postRequest', authMiddleware.authenticateToken, async (req, res) => {
 
         const newRequest = result.rows[0];
 
-        // Call priority router for urgent or high-priority requests
-        try {
-            if (["urgent", "high"].includes(urgency)) {
-                console.log(`Sending request ${newRequest.id} (${urgency}) to Priority Router...`);
-
-                await axios.post(`${process.env.PRIORITY_ROUTER_URL}/route`, {
-                    request_id: newRequest.id,
-                    urgency: urgency
-                }, {
-                    headers: {
-                        Authorization: req.headers.authorization,     // Forward token
-                    },
-                });
-
-                console.log("Priority Router triggered successfully!");
-            } else {
-                console.log(`Request ${newRequest.id} (${urgency}) added normally (no immediate routing).`);
-            }
-        } catch (err) {
-            console.error("Failed to trigger Priority Router:", err.message);
-        }
-
         // 2️⃣ Publish event to matching-service via RabbitMQ
         if (instantMatch) {
             try {
@@ -120,6 +98,39 @@ app.post('/postRequest', authMiddleware.authenticateToken, async (req, res) => {
                 : "Request posted successfully. Waiting for volunteers...",
             request: newRequest
         });
+
+        // If instant match not clicked, call priority router to queue
+        try {
+            console.log(`Sending request ${newRequest.id} (${urgency}) to Priority Router queue...`);
+
+            await axios.post(`${process.env.PRIORITY_ROUTER_URL}/route`, {
+                request_id: newRequest.id,
+                urgency: urgency
+            }, {
+                headers: { Authorization: req.headers.authorization }
+            });
+
+            console.log(`Request added to Priority Router`);
+
+            return res.json({
+                message: urgency === 'urgent'
+                    ? "Urgent request! Processing immediately via Priority Router..."
+                    : `Request added to ${urgency} priority queue. Will be matched in order.`,
+                request: newRequest,
+                queueInfo: {
+                    urgency: urgency,
+                    processingType: urgency === 'urgent' ? 'immediate' : 'queued'
+                },
+                matchType: "priority_router"
+            });
+        } catch (err) {
+            console.error("Failed to send to Priority Router:", err.message);
+            return res.status(500).json({
+                error: "Failed to process request through Priority Router",
+                request: newRequest
+            });
+        }
+
     } catch (error) {
         console.error('Post request error:', error);
         res.status(500).json({ error: 'Internal server error' });
