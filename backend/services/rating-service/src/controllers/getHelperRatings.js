@@ -12,7 +12,7 @@ const getHelperRatings = async (req, res) => {
     // Get ratings with rater info
     const ratingsQuery = await db.query(
       `SELECT r.id, r.score, r.comment, r.created_at,
-              u.firstName, u.lastName, u.picture
+              u.firstname, u.lastname, u.picture
        FROM ratings r
        JOIN users u ON r.rater_id = u.id
        WHERE r.ratee_id = $1

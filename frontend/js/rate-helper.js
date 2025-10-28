@@ -1,30 +1,53 @@
 // Configuration
 const API_URL = 'http://localhost:5006/api';
 let currentRating = 5;
-let authToken = null;
 
 // Initialize on page load
-window.addEventListener('DOMContentLoaded', () => {
-    authToken = localStorage.getItem('authToken');
-    
-    if (!authToken) {
-        showAlert('Please login to view ratings', 'error');
-        setTimeout(() => {
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Show loading overlay
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        
+        // Initialize AuthManager first
+        await window.AuthManager.initialize();
+        
+        // Check authentication before loading ratings
+        const isAuthenticated = await window.AuthManager.checkAuthentication();
+        if (!isAuthenticated) {
             window.location.href = '/login.html';
-        }, 2000);
-        return;
-    }
+            return;
+        }
 
-    loadPendingRatings();
+        // Get user info and update UI
+        const currentUser = window.AuthManager.getCurrentUser();
+        if (currentUser) {
+            // Update user info in navbar
+            document.getElementById('userName').textContent = 
+                currentUser.firstname && currentUser.lastname 
+                    ? `${currentUser.firstname} ${currentUser.lastname}`
+                    : currentUser.email;
+            
+            const avatar = document.getElementById('userAvatar');
+            avatar.src = currentUser.picture || 
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.firstname + ' ' + currentUser.lastname)}&background=6c757d&color=fff`;
+            avatar.alt = currentUser.firstname + ' ' + currentUser.lastname;
+        }
+        
+        await loadPendingRatings();
+        document.getElementById('loadingOverlay').style.display = 'none';
+    } catch (error) {
+        console.error('Failed to initialize:', error);
+        showAlert('Failed to load ratings. Please try again later.', 'danger');
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
 });
 
 // Load pending ratings
 async function loadPendingRatings() {
     try {
-        const response = await fetch(`${API_URL}/ratings/pending-ratings`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
+        // Use AuthManager for authenticated requests
+        const response = await window.AuthManager.authenticatedFetch(`${API_URL}/ratings/pending-ratings`, {
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -36,9 +59,10 @@ async function loadPendingRatings() {
 
     } catch (error) {
         console.error('Error loading pending ratings:', error);
+        const errorMessage = error.response ? error.response.data.error : error.message;
         document.getElementById('pendingList').innerHTML = `
             <div class="empty-state">
-                <p style="color: #e74c3c;">❌ Failed to load pending ratings</p>
+                <p style="color: #e74c3c;">❌ Failed to load pending ratings: ${errorMessage}</p>
             </div>
         `;
     }
@@ -50,27 +74,34 @@ function displayPendingRatings(ratings) {
 
     if (ratings.length === 0) {
         pendingList.innerHTML = `
-            <div class="empty-state">
-                <h3>All Caught Up! 🎉</h3>
-                <p>You don't have any pending ratings</p>
+            <div class="text-center py-5">
+                <div class="display-1 text-muted mb-4">🎉</div>
+                <h4 class="text-muted mb-2">All Caught Up!</h4>
+                <p class="text-muted">You don't have any pending ratings</p>
             </div>
         `;
         return;
     }
 
     pendingList.innerHTML = ratings.map(rating => {
-        const initials = `${rating.firstname.charAt(0)}${rating.lastname.charAt(0)}`.toUpperCase();
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(rating.firstname + ' ' + rating.lastname)}&background=6c757d&color=fff`;
         return `
-            <div class="pending-item" onclick="openRatingModal(${rating.match_id}, '${rating.firstname} ${rating.lastname}', '${rating.title}')">
-                <div class="helper-avatar">${initials}</div>
-                <div class="helper-info">
-                    <div class="helper-name">${rating.firstname} ${rating.lastname}</div>
-                    <div class="request-title">${rating.title}</div>
-                    <span class="request-category">${rating.category}</span>
+            <div class="card mb-3 hover-shadow cursor-pointer" onclick="openRatingModal(${rating.match_id}, '${rating.firstname} ${rating.lastname}', '${rating.title}')">
+                <div class="card-body d-flex align-items-center py-3">
+                    <img src="${avatarUrl}" 
+                         class="rounded-circle me-3" 
+                         alt="${rating.firstname} ${rating.lastname}"
+                         width="48" height="48">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">${rating.firstname} ${rating.lastname}</h5>
+                        <p class="card-text text-muted mb-2">${rating.title}</p>
+                        <span class="badge bg-secondary">${rating.category}</span>
+                    </div>
+                    <button class="btn btn-primary ms-3" 
+                            onclick="event.stopPropagation(); openRatingModal(${rating.match_id}, '${rating.firstname} ${rating.lastname}', '${rating.title}')">
+                        <i class="fas fa-star me-2"></i>Rate Helper
+                    </button>
                 </div>
-                <button class="rate-btn" onclick="event.stopPropagation(); openRatingModal(${rating.match_id}, '${rating.firstname} ${rating.lastname}', '${rating.title}')">
-                    Rate Helper
-                </button>
             </div>
         `;
     }).join('');
@@ -83,12 +114,17 @@ function openRatingModal(matchId, helperName, requestTitle) {
     document.getElementById('modalRequestTitle').textContent = requestTitle;
     document.getElementById('ratingComment').value = '';
     setRating(5); // Reset to default
-    document.getElementById('ratingModal').classList.add('active');
+    
+    const ratingModal = new bootstrap.Modal(document.getElementById('ratingModal'));
+    ratingModal.show();
 }
 
 // Close modal
 function closeModal() {
-    document.getElementById('ratingModal').classList.remove('active');
+    const ratingModal = bootstrap.Modal.getInstance(document.getElementById('ratingModal'));
+    if (ratingModal) {
+        ratingModal.hide();
+    }
 }
 
 // Set star rating
@@ -116,12 +152,8 @@ async function submitRating(event) {
     const comment = document.getElementById('ratingComment').value.trim();
 
     try {
-        const response = await fetch(`${API_URL}/ratings`, {
+        const response = await window.AuthManager.authenticatedFetch(`${API_URL}/ratings`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
             body: JSON.stringify({
                 matchId,
                 score: currentRating,
@@ -155,11 +187,19 @@ async function submitRating(event) {
 // Show alert message
 function showAlert(message, type) {
     const alertBox = document.getElementById('alertBox');
-    alertBox.textContent = message;
-    alertBox.className = `alert alert-${type} show`;
+    alertBox.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-exclamation-circle text-danger'} me-2"></i>
+            ${message}
+        </div>
+    `;
+    alertBox.className = `alert alert-${type === 'success' ? 'success' : 'danger'} d-flex align-items-center fade show`;
     
     setTimeout(() => {
         alertBox.classList.remove('show');
+        setTimeout(() => {
+            alertBox.className = 'alert d-none';
+        }, 150);
     }, 5000);
 }
 

@@ -10,7 +10,7 @@ const getMyRatings = async (req, res) => {
   try {
     const ratingsQuery = await db.query(
       `SELECT r.id, r.score, r.comment, r.created_at,
-              u.firstName, u.lastName, u.picture, u.rating as helper_rating,
+              u.firstname, u.lastname, u.picture, u.rating as helper_rating,
               m.id as match_id, req.title, req.category
        FROM ratings r
        JOIN users u ON r.ratee_id = u.id

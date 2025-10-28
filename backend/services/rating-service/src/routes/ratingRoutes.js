@@ -1,13 +1,15 @@
 const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const router = express.Router();
 
-const AuthMiddleware = require('../middleware/auth');
+const AuthMiddleware = require('../../shared/auth-middleware');
 
 // Import individual controller functions
 const createRating = require('../controllers/createRating');
 const getHelperRatings = require('../controllers/getHelperRatings');
 const getMyRatings = require('../controllers/getMyRatings');
-const updateRating = require('../controllers/getPendingRatings');
+const updateRating = require('../controllers/updateRating');
 const deleteRating = require('../controllers/deleteRating');
 const getPendingRatings = require('../controllers/getPendingRatings');
 
@@ -17,7 +19,7 @@ const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 // ==================
 // Public endpoint - Get helper ratings (anyone can view)
 // ==================
-router.get('/helper/:helperId', getHelperRatings);
+router.get('/helper/:helperId', authMiddleware.authenticateToken, getHelperRatings);
 
 // ==================
 // Protected endpoints (require authentication)

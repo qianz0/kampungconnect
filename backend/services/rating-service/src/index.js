@@ -9,20 +9,17 @@ const cookieParser = require('cookie-parser');
 const db = require('./db');
 const ratingRoutes = require('./routes/ratingRoutes');
 
-const AuthMiddleware = require('./middleware/auth');
+// Import authentication middleware
+const AuthMiddleware = require('../shared/auth-middleware');
 
 const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 
-// ==================
 // Middleware setup
-// ================== 
-app.use(
-  cors({
+app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:8080',
-    credentials: true,
-  })
-);
+    credentials: true
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -43,13 +40,18 @@ app.use('/api/ratings', ratingRoutes);
 // ==================
 app.use((err, req, res, next) => {
   console.error('Rating-service error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('Stack trace:', err.stack);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: err.message,
+    path: req.path
+  });
 });
 
 // ==================
 // Start server
 // ==================
-const PORT = process.env.PORT || 5006;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Rating-service running on port ${PORT}`);
 });
