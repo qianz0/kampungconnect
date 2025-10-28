@@ -463,9 +463,6 @@
             const avatar = document.getElementById('userAvatar');
             avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
             avatar.alt = displayName;
-
-            // Update welcome section
-            document.getElementById('welcomeName').textContent = displayName;
         }
 
         // Populate request details
