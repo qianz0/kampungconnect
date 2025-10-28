@@ -329,11 +329,11 @@
                 </button>
 
                 <div class="d-flex gap-2">
-                    <a href="/requests.html" class="btn btn-success">
+                    <a href="/requests.html" id="newRequestBtn" class="btn btn-success" style="display: None">
                         <i class="fas fa-plus me-1"></i>New Request
                     </a>
 
-                    <button class="btn btn-success" id="myRequestsBtn" style="background-color:#0d6efd; border-color:#0d6efd;">
+                    <button class="btn btn-success" id="myRequestsBtn" style="background-color:#0d6efd; border-color:#0d6efd; display: None;">
                         <i class="fas fa-user me-1"></i>My Requests
                     </button>
                 </div>
@@ -358,8 +358,6 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script>
-
-
         let allRequests = [];
         let currentUser = null;
 
@@ -397,6 +395,7 @@
 
                 if(currentUser.role === "senior") {
                     document.getElementById("myRequestsMenuItem").style.display = "block";
+                    document.getElementById('newRequestBtn').style.display = 'block';
                 }
 
                 const myRequestsBtn = document.getElementById("myRequestsBtn");
@@ -405,14 +404,6 @@
                     myRequestsBtn.addEventListener("click", function () {
                         window.location.href = "my-requests.html";
                     });
-                } else {
-                     myRequestsBtn.outerHTML = `
-                        <span data-bs-toggle="tooltip" title="Only seniors can access this feature">
-                            <button id="myRequestsBtn" class="btn btn-primary" disabled>
-                                <i class="fas fa-user me-1"></i>My Requests
-                            </button>
-                        </span>
-                    `;
                 }
 
                 // Initialize Bootstrap tooltips
