@@ -173,7 +173,7 @@ app.get('/requests/all', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const results = await db.query(
             ` SELECT r.*, 
-         CONCAT(u.firstName, ' ', u.lastName) AS requester_name, 
+         CONCAT(u.firstname, ' ', u.lastname) AS requester_name, 
          u.role AS requester_role,
          COALESCE(
            (SELECT COUNT(*) FROM offers o WHERE o.request_id = r.id),
@@ -200,7 +200,7 @@ app.get('/requests/latest3/all', authMiddleware.authenticateToken, async (req, r
     try {
         const results = await db.query(
             `SELECT r.*, 
-       CONCAT(u.firstName, ' ', u.lastName) AS requester_name, 
+       CONCAT(u.firstname, ' ', u.lastname) AS requester_name, 
        u.role AS requester_role
 FROM requests r
 JOIN users u ON r.user_id = u.id
@@ -266,10 +266,10 @@ app.get('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
 
         const result = await db.query(
             `SELECT r.*,
-                    CONCAT(poster.firstName, ' ', poster.lastName) AS requester_name,
+                    CONCAT(poster.firstname, ' ', poster.lastname) AS requester_name,
                     poster.role AS requester_role,
                     poster.email AS requester_email,
-                    CONCAT(helper.firstName, ' ', helper.lastName) AS helper_name,
+                    CONCAT(helper.firstname, ' ', helper.lastname) AS helper_name,
                     helper.email AS helper_email,
                     m.helper_id,
                     m.status AS match_status,
@@ -383,7 +383,7 @@ app.get("/requests/:id/offers", authMiddleware.authenticateToken, async (req, re
         const requestId = req.params.id;
         const results = await db.query(`
       SELECT o.id, o.helper_id, o.status, o.created_at,
-             CONCAT(u.firstName, ' ', u.lastName) AS helper_name,
+             CONCAT(u.firstname, ' ', u.lastname) AS helper_name,
              u.role AS helper_role
       FROM offers o
       JOIN users u ON o.helper_id = u.id
@@ -447,12 +447,12 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
 
         // 6 fetch contact details of both side
         const helper = await db.query(
-            `SELECT id, CONCAT(firstName, ' ', lastName) AS name, email FROM users WHERE id = $1`,
+            `SELECT id, CONCAT(firstname, ' ', lastname) AS name, email FROM users WHERE id = $1`,
             [helper_id]
         );
 
         const senior = await db.query(
-            `SELECT id, CONCAT(firstName, ' ', lastName) AS name, email FROM users WHERE id = $1`,
+            `SELECT id, CONCAT(firstname, ' ', lastname) AS name, email FROM users WHERE id = $1`,
             [requester_id]
         );
 
@@ -515,7 +515,7 @@ app.get('/requests/:id/responses', authMiddleware.authenticateToken, async (req,
 
         const result = await db.query(
             `SELECT r.id, r.message, r.created_at, r.parent_id,
-       CONCAT(u.firstName, ' ', u.lastName) AS responder_name,
+       CONCAT(u.firstname, ' ', u.lastname) AS responder_name,
        u.role as responder_role
 FROM responses r
 JOIN users u ON r.user_id = u.id
@@ -547,7 +547,7 @@ app.get('/matches', authMiddleware.authenticateToken, async (req, res) => {
         const results = await db.query(`
       SELECT m.*, 
        r.id AS request_id, r.title, r.category, r.description, r.urgency,
-       CONCAT(u.firstName, ' ', u.lastName) AS requester_name,
+       CONCAT(u.firstname, ' ', u.lastname) AS requester_name,
        u.email AS requester_email
 FROM matches m
 JOIN requests r ON m.request_id = r.id

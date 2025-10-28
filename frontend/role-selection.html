@@ -317,10 +317,10 @@
                     // Display user's name
                     const userName = document.getElementById('userName');
                     if (userName) {
-                        // Create display name from firstName and lastName, fallback to email
-                        const displayName = currentUser.firstName && currentUser.lastName 
-                            ? `${currentUser.firstName} ${currentUser.lastName}` 
-                            : currentUser.firstName || currentUser.name || currentUser.email || 'there';
+                        // Create display name from firstname and lastname, fallback to email
+                        const displayName = currentUser.firstname && currentUser.lastname 
+                            ? `${currentUser.firstname} ${currentUser.lastname}` 
+                            : currentUser.firstname || currentUser.name || currentUser.email || 'there';
                         userName.textContent = displayName;
                     }
                     

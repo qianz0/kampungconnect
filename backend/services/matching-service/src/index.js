@@ -37,8 +37,8 @@ app.get("/matches", authMiddleware.authenticateToken, async (req, res) => {
     const result = await db.query(`
       SELECT m.*, 
        r.title, r.category, r.urgency,
-       CONCAT(s.firstName, ' ', s.lastName) AS senior_name,
-       CONCAT(h.firstName, ' ', h.lastName) AS helper_name
+       CONCAT(s.firstname, ' ', s.lastname) AS senior_name,
+       CONCAT(h.firstname, ' ', h.lastname) AS helper_name
 FROM matches m
 JOIN requests r ON m.request_id = r.id
 JOIN users s ON r.user_id = s.id
@@ -62,7 +62,7 @@ app.get("/matches/senior", authMiddleware.authenticateToken, async (req, res) =>
       `
     SELECT m.*, 
        r.title, r.category, r.urgency, r.status AS request_status,
-       CONCAT(h.firstName, ' ', h.lastName) AS helper_name,
+       CONCAT(h.firstname, ' ', h.lastname) AS helper_name,
        h.rating AS helper_rating
 FROM matches m
 JOIN requests r ON m.request_id = r.id
@@ -90,7 +90,7 @@ app.get("/matches/helper", authMiddleware.authenticateToken, async (req, res) =>
       `
     SELECT m.*, 
        r.title, r.category, r.urgency, r.status AS request_status,
-       CONCAT(s.firstName, ' ', s.lastName) AS senior_name,
+       CONCAT(s.firstname, ' ', s.lastname) AS senior_name,
        s.rating AS senior_rating
 FROM matches m
 JOIN requests r ON m.request_id = r.id
@@ -114,7 +114,7 @@ ORDER BY m.matched_at DESC
 app.get("/helpers/available", authMiddleware.authenticateToken, async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT id, firstName, lastName, rating, role
+      SELECT id, firstname, lastname, rating, role
       FROM users
       WHERE role IN ('volunteer', 'caregiver')
         AND is_active = TRUE
@@ -182,8 +182,8 @@ app.post("/matches/:id/complete", authMiddleware.authenticateToken, async (req, 
     await db.query(`UPDATE matches SET status = 'completed' WHERE id = $1`, [matchId]);
     await db.query(`UPDATE requests SET status = 'fulfilled' WHERE id = $1`, [requestId]);
 
-    // Update helper availability to 'available'
-    await db.query(`UPDATE users SET availability = 'available' WHERE id = $1`, [helperId]);
+    // Update helper active to true
+    await db.query(`UPDATE users SET is_active = TRUE WHERE id = $1`, [helperId]);
 
     res.json({ message: "Request marked as completed successfully." });
   } catch (err) {
@@ -228,8 +228,8 @@ async function handleNewRequest(request) {
     // Update the request to 'matched'
     await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
 
-    // Update the helper availability to 'busy'
-    await db.query(`UPDATE users SET availability = 'busy' WHERE id = $1`, [helper.id]);
+    // Update the helper active to false
+    await db.query(`UPDATE users SET is_active = FALSE WHERE id = $1`, [helper.id]);
 
     console.log("✅ Match created:", result.rows[0]);
   } catch (err) {

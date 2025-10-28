@@ -127,9 +127,9 @@
 
     function populateUserInfo(user) {
       if (!user) return;
-      document.getElementById('userName').textContent = user.firstName + " " + user.lastName || 'User';
+      document.getElementById('userName').textContent = user.firstname + " " + user.lastname || 'User';
       const avatar = document.getElementById('userAvatar');
-      avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName + " " + user.lastName || 'User')}&background=6c757d&color=fff`;
+      avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstname + " " + user.lastname || 'User')}&background=6c757d&color=fff`;
     }
 
     const apiBase = "http://localhost:5003";

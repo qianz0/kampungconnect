@@ -178,7 +178,7 @@
                         <span class="info-label">
                             <i class="fas fa-signature me-2"></i>Last Name
                         </span>
-                        <span class="info-value" id="infoLastName">-</span>
+                        <span class="info-value" id="infolastname">-</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">
@@ -273,8 +273,8 @@
                                 <input type="text" class="form-control" id="editFirstName" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="editLastName" class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="editLastName" required>
+                                <label for="editlastname" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="editlastname" required>
                             </div>
                         </div>
 
@@ -465,8 +465,8 @@
         function populateProfile(user) {
             if (!user) return;
 
-            const displayName = user.firstName && user.lastName
-                ? `${user.firstName} ${user.lastName}`
+            const displayName = user.firstname && user.lastname
+                ? `${user.firstname} ${user.lastname}`
                 : user.email || 'User';
 
             const avatarUrl = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=150`;
@@ -494,8 +494,8 @@
             roleBadge.className = `badge badge-role ${roleBadgeClass[user.role] || 'bg-secondary'} mt-2`;
 
             // Account information
-            document.getElementById('infoFirstName').textContent = user.firstName || '-';
-            document.getElementById('infoLastName').textContent = user.lastName || '-';
+            document.getElementById('infoFirstName').textContent = user.firstname || '-';
+            document.getElementById('infolastname').textContent = user.lastname || '-';
             document.getElementById('infoEmail').textContent = user.email || '-';
 
             const providerName = {
@@ -541,8 +541,8 @@
             if (!currentUser) return;
 
             // Pre-fill form with current values
-            document.getElementById('editFirstName').value = currentUser.firstName || '';
-            document.getElementById('editLastName').value = currentUser.lastName || '';
+            document.getElementById('editFirstName').value = currentUser.firstname || '';
+            document.getElementById('editlastname').value = currentUser.lastname || '';
             document.getElementById('editEmail').value = currentUser.email || '';
             document.getElementById('editRole').value = currentUser.role
                 ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)
@@ -559,11 +559,11 @@
         document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const firstName = document.getElementById('editFirstName').value.trim();
-            const lastName = document.getElementById('editLastName').value.trim();
+            const firstname = document.getElementById('editFirstName').value.trim();
+            const lastname = document.getElementById('editlastname').value.trim();
             const location = document.getElementById('editLocation').value.trim();
 
-            if (!firstName || !lastName) {
+            if (!firstname || !lastname) {
                 showEditAlert('First name and last name are required');
                 return;
             }
@@ -576,7 +576,7 @@
                 const authManager = await waitForAuthManager();
                 const response = await authManager.authenticatedFetch('http://localhost:5001/update-profile', {
                     method: 'POST',
-                    body: JSON.stringify({ firstName, lastName, location })
+                    body: JSON.stringify({ firstname, lastname, location })
                 });
 
                 const data = await response.json();

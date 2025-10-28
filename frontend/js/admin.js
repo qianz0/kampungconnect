@@ -163,7 +163,7 @@ class AdminDashboard {
                         <th onclick="adminDashboard.sortUsers('email')">
                             Email <i class="fas fa-sort sort-icon"></i>
                         </th>
-                        <th onclick="adminDashboard.sortUsers('firstName')">
+                        <th onclick="adminDashboard.sortUsers('firstname')">
                             Name <i class="fas fa-sort sort-icon"></i>
                         </th>
                         <th onclick="adminDashboard.sortUsers('role')">
@@ -283,7 +283,7 @@ class AdminDashboard {
                     <td>${req.category || 'N/A'}</td>
                     <td><span class="badge ${req.urgency}">${req.urgency}</span></td>
                     <td><span class="badge ${req.status}">${req.status}</span></td>
-                    <td>${this.escapeHtml(req.user_firstname || '')} ${this.escapeHtml(req.user_lastname || '')}</td>
+                    <td>${this.escapeHtml(req.user_firstName || '')} ${this.escapeHtml(req.user_lastName || '')}</td>
                     <td>${new Date(req.created_at).toLocaleDateString()}</td>
                     <td>
                         <div class="action-buttons">
@@ -365,8 +365,8 @@ class AdminDashboard {
                     <td>${match.id}</td>
                     <td>${this.escapeHtml(match.request_title || 'N/A')}</td>
                     <td>${match.request_category || 'N/A'}</td>
-                    <td>${this.escapeHtml(match.requester_firstname || '')} ${this.escapeHtml(match.requester_lastname || '')}</td>
-                    <td>${this.escapeHtml(match.helper_firstname || '')} ${this.escapeHtml(match.helper_lastname || '')}</td>
+                    <td>${this.escapeHtml(match.requester_firstName || '')} ${this.escapeHtml(match.requester_lastName || '')}</td>
+                    <td>${this.escapeHtml(match.helper_firstName || '')} ${this.escapeHtml(match.helper_lastName || '')}</td>
                     <td><span class="badge ${match.status}">${match.status}</span></td>
                     <td>${new Date(match.matched_at).toLocaleDateString()}</td>
                 </tr>
@@ -440,8 +440,8 @@ class AdminDashboard {
             html += `
                 <tr>
                     <td>${rating.id}</td>
-                    <td>${this.escapeHtml(rating.rater_firstname || '')} ${this.escapeHtml(rating.rater_lastname || '')}</td>
-                    <td>${this.escapeHtml(rating.ratee_firstname || '')} ${this.escapeHtml(rating.ratee_lastname || '')}</td>
+                    <td>${this.escapeHtml(rating.rater_firstName || '')} ${this.escapeHtml(rating.rater_lastName || '')}</td>
+                    <td>${this.escapeHtml(rating.ratee_firstName || '')} ${this.escapeHtml(rating.ratee_lastName || '')}</td>
                     <td>${stars} (${rating.score})</td>
                     <td>${this.escapeHtml(rating.comment || 'No comment')}</td>
                     <td>${new Date(rating.created_at).toLocaleDateString()}</td>
@@ -1120,7 +1120,7 @@ class AdminDashboard {
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Requester:</div>
-                    <div class="detail-value">${this.escapeHtml(data.request.user_firstname || '')} ${this.escapeHtml(data.request.user_lastname || '')} (${this.escapeHtml(data.request.user_email)})</div>
+                    <div class="detail-value">${this.escapeHtml(data.request.user_firstName || '')} ${this.escapeHtml(data.request.user_lastName || '')} (${this.escapeHtml(data.request.user_email)})</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Location:</div>
@@ -1132,11 +1132,11 @@ class AdminDashboard {
                 </div>
                 <h4 style="margin-top: 20px;">Matches (${data.matches.length})</h4>
                 ${data.matches.length === 0 ? '<p>No matches</p>' : data.matches.map(m => `
-                    <p>Helper: ${this.escapeHtml(m.helper_firstname)} ${this.escapeHtml(m.helper_lastname)} - Status: ${m.status}</p>
+                    <p>Helper: ${this.escapeHtml(m.helper_firstName)} ${this.escapeHtml(m.helper_lastName)} - Status: ${m.status}</p>
                 `).join('')}
                 <h4 style="margin-top: 20px;">Responses (${data.responses.length})</h4>
                 ${data.responses.length === 0 ? '<p>No responses</p>' : data.responses.map(r => `
-                    <p>${this.escapeHtml(r.responder_firstname)} ${this.escapeHtml(r.responder_lastname)}: ${this.escapeHtml(r.message)}</p>
+                    <p>${this.escapeHtml(r.responder_firstName)} ${this.escapeHtml(r.responder_lastName)}: ${this.escapeHtml(r.message)}</p>
                 `).join('')}
             `;
 
