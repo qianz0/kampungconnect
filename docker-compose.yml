@@ -43,7 +43,8 @@ services:
       - ./backend/shared:/app/shared
   
   rabbitmq:
-      image: rabbitmq:3-management
+      image: rabbitmq:3.13-management
+      container_name: rabbitmq
       ports:
         - "5672:5672"    # Main AMQP port
         - "15672:15672"  # Web management UI
@@ -68,7 +69,6 @@ services:
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth-service:5000
-      - PRIORITY_ROUTER_URL=http://priority-router-service:5000
       - DB_HOST=db
       - DB_PORT=5432
       - DB_NAME=kampungconnect
@@ -82,8 +82,7 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
-      priority-router-service:
-        condition: service_started
+
     volumes:
       - ./backend/shared:/app/shared   
   
@@ -131,27 +130,7 @@ services:
     volumes:
       - ./backend/shared:/app/shared
 
-  priority-router-service:
-    build: ./backend/services/priority-router-service
-    ports:
-      - "5005:5000"
-    environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - AUTH_SERVICE_URL=http://auth-service:5000
-      - MATCHING_SERVICE_URL=http://matching-service:5003
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=kampungconnect
-      - DB_USER=admin
-      - DB_PASSWORD=password
-    depends_on:
-      - db
-      - auth-service
-      - matching-service
-    volumes:
-      - ./backend/shared:/app/shared
-
+  
   rating-service:
     build: ./backend/services/rating-service
     ports:
@@ -244,8 +223,6 @@ services:
       matching-service:
         condition: service_started
       notification-service:
-        condition: service_started
-      priority-router-service:
         condition: service_started
       rating-service:
         condition: service_started

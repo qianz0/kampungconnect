@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const db = require("./db"); // your db.js file
-const { connectQueue, consumeQueue } = require("./queue");
+const { connectQueue, consumeQueue, publishMessage } = require("./queue");
 const { findBestHelper } = require("./matcher");
 const AuthMiddleware = require("/app/shared/auth-middleware");
 
@@ -209,9 +209,9 @@ async function handleNewRequest(request) {
     const helper = await findBestHelper(request);
 
     if (!helper) {
-        console.log(`⚠️ No helper found for request ${request.id}. Retrying in 30s...`);
-        await channel.sendToQueue("request_retry", Buffer.from(JSON.stringify(request)), { persistent: true });
-        return;
+      console.log(`⚠️ No helper found for request ${request.id}. Retrying in 30s...`);
+      await publishMessage("request_retry", request);
+      return;
     }
 
     // Insert match into DB
@@ -225,8 +225,7 @@ async function handleNewRequest(request) {
     // Update the request to 'matched'
     await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
 
-    // Update the helper active to false
-    await db.query(`UPDATE users SET is_active = FALSE WHERE id = $1`, [helper.id]);
+   
 
     console.log("✅ Match created:", result.rows[0]);
   } catch (err) {
