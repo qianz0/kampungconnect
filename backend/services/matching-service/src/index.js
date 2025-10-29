@@ -228,8 +228,7 @@ async function handleNewRequest(request) {
     // Update the request to 'matched'
     await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
 
-    // Update the helper active to false
-    await db.query(`UPDATE users SET is_active = FALSE WHERE id = $1`, [helper.id]);
+   
 
     console.log("✅ Match created:", result.rows[0]);
   } catch (err) {

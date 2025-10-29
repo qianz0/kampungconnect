@@ -8,6 +8,9 @@ let onConnectedCallback = null;
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
 
+
+
+
 /**
  * Connect to RabbitMQ (with automatic reconnects)
  */
