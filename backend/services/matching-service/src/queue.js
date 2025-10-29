@@ -68,7 +68,7 @@ async function setupRetryQueue(ch) {
     arguments: {
       "x-dead-letter-exchange": "",
       "x-dead-letter-routing-key": "request_created",
-      "x-message-ttl": 30000 // retry every 30 seconds
+      "x-message-ttl": 5000 // retry every 30 seconds
     }
   });
 }
@@ -90,13 +90,22 @@ async function setupRetryQueue(ch) {
 async function publishMessage(queueName, message) {
   try {
     if (!channel) await connectQueue();
-    await assertQueueWithDLQ(channel, queueName); // ensure both main & DLQ exist
-    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), { persistent: true });
+
+    // 🚫 Do not reassert retry queue (already declared with TTL)
+    if (queueName !== "request_retry") {
+      await assertQueueWithDLQ(channel, queueName);
+    }
+
+    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
+      persistent: true,
+    });
+
     console.log(`📤 [matching-service] Sent message to queue: ${queueName}`);
   } catch (err) {
     console.error("❌ [matching-service] Failed to publish message:", err);
   }
 }
+
 
 /**
  * Consume messages from a queue
