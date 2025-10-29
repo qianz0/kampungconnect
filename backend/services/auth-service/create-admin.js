@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 
 // Database configuration
 const pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || 'db',
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'kampungconnect',
     user: process.env.DB_USER || 'admin',

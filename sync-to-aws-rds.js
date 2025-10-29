@@ -3,7 +3,7 @@ require('dotenv').config();
 
 // Local database configuration
 const localConfig = {
-    host: 'localhost', // Local Docker container
+    host: 'db', // Local Docker container
     port: 5432,
     database: process.env.DB_NAME || 'kampungconnect',
     user: process.env.DB_USER || 'admin',

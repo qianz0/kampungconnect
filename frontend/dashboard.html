@@ -101,6 +101,11 @@
                             </a>
                         </li>
                         <li>
+                            <a class="dropdown-item" href="./my-stats.html">
+                                <i class="fas fa-chart-bar me-2"></i>My Stats
+                            </a>
+                        </li>
+                        <li>
                             <hr class="dropdown-divider">
                         </li>
                         <li>
@@ -183,14 +188,29 @@
                 </div>
             </div>
         </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">My Matches</h5>
+                        <p class="card-text">View your connected helpers or assigned seniors.</p>
+                        <div id="matchButtonContainer"></div>
+                    </div>
+                </div>
+            </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card feature-card h-100">
-                <div class="card-body text-center">
-                    <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
-                    <h5 class="card-title">My Matches</h5>
-                    <p class="card-text">View your connected helpers or assigned seniors.</p>
-                    <div id="matchButtonContainer"></div>
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-bar fa-3x text-purple mb-3"></i>
+                        <h5 class="card-title">My Statistics</h5>
+                        <p class="card-text">View your activity stats, badges, and performance.</p>
+                        <a href="my-stats.html" class="btn btn-info">
+                            <i class="fas fa-chart-line me-1"></i>View My Stats
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
