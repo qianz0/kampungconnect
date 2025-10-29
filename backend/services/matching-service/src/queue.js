@@ -73,7 +73,7 @@ async function setupRetryQueue(ch) {
     arguments: {
       "x-dead-letter-exchange": "",
       "x-dead-letter-routing-key": "request_created",
-      "x-message-ttl": 5000, // 5 seconds retry
+      "x-message-ttl": 5000, // 5 seconds retry (for testing)
     },
   });
 }
