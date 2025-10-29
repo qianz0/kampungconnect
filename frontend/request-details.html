@@ -162,8 +162,36 @@
         .response-item:hover {
         background: #f8f9fa;
         }
-            
 
+        .clickable-name {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+        }
+
+        .clickable-name:hover {
+        color: #667eea;
+        text-decoration-style: solid;
+        }
+
+        .offer-card-clickable {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        }
+
+        .offer-card-clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: #f8f9fa;
+        }
+
+        .stat-item {
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 
@@ -318,9 +346,6 @@
             </div>
         </div>
 
- 
-
-
         <!-- Action Buttons -->
         <div class="card detail-card">
             <div class="card-body">
@@ -372,6 +397,57 @@
             <div class="card-body">
                 <div id="timeline">
                     <!-- Timeline will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Helper Stats Modal -->
+    <div class="modal fade" id="helperStatsModal" tabindex="-1" aria-labelledby="helperStatsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="helperStatsModalLabel">
+                        <i class="fas fa-chart-line me-2"></i>Helper Statistics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="helperStatsContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="acceptOfferFromModal" style="display: none;">
+                        <i class="fas fa-check me-1"></i>Accept This Helper
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Senior Stats Modal -->
+    <div class="modal fade" id="seniorStatsModal" tabindex="-1" aria-labelledby="seniorStatsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="seniorStatsModalLabel">
+                        <i class="fas fa-chart-line me-2"></i>Senior Statistics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="seniorStatsContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -469,10 +545,8 @@
         function populateRequestDetails(req) {
             currentRequest = req;
 
-       
-
             // Basic info
-            document.getElementById('posterName').innerHTML = `Posted by <br><br>${req.requester_name} (${req.requester_role})`;
+            document.getElementById('posterName').innerHTML = `Posted by <br><br><span class="clickable-name" onclick="viewSeniorStats(${req.user_id}, '${req.requester_name}')">${req.requester_name}</span> (${req.requester_role})`;
             document.getElementById('title').textContent = req.title.charAt(0).toUpperCase() + req.title.slice(1);
             document.getElementById('description').textContent = req.description;
             document.getElementById('createdAt').textContent = new Date(req.created_at).toLocaleString();
@@ -724,8 +798,7 @@
                 document.querySelector(".stats-badge").innerHTML = `
                     <i class="fas fa-reply text-success me-1"></i>
                     ${data.offers.length} ${data.offers.length === 1 ? 'Offer' : 'Offers'}
-                    `;
-
+                `;
 
                 if (!response.ok || !data.offers || data.offers.length === 0) {
                     offersList.innerHTML = `<p class="text-muted mb-0">No offers yet.</p>`;
@@ -736,39 +809,47 @@
 
                 data.offers.forEach((offer) => {
                     const offerCard = document.createElement("div");
-                    offerCard.classList.add("p-3", "border", "rounded", "mb-2", "bg-light");
+                    offerCard.classList.add("p-3", "border", "rounded", "mb-2", "bg-light", "offer-card-clickable");
+                    const canAccept = request.user_id === user.id && offer.status === "pending";
+
+                    // Add click handler to view helper stats
+                    offerCard.addEventListener("click", (e) => {
+                        // Don't trigger if clicking the accept button
+                        if (!e.target.closest('button')) {
+                            viewHelperStats(offer.helper_id, offer.helper_name, offer.id, canAccept);
+                        }
+                    });
 
                     let actionHtml = "";
-                        if (request.user_id === user.id && offer.status === "pending") {
-                            // Only the senior who owns the request can accept pending offers
-                            actionHtml = `
-                            <button class="btn btn-success btn-sm" onclick="acceptOffer(${offer.id})">
+                    if (canAccept) {
+                        actionHtml = `
+                            <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); acceptOffer(${offer.id})">
                                 <i class="fas fa-check me-1"></i>Accept Offer
                             </button>
-                            `;
-                        } else {
-                            // For everyone else, just show status badge
-                            actionHtml = `
-                            <span class="badge bg-${
-                                offer.status === "accepted" ? "success" : "secondary"
-                            }">
+                        `;
+                    } else {
+                        actionHtml = `
+                            <span class="badge bg-${offer.status === "accepted" ? "success" : "secondary"}">
                                 ${offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
                             </span>
-                            `;
+                        `;
                     }
+
                     offerCard.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>${offer.helper_name}</strong> <span style="font-size: 14px;">(${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)})</span><br>
-                            <small class ="text-muted">${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)}'s Location: ${currentUser.location}</small><br>
-                            <small class="text-muted">Offered on ${new Date(offer.created_at).toLocaleString()}</small>
+                            <div>
+                                <strong>${offer.helper_name}</strong> <span style="font-size: 14px;">(${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)})</span><br>
+                                <small class="text-muted">${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)}'s Location: ${offer.helper_location || 'Not specified'}</small><br>
+                                <small class="text-muted">Offered on ${new Date(offer.created_at).toLocaleString()}</small>
+                                <br>
+                                <small class="text-primary"><i class="fas fa-info-circle me-1"></i>Click to view stats</small>
+                            </div>
+                            <div>
+                                ${actionHtml}
+                            </div>
                         </div>
-                        <div>
-                           ${actionHtml}
-                        </div>
-                        </div>
-                `;
-                offersList.appendChild(offerCard);
+                    `;
+                    offersList.appendChild(offerCard);
                 });
             } catch (err) {
                 console.error("Error loading offers:", err);
@@ -965,6 +1046,243 @@
             }
         }
 
+        // Function to view helper stats
+        async function viewHelperStats(helperId, helperName, offerId, canAccept) {
+            try {
+                const modal = new bootstrap.Modal(document.getElementById('helperStatsModal'));
+                const modalContent = document.getElementById('helperStatsContent');
+                const acceptBtn = document.getElementById('acceptOfferFromModal');
+        
+                // Show loading
+                modalContent.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading helper statistics...</p>
+                    </div>
+                `;
+                modal.show();
+
+                // Fetch helper stats
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(`http://localhost:5009/stats/helper/${helperId}`);
+        
+                if (!response.ok) {
+                    throw new Error('Failed to load helper stats');
+                }
+
+                const stats = await response.json();
+
+                // Display stats
+                modalContent.innerHTML = `
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="fas fa-user-circle me-2"></i>${helperName || 'Helper'}
+                            </h5>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Completed Requests</small>
+                                <h4 class="mb-0 text-success">${stats.request_stats.total_completed}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Completion Rate</small>
+                                <h4 class="mb-0 text-primary">${stats.request_stats.completion_rate}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Average Rating</small>
+                                <h4 class="mb-0 text-warning">
+                                    <i class="fas fa-star"></i> ${stats.rating_stats.avg_rating}
+                                </h4>
+                                <small class="text-muted">${stats.rating_stats.total_ratings} ratings</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Average Completion Time</small>
+                                <h4 class="mb-0">${stats.time_stats.avg_completion_time}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Response Time</small>
+                                <h4 class="mb-0">${stats.performance.avg_response_time}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Rank</small>
+                                <h4 class="mb-0 text-info">${stats.performance.rank}</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${Object.keys(stats.category_breakdown).length > 0 ? `
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="mb-2"><i class="fas fa-list me-2"></i>Help by Category</h6>
+                                ${Object.entries(stats.category_breakdown).map(([cat, count]) => `
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>${cat}</span>
+                                        <span class="badge bg-primary">${count}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+
+                // Show accept button if offer is pending and user can accept
+                if (offerId && canAccept) {
+                    acceptBtn.style.display = 'block';
+                    acceptBtn.onclick = () => {
+                    modal.hide();
+                    acceptOffer(offerId);
+                };
+                } else {
+                    acceptBtn.style.display = 'none';
+                }
+
+            } catch (err) {
+                console.error('Error loading helper stats:', err);
+                document.getElementById('helperStatsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load helper statistics. Please try again.
+                    </div>
+                `;
+            }
+        }
+        
+        // Function to view senior stats
+        async function viewSeniorStats(seniorId, seniorName) {
+            try {
+                const modal = new bootstrap.Modal(document.getElementById('seniorStatsModal'));
+                const modalContent = document.getElementById('seniorStatsContent');
+        
+                // Show loading
+                modalContent.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading senior statistics...</p>
+                    </div>
+                `;
+                modal.show();
+
+                // Fetch senior stats
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(`http://localhost:5009/stats/senior/${seniorId}`);
+        
+                if (!response.ok) {
+                    throw new Error('Failed to load senior stats');
+                }
+                const stats = await response.json();
+
+                // Display stats
+                modalContent.innerHTML = `
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="fas fa-user-circle me-2"></i>${seniorName || 'Senior'}
+                            </h5>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Total Requests Posted</small>
+                                <h4 class="mb-0 text-primary">${stats.request_stats.total_posted}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Fulfilled Requests</small>
+                                <h4 class="mb-0 text-success">${stats.request_stats.total_fulfilled}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Pending Requests</small>
+                                <h4 class="mb-0 text-warning">${stats.request_stats.total_pending}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Success Rate</small>
+                                <h4 class="mb-0 text-info">${stats.request_stats.fulfillment_rate}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Average Rating Given</small>
+                                <h4 class="mb-0 text-warning">
+                                    <i class="fas fa-star"></i> ${stats.rating_stats.avg_rating_given}
+                                </h4>
+                                <small class="text-muted">${stats.rating_stats.total_ratings_given} ratings given</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="stat-item">
+                                <small class="text-muted d-block">Ongoing Requests</small>
+                                <h4 class="mb-0">${stats.request_stats.total_ongoing}</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h6 class="mb-2"><i class="fas fa-chart-line me-2"></i>Activity Trends</h6>
+                            <div class="stat-item">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>This Month</span>
+                                    <span class="badge bg-primary">${stats.trends.requests_this_month}</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Last Month</span>
+                                    <span class="badge bg-secondary">${stats.trends.requests_last_month}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${stats.category_breakdown.breakdown && Object.keys(stats.category_breakdown.breakdown).length > 0 ? `
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="mb-2"><i class="fas fa-list me-2"></i>Requests by Category</h6>
+                                <p class="mb-2"><strong>Most Requested:</strong> ${stats.category_breakdown.most_requested}</p>
+                                ${Object.entries(stats.category_breakdown.breakdown).map(([cat, count]) => `
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>${cat}</span>
+                                        <span class="badge bg-info">${count}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            } catch (err) {
+                console.error('Error loading senior stats:', err);
+                document.getElementById('seniorStatsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load senior statistics. Please try again.
+                    </div>
+                `;
+            }
+        }
+        
         // function reportRequest() {
         //     if (confirm('Are you sure you want to report this request?')) {
         //         alert('Report feature - This will send a report to moderators');

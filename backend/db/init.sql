@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS matches (
     request_id INT REFERENCES requests(id) ON DELETE CASCADE,
     helper_id INT REFERENCES users(id),
     matched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
     status VARCHAR(20) DEFAULT 'active' -- active, completed, cancelled
 );
 

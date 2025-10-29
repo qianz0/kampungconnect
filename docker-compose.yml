@@ -191,6 +191,28 @@ services:
     volumes:
       - ./backend/shared:/app/shared
 
+  stats-service:
+    build: ./backend/services/stats-service
+    ports:
+      - "5009:5009"
+    environment:
+      - PORT=5009
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=kampungconnect
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    volumes:
+      - ./backend/shared:/app/shared
+
   db:
     image: postgres:14
     environment:

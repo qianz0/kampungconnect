@@ -169,18 +169,16 @@ app.post("/matches/:id/complete", authMiddleware.authenticateToken, async (req, 
       [matchId, helperId]
     );
 
-    
-
     if (match.rowCount === 0) {
       return res.status(404).json({ error: "Match not found or not assigned to you." });
     }
 
     const requestId = match.rows[0].request_id;
 
-
-     // Update match and request status
+    // Update match and request status
     await db.query(`UPDATE matches SET status = 'completed' WHERE id = $1`, [matchId]);
     await db.query(`UPDATE requests SET status = 'fulfilled' WHERE id = $1`, [requestId]);
+    await db.query(`UPDATE matches SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = $1`, [matchId]);
 
     // Update helper active to true
     await db.query(`UPDATE users SET is_active = TRUE WHERE id = $1`, [helperId]);
@@ -199,7 +197,6 @@ app.use((err, req, res, next) => {
   console.error("Matching-service error:", err);
   res.status(500).json({ error: "Internal server error" });
 });
-
 
 // ==================
 // Auto-Matching Logic (new addition)
