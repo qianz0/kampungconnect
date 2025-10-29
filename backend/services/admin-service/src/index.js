@@ -9,7 +9,7 @@ const authMiddleware = new AuthMiddleware();
 
 // Database connection
 const pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || 'db',
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'kampungconnect',
     user: process.env.DB_USER || 'admin',
@@ -149,6 +149,30 @@ app.get('/api/admin/stats/activity-timeline',
         } catch (error) {
             console.error('Error fetching activity timeline:', error);
             res.status(500).json({ error: 'Failed to fetch activity timeline' });
+        }
+    }
+);
+
+// Get role distribution
+app.get('/api/admin/stats/role-distribution',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                SELECT 
+                    role,
+                    COUNT(*) AS user_count
+                FROM users
+                WHERE role IS NOT NULL
+                GROUP BY role
+                ORDER BY role;
+            `);
+
+            res.json(result.rows);
+        } catch (error) {
+            console.error('Error fetching role distribution:', error);
+            res.status(500).json({ error: 'Failed to fetch role distribution' });
         }
     }
 );
