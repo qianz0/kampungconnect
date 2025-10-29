@@ -162,7 +162,7 @@ app.get('/api/admin/stats/role-distribution',
             const result = await pool.query(`
                 SELECT 
                     role,
-                    COUNT(*) AS user_count
+                    COUNT(*) AS count
                 FROM users
                 WHERE role IS NOT NULL
                 GROUP BY role
@@ -173,6 +173,60 @@ app.get('/api/admin/stats/role-distribution',
         } catch (error) {
             console.error('Error fetching role distribution:', error);
             res.status(500).json({ error: 'Failed to fetch role distribution' });
+        }
+    }
+);
+
+// Get status distribution
+app.get('/api/admin/stats/status-distribution',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                SELECT 
+                    status,
+                    COUNT(*) AS count
+                FROM requests
+                WHERE status IS NOT NULL
+                GROUP BY status
+                ORDER BY 
+                    CASE status
+                        WHEN 'pending' THEN 1
+                        WHEN 'matched' THEN 2
+                        WHEN 'completed' THEN 3
+                        WHEN 'cancelled' THEN 4
+                    END;
+            `);
+
+            res.json(result.rows);
+        } catch (error) {
+            console.error('Error fetching status distribution:', error);
+            res.status(500).json({ error: 'Failed to fetch status distribution' });
+        }
+    }
+);
+
+// Get rating distribution
+app.get('/api/admin/stats/rating-distribution',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                SELECT 
+                    score,
+                    COUNT(*) AS count
+                FROM ratings
+                WHERE score IS NOT NULL
+                GROUP BY score
+                ORDER BY score ASC;
+            `);
+
+            res.json(result.rows);
+        } catch (error) {
+            console.error('Error fetching rating distribution:', error);
+            res.status(500).json({ error: 'Failed to fetch rating distribution' });
         }
     }
 );
@@ -305,7 +359,7 @@ app.get('/api/admin/users/:id',
 
             // Get user's ratings (received)
             const ratingsResult = await pool.query(
-                `SELECT r.*, u.firstname as rater_firstName, u.lastname as rater_lastName
+                `SELECT r.*, u.firstname as rater_firstname, u.lastname as rater_lastname
                 FROM ratings r
                 JOIN users u ON r.rater_id = u.id
                 WHERE r.ratee_id = $1 
@@ -464,8 +518,8 @@ app.get('/api/admin/requests',
             const requests = await pool.query(
                 `SELECT 
                     r.*,
-                    u.firstname as user_firstName,
-                    u.lastname as user_lastName,
+                    u.firstname as user_firstname,
+                    u.lastname as user_lastname,
                     u.email as user_email,
                     u.location as user_location
                 FROM requests r
@@ -502,8 +556,8 @@ app.get('/api/admin/requests/:id',
 
             const requestResult = await pool.query(
                 `SELECT r.*, 
-                    u.firstname as user_firstName,
-                    u.lastname as user_lastName,
+                    u.firstname as user_firstname,
+                    u.lastname as user_lastname,
                     u.email as user_email,
                     u.location as user_location
                 FROM requests r
@@ -521,8 +575,8 @@ app.get('/api/admin/requests/:id',
             // Get matches for this request
             const matchesResult = await pool.query(
                 `SELECT m.*, 
-                    u.firstname as helper_firstName,
-                    u.lastname as helper_lastName,
+                    u.firstname as helper_firstname,
+                    u.lastname as helper_lastname,
                     u.email as helper_email,
                     u.rating as helper_rating
                 FROM matches m
@@ -534,8 +588,8 @@ app.get('/api/admin/requests/:id',
             // Get responses/offers
             const responsesResult = await pool.query(
                 `SELECT r.*, 
-                    u.firstname as responder_firstName,
-                    u.lastname as responder_lastName
+                    u.firstname as responder_firstname,
+                    u.lastname as responder_lastname
                 FROM responses r
                 JOIN users u ON r.user_id = u.id
                 WHERE r.request_id = $1
@@ -644,10 +698,10 @@ app.get('/api/admin/matches',
                     r.title as request_title,
                     r.category as request_category,
                     r.urgency as request_urgency,
-                    u1.firstname as requester_firstName,
-                    u1.lastname as requester_lastName,
-                    u2.firstname as helper_firstName,
-                    u2.lastname as helper_lastName
+                    u1.firstname as requester_firstname,
+                    u1.lastname as requester_lastname,
+                    u2.firstname as helper_firstname,
+                    u2.lastname as helper_lastname
                 FROM matches m
                 JOIN requests r ON m.request_id = r.id
                 JOIN users u1 ON r.user_id = u1.id
@@ -729,10 +783,10 @@ app.get('/api/admin/ratings',
             const ratings = await pool.query(
                 `SELECT 
                     r.*,
-                    u1.firstname as rater_firstName,
-                    u1.lastname as rater_lastName,
-                    u2.firstname as ratee_firstName,
-                    u2.lastname as ratee_lastName
+                    u1.firstname as rater_firstname,
+                    u1.lastname as rater_lastname,
+                    u2.firstname as ratee_firstname,
+                    u2.lastname as ratee_lastname
                 FROM ratings r
                 JOIN users u1 ON r.rater_id = u1.id
                 JOIN users u2 ON r.ratee_id = u2.id
@@ -813,7 +867,7 @@ app.get('/api/admin/export/requests',
             const requests = await pool.query(`
                 SELECT 
                     r.id, r.title, r.category, r.description, r.urgency, r.status, r.created_at,
-                    u.firstname as user_firstName, u.lastname as user_lastName, u.email as user_email
+                    u.firstname as user_firstname, u.lastname as user_lastname, u.email as user_email
                 FROM requests r
                 JOIN users u ON r.user_id = u.id
                 ORDER BY r.created_at DESC
@@ -830,7 +884,7 @@ app.get('/api/admin/export/requests',
                     row.urgency,
                     row.status,
                     row.created_at,
-                    `"${row.user_firstName} ${row.user_lastName}"`,
+                    `"${row.user_firstname} ${row.user_lastname}"`,
                     `"${row.user_email}"`
                 ].join(','))
             ].join('\n');
