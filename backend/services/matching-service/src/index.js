@@ -88,15 +88,17 @@ app.get("/matches/helper", authMiddleware.authenticateToken, async (req, res) =>
     const userId = req.user.id;
     const result = await db.query(
       `
-    SELECT m.*, 
+SELECT m.*, 
        r.title, r.category, r.urgency, r.status AS request_status,
        CONCAT(s.firstname, ' ', s.lastname) AS senior_name,
-       s.rating AS senior_rating
+       s.rating AS senior_rating,
+       (SELECT COUNT(*) FROM matches WHERE helper_id = m.helper_id AND status = 'active') AS active_count
 FROM matches m
 JOIN requests r ON m.request_id = r.id
 JOIN users s ON r.user_id = s.id
 WHERE m.helper_id = $1
-ORDER BY m.matched_at DESC
+ORDER BY m.matched_at DESC;
+
 
     `,
       [userId]
