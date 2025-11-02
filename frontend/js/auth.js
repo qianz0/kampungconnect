@@ -529,8 +529,15 @@ class AuthManager {
             }
         }
         
+        console.log('[AuthManager] Token not found in cookie, checking localStorage');
         // Fallback to localStorage
         const localToken = localStorage.getItem('auth_token');
+        if (localToken) {
+            console.log('[AuthManager] Token found in localStorage');
+        } else {
+            console.log('[AuthManager] No token found in cookie or localStorage');
+            console.log('[AuthManager] All cookies:', document.cookie);
+        }
         return localToken;
     }
 

@@ -1,0 +1,56 @@
+/* Common Header Styles */
+.navbar-brand {
+    font-weight: bold;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Dropdown menu styling */
+.dropdown-menu {
+    min-width: 200px;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-divider {
+    margin: 0.5rem 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 991px) {
+    .navbar-nav {
+        margin-top: 1rem;
+    }
+    .navbar-nav .nav-link {
+        padding: 0.5rem 0;
+    }
+}
+
+#headerConfirmModal {
+    z-index: 1060 !important;
+}
+
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+#headerConfirmModal .modal-dialog {
+    z-index: 1050 !important;
+    position: relative;
+}
+
+/* Ensure toast messages are above everything */
+.alert.position-fixed {
+    z-index: 9999 !important;
+}
