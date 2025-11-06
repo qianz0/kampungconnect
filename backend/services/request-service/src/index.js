@@ -565,7 +565,7 @@ ORDER BY m.matched_at DESC
 });
 
 
-// Update a request (only by the owner senior or admin, and only if not matched/fulfilled)
+// Update a request (only by the owner senior or admin, and only if not matched/completed)
 app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const requestId = req.params.id;
@@ -587,9 +587,9 @@ app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'You are not allowed to edit this request' });
         }
 
-        // Block editing if already matched or fulfilled
-        if (['matched', 'fulfilled'].includes(request.status)) {
-            return res.status(400).json({ error: 'Cannot edit a request that has already been matched or fulfilled' });
+        // Block editing if already matched or completed
+        if (['matched', 'completed'].includes(request.status)) {
+            return res.status(400).json({ error: 'Cannot edit a request that has already been matched or completed' });
         }
 
         // Proceed with update
@@ -608,7 +608,7 @@ app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     }
 });
 
-// Delete a request (only by the owner senior or admin, and only if not matched/fulfilled)
+// Delete a request (only by the owner senior or admin, and only if not matched/completed)
 app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const requestId = req.params.id;
@@ -628,9 +628,9 @@ app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) =
             return res.status(403).json({ error: 'You are not allowed to delete this request' });
         }
 
-        // Block deleting if already matched or fulfilled
-        if (['matched', 'fulfilled'].includes(request.status)) {
-            return res.status(400).json({ error: 'Cannot delete a request that has already been matched or fulfilled' });
+        // Block deleting if already matched or completed
+        if (['matched', 'completed'].includes(request.status)) {
+            return res.status(400).json({ error: 'Cannot delete a request that has already been matched or completed' });
         }
 
         // Delete from DB
