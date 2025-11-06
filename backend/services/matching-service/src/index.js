@@ -6,6 +6,7 @@ const db = require("./db"); // your db.js file
 const { connectQueue, consumeQueue, publishMessage } = require("./queue");
 const { findBestHelper } = require("./matcher");
 const AuthMiddleware = require("/app/shared/auth-middleware");
+const client = require('prom-client');
 
 const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
@@ -28,6 +29,18 @@ app.use(cookieParser());
 app.get("/", (req, res) => {
   res.json({ service: "matching-service", status: "running" });
 });
+
+
+// ====== Prometheus Metrics Endpoint ======
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
+});
+
 
 // ==================
 // Get all matches (admin/debug)

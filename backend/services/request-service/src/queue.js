@@ -1,4 +1,5 @@
 const amqp = require("amqplib");
+const client = require('prom-client');
 
 let channel;
 let isConnecting = false;
@@ -79,7 +80,7 @@ async function publishMessage(queueName, message) {
     const payload = Buffer.from(JSON.stringify(message));
     channel.sendToQueue(queueName, payload, {
       persistent: true,
-      priority, // 👈 here
+      priority, //  here
     });
 
     console.log(`📤 [request-service] Sent message to queue: ${queueName} (priority=${priority})`);
