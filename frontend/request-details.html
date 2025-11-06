@@ -459,11 +459,11 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert("✅ Offer submitted successfully!");
+                    alert("Offer submitted successfully!");
                     console.log("Offer:", data.offer);
                     location.reload(); // refresh to show updated status or offers count
                 } else {
-                    alert(`❌ ${data.error || "Failed to offer help."}`);
+                    alert(`${data.error || "Failed to offer help."}`);
                 }
             } catch (err) {
                 console.error("Offer help error:", err);
@@ -869,7 +869,7 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert("✅ Offer accepted! Helper assigned.");
+                    alert("Offer accepted! Helper assigned.");
 
                     if (data.contact) {
                         showContactInfo(data.contact.helper, data.contact.senior);
@@ -877,7 +877,7 @@
 
                     // location.reload();
                 } else {
-                    alert(`⚠️ ${data.error || "Failed to accept offer."}`);
+                    alert(`${data.error || "Failed to accept offer."}`);
                 }
             } catch (err) {
                 console.error("Error accepting offer:", err);

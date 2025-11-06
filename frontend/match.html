@@ -39,18 +39,20 @@
         }
 
         .card.urgent-border {
-  border-left: 5px solid #dc3545 !important;
-}
-.card.high-border {
-  border-left: 5px solid #ffc107 !important;
-}
-.card.medium-border {
-  border-left: 5px solid #0dcaf0 !important;
-}
-.card.low-border {
-  border-left: 5px solid #198754 !important;
-}
+            border-left: 5px solid #dc3545 !important;
+        }
 
+        .card.high-border {
+            border-left: 5px solid #ffc107 !important;
+        }
+
+        .card.medium-border {
+            border-left: 5px solid #0dcaf0 !important;
+        }
+
+        .card.low-border {
+            border-left: 5px solid #198754 !important;
+        }
     </style>
 </head>
 
@@ -86,23 +88,23 @@
             </div>
         </div>
         <!-- Sorting Controls -->
-<div class="d-flex justify-content-end mb-3">
-  <div class="input-group" style="width: 250px;">
-    <label class="input-group-text"><i class="fas fa-sort"></i></label>
-    <select id="sortUrgency" class="form-select">
-      <option value="desc" selected>Urgent → Low</option>
-      <option value="asc">Low → Urgent</option>
-    </select>
-  </div>
-</div>
+        <div class="d-flex justify-content-end mb-3">
+            <div class="input-group" style="width: 250px;">
+                <label class="input-group-text"><i class="fas fa-sort"></i></label>
+                <select id="sortUrgency" class="form-select">
+                    <option value="desc" selected>Urgent → Low</option>
+                    <option value="asc">Low → Urgent</option>
+                </select>
+            </div>
+        </div>
 
         <div class="alert alert-info text-center shadow-sm mb-4">
-  <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
-  <strong>Matching Priority:</strong>
-  Urgent 🟥 → High 🟧 → Medium 🟨 → Low 🟩
-  <br>
-  <small>Urgent requests are always matched first, followed by others.</small>
-</div>
+            <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+            <strong>Matching Priority:</strong>
+            Urgent 🟥 → High 🟧 → Medium 🟨 → Low 🟩
+            <br>
+            <small>Urgent requests are always matched first, followed by others.</small>
+        </div>
 
         <div id="matchesContainer" class="row g-4"></div>
     </div>
@@ -134,7 +136,7 @@
         function populateUserInfo(user) {
             if (!user) return;
             const fullName = [user.firstname, user.lastname].filter(Boolean).join(' ') || 'User';
-            
+
             const userNameEl = document.getElementById('userName');
             if (userNameEl) {
                 userNameEl.textContent = fullName;
@@ -166,24 +168,24 @@
                     overlay.style.display = "none";
                     return;
                 }
-                // ✅ Sort matches based on urgency before rendering
-data.matches.sort((a, b) => {
-  const order = { urgent: 4, high: 3, medium: 2, low: 1 };
-  const direction = document.getElementById("sortUrgency").value;
-  return direction === "desc"
-    ? order[b.urgency] - order[a.urgency]
-    : order[a.urgency] - order[b.urgency];
-});
+                //Sort matches based on urgency before rendering
+                data.matches.sort((a, b) => {
+                    const order = { urgent: 4, high: 3, medium: 2, low: 1 };
+                    const direction = document.getElementById("sortUrgency").value;
+                    return direction === "desc"
+                        ? order[b.urgency] - order[a.urgency]
+                        : order[a.urgency] - order[b.urgency];
+                });
 
                 data.matches.forEach(match => {
                     const helperName = match.helper_name || "Unassigned";
                     const rating = match.helper_rating ? `${match.helper_rating} ⭐` : "-";
                     const urgencyBadge = {
-  urgent: `<span class="badge bg-danger">Urgent</span>`,
-  high: `<span class="badge bg-warning text-dark">High</span>`,
-  medium: `<span class="badge bg-info text-dark">Medium</span>`,
-  low: `<span class="badge bg-success">Low</span>`
-}[match.urgency] || `<span class="badge bg-secondary">Unknown</span>`;
+                        urgent: `<span class="badge bg-danger">Urgent</span>`,
+                        high: `<span class="badge bg-warning text-dark">High</span>`,
+                        medium: `<span class="badge bg-info text-dark">Medium</span>`,
+                        low: `<span class="badge bg-success">Low</span>`
+                    }[match.urgency] || `<span class="badge bg-secondary">Unknown</span>`;
 
 
                     const card = document.createElement("div");
@@ -191,18 +193,18 @@ data.matches.sort((a, b) => {
                     const urgencyClass = `${(match.urgency || 'low').toLowerCase()}-border`;
 
                     card.innerHTML = `
-            <div class="card feature-card shadow-sm border-0 h-100 ${urgencyClass}">
-              <div class="card-body">
-                <h5 class="card-title fw-bold text-primary">${match.title}</h5>
-                <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
-                <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
-                <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
-                <hr>
-                <p><i class="fas fa-user"></i> <strong>Helper:</strong> ${helperName}</p>
-                <p><i class="fas fa-star"></i> <strong>Rating:</strong> ${rating}</p>
-              </div>
-            </div>
-          `;
+                        <div class="card feature-card shadow-sm border-0 h-100 ${urgencyClass}">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary">${match.title}</h5>
+                            <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
+                            <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
+                            <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
+                            <hr>
+                            <p><i class="fas fa-user"></i> <strong>Helper:</strong> ${helperName}</p>
+                            <p><i class="fas fa-star"></i> <strong>Rating:</strong> ${rating}</p>
+                        </div>
+                        </div>
+                    `;
                     container.appendChild(card);
                 });
             } catch (err) {
@@ -217,11 +219,11 @@ data.matches.sort((a, b) => {
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 1️⃣ Wait for authentication system to initialize
+                // 1 Wait for authentication system to initialize
                 const authManager = await waitForAuthManager();
                 await authManager.initialize();
 
-                // 2️⃣ Check if user is logged in
+                // 2 Check if user is logged in
                 const isAuthenticated = await authManager.checkAuthentication();
                 if (!isAuthenticated) {
                     window.location.href = "login.html";
@@ -233,7 +235,7 @@ data.matches.sort((a, b) => {
                     await window.HeaderManager.waitForLoad();
                 }
 
-                // 3️⃣ Get current user info and show in UI
+                // 3 Get current user info and show in UI
                 const currentUser = authManager.getCurrentUser();
                 populateUserInfo(currentUser);
 
@@ -243,7 +245,7 @@ data.matches.sort((a, b) => {
                     return;
                 }
 
-                // 4️⃣ Now call your original loadMatches() safely
+                // 4 Now call your original loadMatches() safely
                 await loadMatches(authManager);
             } catch (error) {
                 console.error("Error during initialization:", error);
