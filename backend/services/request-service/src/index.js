@@ -382,7 +382,7 @@ app.get("/requests/:id/offers", authMiddleware.authenticateToken, async (req, re
     try {
         const requestId = req.params.id;
         const results = await db.query(`
-      SELECT o.id, o.helper_id, o.status, o.created_at,
+      SELECT o.id, o.helper_id, o.status, o.created_at, u.location,
              CONCAT(u.firstname, ' ', u.lastname) AS helper_name,
              u.role AS helper_role
       FROM offers o
