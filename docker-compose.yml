@@ -306,18 +306,17 @@ services:
   # ===================
 
   prometheus:
-    image: prom/prometheus
-    container_name: prometheus
+    image: prom/prometheus:latest
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     networks:
       - kampungconnect
 
   grafana:
-    image: grafana/grafana
-    container_name: grafana
+    image: grafana/grafana:latest
     ports:
       - "3000:3000"
     depends_on:
@@ -325,12 +324,17 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
     networks:
       - kampungconnect
 
 volumes:
   postgres_data:
   rabbitmq_data:
+  grafana-data:
+  prometheus-data:
 
 networks:
   kampungconnect:
