@@ -253,16 +253,14 @@
 
                     if (!res.ok) {
                         const errorText = await res.text();
-                        throw new Error(`Failed: ${res.status} - ${errorText}`);
+                        console.warn(`Request failed (${res.status}): ${errorText}`);
+                        location.reload();
+                        return;
                     }
-
-                    alert("Match marked as completed!");
-                    await loadMatches(); // refresh list
+                    location.reload();
                 } catch (err) {
                     console.error("Error completing match:", err);
-                    alert("Failed to complete match. See console for details.");
-                    button.disabled = false;
-                    button.innerHTML = '<i class="fas fa-check-circle me-1"></i>Mark as Complete';
+                    location.reload();
                 }
             }
         });
