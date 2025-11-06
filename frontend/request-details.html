@@ -563,13 +563,26 @@
 
             // Status
             const statusBadge = document.getElementById('statusBadge');
-            if (req.status === 'fulfilled') {
-                statusBadge.className = 'status-indicator bg-success text-white';
-                statusBadge.innerHTML = '<i class="fas fa-check-circle me-2"></i>Fulfilled';
-            } else {
-                statusBadge.className = 'status-indicator bg-secondary text-white';
-                statusBadge.innerHTML = '<i class="fas fa-clock me-2"></i>Pending';
-            }
+
+            // Define a mapping of status → color/icon
+            const statusMap = {
+            pending:  { color: 'secondary', icon: 'clock', label: 'Pending' },
+            matched:  { color: 'info',      icon: 'handshake', label: 'Matched' },
+            fulfilled:{ color: 'success',   icon: 'check-circle', label: 'Fulfilled' },
+            cancelled:{ color: 'danger',    icon: 'times-circle', label: 'Cancelled' },
+            rejected: { color: 'warning',   icon: 'ban', label: 'Rejected' }
+            };
+
+            // Fallback for unknown statuses
+            const { color, icon, label } = statusMap[req.status] || { 
+            color: 'secondary', 
+            icon: 'question-circle', 
+            label: req.status || 'Unknown' 
+            };
+
+            statusBadge.className = `status-indicator bg-${color} text-white`;
+            statusBadge.innerHTML = `<i class="fas fa-${icon} me-2"></i>${label}`;
+
 
             // Contact info if matched
             if (req.status === 'matched') {
