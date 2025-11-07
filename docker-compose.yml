@@ -3,6 +3,8 @@ services:
     build: ./backend/services/auth-service
     ports:
       - "5001:5000"
+    networks:
+      - kampungconnect
     environment:
       # Google OAuth2/OIDC
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
@@ -48,6 +50,8 @@ services:
       ports:
         - "5672:5672"    # Main AMQP port
         - "15672:15672"  # Web management UI
+      networks:
+      - kampungconnect
       environment:
         RABBITMQ_DEFAULT_USER: guest
         RABBITMQ_DEFAULT_PASS: guest
@@ -65,7 +69,9 @@ services:
   request-service:
     build: ./backend/services/request-service
     ports:
-      - "5002:5000"
+      - "5002:5002"
+    networks:
+      - kampungconnect
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth-service:5000
@@ -75,6 +81,8 @@ services:
       - DB_USER=admin
       - DB_PASSWORD=password
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - SERVICE_NAME=request-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     depends_on:
       db:
         condition: service_healthy
@@ -90,6 +98,8 @@ services:
     build: ./backend/services/matching-service
     ports:
       - "5003:5003"
+    networks:
+      - kampungconnect
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth-service:5000
@@ -101,6 +111,8 @@ services:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - NOTIFICATION_QUEUE=notification_events
       - FRONTEND_URL=${FRONTEND_URL}
+      - SERVICE_NAME=matching-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     depends_on:
       db:
         condition: service_healthy
@@ -116,6 +128,8 @@ services:
     build: ./backend/services/notification-service
     ports:
       - "5004:5000"
+    networks:
+      - kampungconnect
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth-service:5000
@@ -135,6 +149,8 @@ services:
     build: ./backend/services/rating-service
     ports:
       - "5006:5000"
+    networks:
+      - kampungconnect
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth-service:5000
@@ -153,6 +169,8 @@ services:
     build: ./backend/services/admin-service
     ports:
       - "5007:5000"
+    networks:
+      - kampungconnect
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth-service:5000
@@ -174,6 +192,8 @@ services:
     build: ./backend/services/stats-service
     ports:
       - "5009:5009"
+    networks:
+      - kampungconnect
     environment:
       - PORT=5009
       - JWT_SECRET=${JWT_SECRET}
@@ -200,6 +220,8 @@ services:
       POSTGRES_DB: kampungconnect
     ports:
       - "5432:5432"
+    networks:
+      - kampungconnect
     volumes:
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
@@ -230,6 +252,8 @@ services:
         condition: service_started
       frontend:
         condition: service_started
+    networks:
+      - kampungconnect
     command: >
       sh -c "
         apk add --no-cache curl busybox-extras;
@@ -256,7 +280,7 @@ services:
         echo '✅ Auth Service is ready';
         echo '';
         echo '🔍 Checking Request Service...';
-        while ! nc -z request-service 5000; do sleep 1; done;
+        while ! nc -z request-service 5002; do sleep 1; done;
         echo '✅ Request Service is ready';
         echo '';
         echo '🔍 Checking Matching Service...';
@@ -281,6 +305,67 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html
 
+  # ===================
+  # Monitoring Services
+  # ===================
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - kampungconnect
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - kampungconnect
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"  # gRPC for OTLP
+      - "4318:4318"  # HTTP for OTLP
+    networks:
+      - kampungconnect
+
+  # Grafana Tempo for Traces
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"     # HTTP API
+    networks:
+      - kampungconnect
+
+
 volumes:
   postgres_data:
   rabbitmq_data:
+  grafana-data:
+  prometheus-data:
+
+networks:
+  kampungconnect:
+    driver: bridge

@@ -816,6 +816,7 @@
                             <div>
                                 <strong>${offer.helper_name}</strong> <span style="font-size: 14px;">(${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)})</span><br>
                                 <small class="text-muted">${offer.helper_role.charAt(0).toUpperCase() + offer.helper_role.slice(1)}'s Location: ${offer.location || 'Not specified'}</small><br>
+                                <small class="text-muted">Rating: ${offer.rating || 'No rating yet'}</small><br>
                                 <small class="text-muted">Offered on ${new Date(offer.created_at).toLocaleString()}</small>
                                 <br>
                                 <small class="text-primary"><i class="fas fa-info-circle me-1"></i>Click to view stats</small>
