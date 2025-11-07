@@ -239,38 +239,16 @@
                 <div class="mb-4 mt-3">
                     <label for="location" class="form-label">
                         <i class="fas fa-map-marker-alt me-2"></i>
-                        Your Area (Required)
+                        Your Postal Code (Required)
                     </label>
-                    <select class="form-select" id="location" required>
-                        <option value="">Select your area (helps us connect you locally)</option>
-                        <option value="Ang Mo Kio">Ang Mo Kio</option>
-                        <option value="Bedok">Bedok</option>
-                        <option value="Bishan">Bishan</option>
-                        <option value="Boon Lay">Boon Lay</option>
-                        <option value="Bukit Batok">Bukit Batok</option>
-                        <option value="Bukit Merah">Bukit Merah</option>
-                        <option value="Bukit Panjang">Bukit Panjang</option>
-                        <option value="Bukit Timah">Bukit Timah</option>
-                        <option value="Central Area">Central Area</option>
-                        <option value="Choa Chu Kang">Choa Chu Kang</option>
-                        <option value="Clementi">Clementi</option>
-                        <option value="Geylang">Geylang</option>
-                        <option value="Hougang">Hougang</option>
-                        <option value="Jurong East">Jurong East</option>
-                        <option value="Jurong West">Jurong West</option>
-                        <option value="Kallang/Whampoa">Kallang/Whampoa</option>
-                        <option value="Marine Parade">Marine Parade</option>
-                        <option value="Pasir Ris">Pasir Ris</option>
-                        <option value="Punggol">Punggol</option>
-                        <option value="Queenstown">Queenstown</option>
-                        <option value="Sembawang">Sembawang</option>
-                        <option value="Sengkang">Sengkang</option>
-                        <option value="Serangoon">Serangoon</option>
-                        <option value="Tampines">Tampines</option>
-                        <option value="Toa Payoh">Toa Payoh</option>
-                        <option value="Woodlands">Woodlands</option>
-                        <option value="Yishun">Yishun</option>
-                    </select>
+                    <input type="text" class="form-control" id="location" required 
+                           placeholder="Enter your 6-digit postal code" 
+                           maxlength="6" 
+                           pattern="[0-9]{6}"
+                           title="Please enter a valid 6-digit postal code">
+                    <div class="form-text">
+                        Enter your 6-digit Singapore postal code to help us connect you locally (e.g., 123456)
+                    </div>
                 </div>
 
                 <!-- Continue Button -->
@@ -391,6 +369,18 @@
                 
                 if (!selectedRole) {
                     showError('Please select a role');
+                    return;
+                }
+
+                if (!location) {
+                    showError('Please enter your postal code');
+                    return;
+                }
+
+                // Validate postal code format (6 digits)
+                const postalCodeRegex = /^\d{6}$/;
+                if (!postalCodeRegex.test(location)) {
+                    showError('Please enter a valid 6-digit postal code');
                     return;
                 }
 

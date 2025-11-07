@@ -325,7 +325,7 @@ class AuthManager {
             if (!email) missingFields.push('Email');
             if (!password) missingFields.push('Password');
             if (!confirmPassword) missingFields.push('Confirm Password');
-            if (!location) missingFields.push('Residing Area');
+            if (!location) missingFields.push('Postal Code');
             
             if (missingFields.length > 0) {
                 this.showError(`Please fill in the following required fields: ${missingFields.join(', ')}`);
@@ -334,6 +334,13 @@ class AuthManager {
 
             if (password !== confirmPassword) {
                 this.showError('Passwords do not match');
+                return;
+            }
+
+            // Validate postal code format (6 digits)
+            const postalCodeRegex = /^\d{6}$/;
+            if (!postalCodeRegex.test(location)) {
+                this.showError('Please enter a valid 6-digit postal code');
                 return;
             }
 

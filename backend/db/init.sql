@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     provider VARCHAR(50) NOT NULL DEFAULT 'email', -- email, google, azure
     role VARCHAR(20) CHECK (role IN ('senior', 'volunteer', 'caregiver', 'admin')) DEFAULT NULL, -- Allow NULL for incomplete registrations
     rating DECIMAL(3,2) DEFAULT 5.0, -- average rating out of 5
-    location VARCHAR(100), -- can be a postal code or simple text area
+    location VARCHAR(6), -- postal code
     email_verified BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -98,7 +98,7 @@ INSERT INTO users (provider_id, email, firstname, lastname, address, password_ha
 (NULL, 'rachel.goh@example.com', 'Rachel', 'Goh', '66 Ang Mo Kio Ave 4, #13-444', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.8, '560066', TRUE, TRUE, NOW() - INTERVAL '15 days'),
 
 -- New user without role (incomplete registration)
-(NULL, 'newbie@example.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days'),
+(NULL, 'newbie@example.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days');
 
 -- Sample Requests from seniors
 INSERT INTO requests (user_id, title, category, description, urgency, status, created_at) VALUES

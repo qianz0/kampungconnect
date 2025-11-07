@@ -228,9 +228,9 @@
                     return;
                 }
 
-                // Display current location
-                document.getElementById('currentLocation').textContent = 
-                    currentUser.location || 'Not set';
+                // Display current location (convert postal code to area name)
+                const areaName = getAreaFromPostalCode(currentUser.location);
+                document.getElementById('currentLocation').textContent = areaName;
 
                 // Load khakis data
                 await loadKhakis();
@@ -284,6 +284,74 @@
             }
         }
 
+        // Convert Singapore postal code to area name
+        function getAreaFromPostalCode(postalCode) {
+            if (!postalCode) return 'Location not set';
+            
+            // Remove any non-digit characters
+            const postal = postalCode.toString().replace(/\D/g, '');
+            if (postal.length < 2) return 'Unknown Area';
+            
+            // Get the first 2 digits (sector code)
+            const sector = parseInt(postal.substring(0, 2));
+            
+            // Map Singapore postal sectors to area names
+            // Based on actual Singapore postal code ranges
+            const sectorMap = {
+                // Central (01-09)
+                1: 'Raffles Place', 2: 'Tanjong Pagar', 3: 'Tiong Bahru', 
+                4: 'Telok Blangah', 5: 'Pasir Panjang', 6: 'High Street', 
+                7: 'Beach Road', 8: 'Little India', 9: 'Orchard',
+                
+                // Central/South (10-16)
+                10: 'Tanglin', 11: 'Novena', 12: 'Toa Payoh', 
+                13: 'Macpherson', 14: 'Geylang', 15: 'Katong',
+                16: 'Bedok', 17: 'Changi',
+                
+                // East (18-23)
+                18: 'Pasir Ris', 19: 'Serangoon Garden', 20: 'Hougang',
+                21: 'Upper Serangoon', 22: 'Sengkang', 23: 'Punggol',
+                
+                // North (24-28)
+                24: 'Lim Chu Kang', 25: 'Kranji', 26: 'Upper Thomson',
+                27: 'Yishun', 28: 'Seletar',
+                
+                // Central/North (29-33)
+                29: 'Sembawang', 30: 'Mandai', 31: 'Toa Payoh',
+                32: 'Toa Payoh', 33: 'Toa Payoh',
+                
+                // North/West (34-42)
+                34: 'Springleaf', 35: 'Woodlands', 36: 'Woodlands',
+                37: 'Woodlands', 38: 'Woodlands', 39: 'Woodlands',
+                40: 'Choa Chu Kang', 41: 'Choa Chu Kang', 42: 'Bukit Batok',
+                
+                // West (43-52)
+                43: 'Bukit Batok', 44: 'Bukit Batok', 45: 'Bukit Batok',
+                46: 'Clementi', 47: 'Clementi', 48: 'Jurong East',
+                49: 'Jurong East', 50: 'Jurong West', 51: 'Jurong West',
+                52: 'Jurong West',
+                
+                // Central/West (53-61)
+                53: 'Bukit Merah', 54: 'Bukit Merah', 55: 'Queenstown',
+                56: 'Ang Mo Kio', 57: 'Ang Mo Kio', 58: 'Bishan',
+                59: 'Serangoon', 60: 'Bishan', 61: 'Upper Bukit Timah',
+                
+                // Central/South (62-68)
+                62: 'Alexandra', 63: 'Bukit Merah', 64: 'Harbourfront',
+                65: 'Buona Vista', 66: 'Pasir Panjang', 67: 'High Street',
+                68: 'Beach Road',
+                
+                // East (69-82)
+                69: 'Rochor', 70: 'Kallang', 71: 'Geylang',
+                72: 'Paya Lebar', 73: 'Marine Parade', 74: 'Bedok',
+                75: 'Simei', 76: 'Tampines', 77: 'Pasir Ris',
+                78: 'Pasir Ris', 79: 'Tampines', 80: 'Tampines',
+                81: 'Changi', 82: 'Changi'
+            };
+            
+            return sectorMap[sector] || 'Unknown Area';
+        }
+
         // Display khakis
         function displayKhakis(khakis, containerId) {
             const container = document.getElementById(containerId);
@@ -319,6 +387,12 @@
                 const rating = khaki.rating ? parseFloat(khaki.rating) : 5.0;
                 const ratingStars = generateRatingStars(rating);
 
+                // Get area name from postal code
+                const areaName = getAreaFromPostalCode(khaki.location);
+                
+                // Show area only in "All Khakis" tab
+                const showArea = containerId === 'allKhakisContainer';
+
                 return `
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card khaki-card h-100">
@@ -333,6 +407,14 @@
                                         <span class="text-dark ms-1">${rating.toFixed(1)}</span>
                                     </div>
                                 </div>
+                                ${showArea ? `
+                                <div class="mb-2">
+                                    <span class="location-badge">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        ${escapeHtml(areaName)}
+                                    </span>
+                                </div>
+                                ` : ''}
                                 <div class="mb-2">
                                     <i class="fas fa-envelope text-muted me-2"></i>
                                     <small class="text-muted">${escapeHtml(khaki.email)}</small>
