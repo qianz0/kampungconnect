@@ -93,13 +93,22 @@
                 </div>
             </div>
         </div>
-        <!-- Sorting Controls -->
-        <div class="d-flex justify-content-end mb-3">
-            <div class="input-group" style="width: 250px;">
+        <!-- Search and Sort Controls -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <!-- Search Box -->
+            <div class="input-group mb-2" style="max-width: 300px;">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="searchInput" class="form-control" placeholder="Search title or category...">
+            </div>
+
+            <!-- Unified Sort Dropdown -->
+            <div class="input-group" style="width: 280px;">
                 <label class="input-group-text"><i class="fas fa-sort"></i></label>
-                <select id="sortUrgency" class="form-select">
-                    <option value="desc" selected>Urgent → Low</option>
-                    <option value="asc">Low → Urgent</option>
+                <select id="sortOption" class="form-select">
+                    <option value="urgency-asc">Urgency (Low → High)</option>
+                    <option value="urgency-desc" selected>Urgency (High → Low)</option>
+                    <option value="date-newest">Date (Newest → Oldest)</option>
+                    <option value="date-oldest">Date (Oldest → Newest)</option>
                 </select>
             </div>
         </div>
@@ -173,16 +182,46 @@
                     overlay.style.display = "none";
                     return;
                 }
-                // Sort matches based on urgency before rendering
-                data.matches.sort((a, b) => {
-                    const order = { urgent: 4, high: 3, medium: 2, low: 1 };
-                    const direction = document.getElementById("sortUrgency").value;
-                    return direction === "desc"
-                        ? order[b.urgency] - order[a.urgency]
-                        : order[a.urgency] - order[b.urgency];
+
+                // 🔍 Search Filter
+                const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
+                let filtered = data.matches.filter(m => {
+                    const title = m.title?.toLowerCase() || "";
+                    const category = m.category?.toLowerCase() || "";
+                    const urgency = m.urgency?.toLowerCase() || "";
+                    const status = m.status?.toLowerCase() || "";
+
+                    // match if user typed part of title, category, urgency, or status
+                    return (
+                        title.includes(searchTerm) ||
+                        category.includes(searchTerm) ||
+                        urgency.includes(searchTerm) ||
+                        status.includes(searchTerm)
+                    );
                 });
 
-                data.matches.forEach(match => {
+
+                // 🔽 Unified Sorting
+                const sortValue = document.getElementById("sortOption").value;
+                const urgencyOrder = { low: 1, medium: 2, high: 3, urgent: 4 };
+
+                filtered.sort((a, b) => {
+                    switch (sortValue) {
+                        case "urgency-asc":
+                            return (urgencyOrder[a.urgency] || 0) - (urgencyOrder[b.urgency] || 0);
+                        case "urgency-desc":
+                            return (urgencyOrder[b.urgency] || 0) - (urgencyOrder[a.urgency] || 0);
+                        case "date-newest":
+                            return new Date(b.matched_at || b.created_at) - new Date(a.matched_at || a.created_at);
+                        case "date-oldest":
+                            return new Date(a.matched_at || a.created_at) - new Date(b.matched_at || b.created_at);
+                        default:
+                            return 0;
+                    }
+                });
+
+                // 🧩 Render cards
+                filtered.forEach(match => {
                     const seniorName = match.senior_name || "Unassigned";
                     const urgencyBadge = {
                         urgent: `<span class="badge bg-danger">Urgent</span>`,
@@ -191,44 +230,37 @@
                         low: `<span class="badge bg-success">Low</span>`
                     }[match.urgency] || `<span class="badge bg-secondary">Unknown</span>`;
 
-
                     const isCompleted = match.status?.toLowerCase() === "completed";
+                    const urgencyClass = `${(match.urgency || 'low').toLowerCase()}-border`;
 
                     const card = document.createElement("div");
                     card.className = "col-md-4";
-                    const urgencyClass = `${(match.urgency || 'low').toLowerCase()}-border`;
                     card.innerHTML = `
-                        <div class="card feature-card shadow-sm border-0 h-100 ${urgencyClass}" >
-                        <div class="card-body d-flex flex-column">
-                            <a href="request-details.html?id=${match.request_id}" style="text-decoration: none; font-weight:bold;">
-                                ${match.title}</h6>
-                            </a>
-                            <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
-                            <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
-                            <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
-                            <hr>
-                                <p class="card-text text-muted mb-1">
-                            <strong>Slots:</strong> ${match.active_count || 0}/5 active
-                        </p>
-
-                            <p><i class="fas fa-user"></i> <strong>Senior:</strong> ${seniorName}</p>
-
-                            ${!isCompleted
-                                                ? `<button class="btn btn-success mt-auto mark-complete" data-id="${match.id}">
-                                    <i class="fas fa-check-circle me-1"></i>Mark as Complete
-                                </button>`
-                                                : `<span class="badge bg-secondary mt-auto">Completed</span>`
-                                            }
-                        </div>
-                        </div>
-                    `;
+        <div class="card feature-card shadow-sm border-0 h-100 ${urgencyClass}">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title fw-bold text-primary">${match.title}</h5>
+            <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
+            <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
+            <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
+            <hr>
+            <p><i class="fas fa-user"></i> <strong>Senior:</strong> ${seniorName}</p>
+            <p class="card-text text-muted mb-1"><strong>Slots:</strong> ${match.active_count || 0}/5 active</p>
+            ${!isCompleted
+                            ? `<button class="btn btn-success mt-auto mark-complete" data-id="${match.id}">
+                    <i class="fas fa-check-circle me-1"></i>Mark as Complete
+                  </button>`
+                            : `<span class="badge bg-success mt-auto">Request Completed</span>`
+                        }
+          </div>
+        </div>
+      `;
                     container.appendChild(card);
                 });
 
             } catch (err) {
                 console.error("Error loading matches:", err);
                 document.getElementById("matchesContainer").innerHTML =
-                    `<div class="text-center text-danger">Failed to load seniors.</div>`;
+                    `<div class="text-center text-danger">Failed to load matches.</div>`;
             } finally {
                 document.getElementById("loadingOverlay").style.display = "none";
             }
@@ -264,7 +296,8 @@
                 }
             }
         });
-        document.getElementById("sortUrgency").addEventListener("change", () => loadMatches());
+        document.getElementById("searchInput").addEventListener("input", loadMatches);
+        document.getElementById("sortOption").addEventListener("change", loadMatches);
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -291,6 +324,7 @@
                 }
 
                 await loadMatches(authManager);
+
             } catch (error) {
                 console.error("Error during initialization:", error);
                 document.getElementById('matchesContainer').innerHTML = `

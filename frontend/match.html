@@ -87,13 +87,22 @@
                 </div>
             </div>
         </div>
-        <!-- Sorting Controls -->
-        <div class="d-flex justify-content-end mb-3">
-            <div class="input-group" style="width: 250px;">
+        <!-- Search and Sort Controls -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <!-- Search Box -->
+            <div class="input-group mb-2" style="max-width: 300px;">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="searchInput" class="form-control" placeholder="Search title or category...">
+            </div>
+
+            <!-- Unified Sort Dropdown -->
+            <div class="input-group" style="width: 280px;">
                 <label class="input-group-text"><i class="fas fa-sort"></i></label>
-                <select id="sortUrgency" class="form-select">
-                    <option value="desc" selected>Urgent → Low</option>
-                    <option value="asc">Low → Urgent</option>
+                <select id="sortOption" class="form-select">
+                    <option value="urgency-asc">Urgency (Low → High)</option>
+                    <option value="urgency-desc" selected>Urgency (High → Low)</option>
+                    <option value="date-newest">Date (Newest → Oldest)</option>
+                    <option value="date-oldest">Date (Oldest → Newest)</option>
                 </select>
             </div>
         </div>
@@ -112,36 +121,30 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script src="js/header.js"></script>
+
     <script>
-        // Wait for AuthManager
+        // --- Wait for AuthManager (same helper you already have) ---
         function waitForAuthManager() {
             return new Promise((resolve, reject) => {
                 let attempts = 0;
                 const maxAttempts = 50;
-                function check() {
+                (function check() {
                     attempts++;
                     if (window.AuthManager && typeof window.AuthManager.initialize === 'function') {
                         resolve(window.AuthManager);
                     } else if (attempts >= maxAttempts) {
                         reject(new Error("AuthManager not available"));
-                    } else {
-                        setTimeout(check, 100);
-                    }
-                }
-                check();
+                    } else setTimeout(check, 100);
+                })();
             });
         }
 
-        // Populate user info
+        // --- Populate header user info ---
         function populateUserInfo(user) {
             if (!user) return;
             const fullName = [user.firstname, user.lastname].filter(Boolean).join(' ') || 'User';
-
             const userNameEl = document.getElementById('userName');
-            if (userNameEl) {
-                userNameEl.textContent = fullName;
-            }
-
+            if (userNameEl) userNameEl.textContent = fullName;
             const avatar = document.getElementById('userAvatar');
             if (avatar) {
                 avatar.src = user.picture ||
@@ -159,7 +162,6 @@
 
                 const res = await fetch(`${apiBase}/matches/senior`, { credentials: "include" });
                 const data = await res.json();
-
                 const container = document.getElementById("matchesContainer");
                 container.innerHTML = "";
 
@@ -168,16 +170,46 @@
                     overlay.style.display = "none";
                     return;
                 }
-                //Sort matches based on urgency before rendering
-                data.matches.sort((a, b) => {
-                    const order = { urgent: 4, high: 3, medium: 2, low: 1 };
-                    const direction = document.getElementById("sortUrgency").value;
-                    return direction === "desc"
-                        ? order[b.urgency] - order[a.urgency]
-                        : order[a.urgency] - order[b.urgency];
+
+                // 🔍 Search filter
+                const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
+                let filtered = data.matches.filter(m => {
+                    const title = m.title?.toLowerCase() || "";
+                    const category = m.category?.toLowerCase() || "";
+                    const urgency = m.urgency?.toLowerCase() || "";
+                    const status = m.status?.toLowerCase() || "";
+
+                    // match if user typed part of title, category, urgency, or status
+                    return (
+                        title.includes(searchTerm) ||
+                        category.includes(searchTerm) ||
+                        urgency.includes(searchTerm) ||
+                        status.includes(searchTerm)
+                    );
                 });
 
-                data.matches.forEach(match => {
+
+                // 🔽 Determine sorting mode
+                const sortValue = document.getElementById("sortOption").value;
+                const urgencyOrder = { low: 1, medium: 2, high: 3, urgent: 4 };
+
+                filtered.sort((a, b) => {
+                    switch (sortValue) {
+                        case "urgency-asc":
+                            return (urgencyOrder[a.urgency] || 0) - (urgencyOrder[b.urgency] || 0);
+                        case "urgency-desc":
+                            return (urgencyOrder[b.urgency] || 0) - (urgencyOrder[a.urgency] || 0);
+                        case "date-newest":
+                            return new Date(b.matched_at || b.created_at) - new Date(a.matched_at || a.created_at);
+                        case "date-oldest":
+                            return new Date(a.matched_at || a.created_at) - new Date(b.matched_at || b.created_at);
+                        default:
+                            return 0;
+                    }
+                });
+
+                // 🧩 Render cards
+                filtered.forEach(match => {
                     const helperName = match.helper_name || "Unassigned";
                     const rating = match.helper_rating ? `${match.helper_rating} ⭐` : "-";
                     const urgencyBadge = {
@@ -187,88 +219,82 @@
                         low: `<span class="badge bg-success">Low</span>`
                     }[match.urgency] || `<span class="badge bg-secondary">Unknown</span>`;
 
+                    const urgencyClass = `${(match.urgency || 'low').toLowerCase()}-border`;
 
                     const card = document.createElement("div");
                     card.className = "col-md-4";
-                    const urgencyClass = `${(match.urgency || 'low').toLowerCase()}-border`;
-
                     card.innerHTML = `
-                        <div class="card feature-card shadow-sm border-0 h-100 ${urgencyClass}">
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold text-primary">${match.title}</h5>
-                            <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
-                            <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
-                            <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
-                            <hr>
-                            <p><i class="fas fa-user"></i> <strong>Helper:</strong> ${helperName}</p>
-                            <p><i class="fas fa-star"></i> <strong>Rating:</strong> ${rating}</p>
-                        </div>
-                        </div>
-                    `;
+        <div class="card feature-card shadow-sm border-0 h-100 ${urgencyClass}">
+          <div class="card-body">
+            <h5 class="card-title fw-bold text-primary">${match.title}</h5>
+            <p class="card-text text-muted mb-1"><strong>Category:</strong> ${match.category}</p>
+            <p class="card-text text-muted mb-1"><strong>Urgency:</strong> ${urgencyBadge}</p>
+            <p class="card-text text-muted mb-1"><strong>Status:</strong> ${match.status}</p>
+            <hr>
+            <p><i class="fas fa-user"></i> <strong>Helper:</strong> ${helperName}</p>
+            <p><i class="fas fa-star"></i> <strong>Rating:</strong> ${rating}</p>
+            <small class="text-muted"><i class="far fa-calendar"></i>
+              ${new Date(match.matched_at || match.created_at).toLocaleString()}
+            </small>
+          </div>
+        </div>
+      `;
                     container.appendChild(card);
                 });
+
             } catch (err) {
                 console.error("Error loading matches:", err);
                 document.getElementById("matchesContainer").innerHTML =
-                    `<div class="text-center text-danger">Failed to load helpers.</div>`;
+                    `<div class="text-center text-danger">Failed to load matches.</div>`;
             } finally {
                 document.getElementById("loadingOverlay").style.display = "none";
             }
         }
-        document.getElementById("sortUrgency").addEventListener("change", () => loadMatches());
 
+
+        // --- EVENT LISTENERS (Step 3) ---
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 1 Wait for authentication system to initialize
                 const authManager = await waitForAuthManager();
                 await authManager.initialize();
-
-                // 2 Check if user is logged in
                 const isAuthenticated = await authManager.checkAuthentication();
                 if (!isAuthenticated) {
                     window.location.href = "login.html";
                     return;
                 }
 
-                // Wait for header to load before accessing header elements
-                if (window.HeaderManager && typeof window.HeaderManager.waitForLoad === 'function') {
-                    await window.HeaderManager.waitForLoad();
-                }
-
-                // 3 Get current user info and show in UI
                 const currentUser = authManager.getCurrentUser();
                 populateUserInfo(currentUser);
 
                 if (!currentUser || currentUser.role !== 'senior') {
                     alert('Access denied. This page is for seniors only.');
-                    window.location.href = 'dashboard.html'; // or your helper dashboard
+                    window.location.href = 'dashboard.html';
                     return;
                 }
 
-                // 4 Now call your original loadMatches() safely
-                await loadMatches(authManager);
+                // initial load
+                await loadMatches();
+
+                // 🔁 attach filters after load
+                document.getElementById("searchInput").addEventListener("input", loadMatches);
+                document.getElementById("sortOption").addEventListener("change", loadMatches);
+
             } catch (error) {
                 console.error("Error during initialization:", error);
-                const matchesContainer = document.getElementById('matchesContainer');
-                if (matchesContainer) {
-                    matchesContainer.innerHTML = `
-                <div class="text-center">
-                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                    <h4>Failed to Load Matches</h4>
-                    <p>Please try again later.</p>
-                    <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
-                </div>
-            `;
-                }
-                const loadingOverlay = document.getElementById('loadingOverlay');
-                if (loadingOverlay) {
-                    loadingOverlay.style.display = 'none';
-                }
+                document.getElementById('matchesContainer').innerHTML = `
+        <div class="text-center">
+          <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+          <h4>Failed to Load Matches</h4>
+          <p>Please try again later.</p>
+          <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+        </div>`;
+                document.getElementById('loadingOverlay').style.display = 'none';
             }
         });
-
     </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 
 </html>

@@ -1071,6 +1071,33 @@
 
                 const stats = await response.json();
 
+                // Build badges html
+                let badgesHtml = '';
+                if (stats.badges && stats.badges.length > 0) {
+                    badgesHtml = `
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-trophy me-2 text-warning"></i>
+                                    Badges Earned 
+                                    <span class="badge bg-primary ms-2">${stats.badges.length}</span>
+                                </h6>
+                                <div class="row">
+                                    ${stats.badges.map(badge => `
+                                        <div class="col-md-4 col-6 mb-3">
+                                            <div class="text-center p-2 border rounded" style="background: ${badge.color}10; border-color: ${badge.color}!important;">
+                                                <i class="fas ${badge.icon} fa-2x mb-2" style="color: ${badge.color};"></i>
+                                                <div class="fw-bold" style="font-size: 0.85rem;">${badge.name}</div>
+                                                <small class="text-muted" style="font-size: 0.75rem;">${badge.description}</small>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 // Display stats
                 modalContent.innerHTML = `
                     <div class="row mb-3">
@@ -1080,7 +1107,7 @@
                             </h5>
                         </div>
                     </div>
-
+                    ${badgesHtml}
                     <div class="row mb-3">
                         <div class="col-md-6 mb-3">
                             <div class="stat-item">
@@ -1122,7 +1149,6 @@
                             </div>
                         </div>
                     </div>
-
                     ${Object.keys(stats.category_breakdown).length > 0 ? `
                         <div class="row">
                             <div class="col-12">
