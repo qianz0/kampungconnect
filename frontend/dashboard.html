@@ -268,7 +268,6 @@
                     return;
                 }
 
-                populateUserInfo(currentUser);
                 showNewRequestButton(currentUser);
                 showMatchButton(currentUser);
 
@@ -344,19 +343,6 @@
                 }
             }
         });
-
-        // Populate user information
-        function populateUserInfo(user) {
-            if (!user) return;
-
-            // Create display name from firstname and lastname, fallback to email
-            const displayName = user.firstname && user.lastname
-                ? `${user.firstname} ${user.lastname}`
-                : user.firstname || user.email || 'User';
-
-            // Update welcome section (header is handled by HeaderManager)
-            document.getElementById('welcomeName').textContent = displayName;
-        }
 
         // Reusable modal confirmation
         function showConfirmModal(message, onConfirm) {

@@ -709,22 +709,6 @@
             }
         }
 
-        // Populate user information
-        function populateUserInfo(user) {
-            if (!user) return;
-
-            // Create display name from firstname and lastname, fallback to email
-            const displayName = user.firstname && user.lastname
-                ? `${user.firstname} ${user.lastname}`
-                : user.firstname || user.email || 'User';
-
-            // Update navigation
-            document.getElementById('userName').textContent = displayName;
-            const avatar = document.getElementById('userAvatar');
-            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
-            avatar.alt = displayName;
-        }
-
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -738,10 +722,12 @@
                 }
 
                 currentUser = authManager.getCurrentUser();
-                populateUserInfo(currentUser);
 
                 if (currentUser.role === "senior") {
-                    document.getElementById("myRequestsMenuItem").style.display = "block";
+                    const myRequestsMenuItem = document.getElementById("headerMyRequestsMenuItem");
+                    if (myRequestsMenuItem) {
+                        myRequestsMenuItem.style.display = "block";
+                    }
                 }
                 if (currentUser.role !== "senior") {
                     alert("Only seniors can post requests.");

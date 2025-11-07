@@ -117,9 +117,31 @@ class HeaderManager {
 
         const avatarElement = document.getElementById('headerUserAvatar');
         if (avatarElement) {
-            avatarElement.src = user.picture || 
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
+            const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
+            
+            // If user has a picture URL and it's valid, use it; otherwise use fallback
+            let avatarUrl = fallbackUrl;
+            if (user.picture && typeof user.picture === 'string' && user.picture.trim().length > 0 && user.picture !== 'null') {
+                avatarUrl = user.picture;
+            }
+            
+            console.log('[Header] User picture value:', user.picture);
+            console.log('[Header] Using avatar URL:', avatarUrl);
+            
             avatarElement.alt = displayName;
+            
+            // Set fallback first to ensure something always displays
+            avatarElement.src = fallbackUrl;
+            
+            // Add error handler before setting the actual URL
+            avatarElement.onerror = function() {
+                console.warn('[Header] Failed to load profile picture, using fallback');
+                this.onerror = null; // Prevent infinite loop
+                this.src = fallbackUrl;
+            };
+            
+            // Now set the actual URL (might be same as fallback)
+            avatarElement.src = avatarUrl;
         }
 
         // Role-based visibility

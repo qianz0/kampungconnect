@@ -98,12 +98,7 @@ class DatabaseService {
             
             // If user exists → update
             if (findResult.rows.length > 0) {
-                const updateQuery = `
-                    UPDATE users 
-                    SET firstname = $1, lastname = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
-                    WHERE provider_id = $4 OR email = $5
-                    RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
-                `;
+                const existingUser = findResult.rows[0];
                 
                 // Extract names
                 const firstname = userData.firstname || 
@@ -111,16 +106,47 @@ class DatabaseService {
                 const lastname = userData.lastname || 
                             (userData.name ? userData.name.trim().split(' ').slice(1).join(' ') : '') || '';
                 
-                const updateResult = await client.query(updateQuery, [
-                    firstname,
-                    lastname,
-                    userData.picture || null,
-                    userData.id,
-                    userData.email
-                ]);
+                // If the existing user was created with email/password (provider_id is NULL)
+                // and now logging in with OAuth, update the provider_id and provider
+                if (!existingUser.provider_id && existingUser.provider === 'email' && userData.provider !== 'email') {
+                    console.log(`Linking OAuth account (${userData.provider}) to existing email account: ${userData.email}`);
+                    const linkQuery = `
+                        UPDATE users 
+                        SET firstname = $1, lastname = $2, picture = $3, provider_id = $4, provider = $5, 
+                            email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
+                        WHERE email = $6
+                        RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
+                    `;
+                    
+                    const linkResult = await client.query(linkQuery, [
+                        firstname,
+                        lastname,
+                        userData.picture || null,
+                        userData.id,
+                        userData.provider,
+                        userData.email
+                    ]);
+                    
+                    return linkResult.rows[0];
+                } else {
+                    // Normal update for existing OAuth users
+                    const updateQuery = `
+                        UPDATE users 
+                        SET firstname = $1, lastname = $2, picture = $3, email_verified = TRUE, updated_at = CURRENT_TIMESTAMP 
+                        WHERE provider_id = $4 OR email = $5
+                        RETURNING id, provider_id, email, firstname, lastname, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at, updated_at
+                    `;
+                    
+                    const updateResult = await client.query(updateQuery, [
+                        firstname,
+                        lastname,
+                        userData.picture || null,
+                        userData.id,
+                        userData.email
+                    ]);
 
-                // Return the raw DB row directly
-                return updateResult.rows[0];
+                    return updateResult.rows[0];
+                }
             }
 
             // Otherwise → insert a new user
@@ -167,17 +193,22 @@ class DatabaseService {
                 throw new Error('User with this email already exists');
             }
             
+            // Generate default profile picture using first and last name initials
+            const displayName = `${userData.firstname} ${userData.lastname}`.trim();
+            const defaultPicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=200`;
+            
             // Create new email/password user
             const insertQuery = `
-                INSERT INTO users (email, firstname, lastname, password_hash, provider, role, location, email_verified)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING id, email, firstname, lastname, provider, role, location, email_verified, created_at
+                INSERT INTO users (email, firstname, lastname, password_hash, picture, provider, role, location, email_verified)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id, email, firstname, lastname, picture, provider, role, location, email_verified, created_at
             `;
             const insertResult = await client.query(insertQuery, [
                 userData.email,
                 userData.firstname,
                 userData.lastname,
                 userData.passwordHash,
+                defaultPicture,
                 'email',
                 userData.role || 'senior',
                 userData.location || null,

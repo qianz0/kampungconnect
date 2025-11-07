@@ -382,10 +382,10 @@ app.post('/login', async (req, res) => {
             });
         }
 
-        // Check if user is email/password user (not OIDC)
-        if (user.provider !== 'email' || !user.password_hash) {
+        // Check if user has a password set (some OAuth-only users might not have a password)
+        if (!user.password_hash) {
             return res.status(400).json({
-                error: 'This email is associated with social login. Please use the appropriate login method.'
+                error: 'This account does not have a password set. Please login using your social account (Google/Microsoft).'
             });
         }
 
@@ -763,13 +763,22 @@ app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
+        // Generate fallback profile picture if none exists
+        let picture = user.picture;
+        if (!picture || picture === 'null' || picture.trim() === '') {
+            const displayName = user.firstname && user.lastname 
+                ? `${user.firstname} ${user.lastname}`.trim()
+                : user.email || 'User';
+            picture = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=200`;
+        }
+
         // Return user data without sensitive information
         res.json({
             id: user.id,
             email: user.email,
             firstname: user.firstname,
             lastname: user.lastname,
-            picture: user.picture,
+            picture: picture,
             provider: user.provider,
             role: user.role,
             location: user.location,

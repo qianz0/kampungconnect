@@ -372,7 +372,6 @@
                 }
                 currentUser = authManager.getCurrentUser();
                 console.log('[My Stats] Current user:', currentUser);
-                populateUserInfo(currentUser);
                 // Load stats based on role
                 await loadMyStats();
             } catch (error) {
@@ -423,24 +422,6 @@
             } catch (error) {
                 console.error('[My Stats] Error in loadMyStats:', error);
                 showError('Failed to load statistics: ' + error.message);
-            }
-        }
-
-        // Function to get user info
-        function populateUserInfo(user) {
-            if (!user) return;
-            const fullName = [user.firstname, user.lastname].filter(Boolean).join(' ') || 'User';
-            
-            const userNameEl = document.getElementById('userName');
-            if (userNameEl) {
-                userNameEl.textContent = fullName;
-            }
-
-            const avatar = document.getElementById('userAvatar');
-            if (avatar) {
-                avatar.src = user.picture ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6c757d&color=fff`;
-                avatar.alt = fullName;
             }
         }
 

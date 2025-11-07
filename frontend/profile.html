@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer-when-downgrade">
     <title>Profile - KampungConnect</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -417,12 +418,35 @@
                 ? `${user.firstname} ${user.lastname}`
                 : user.email || 'User';
 
-            const avatarUrl = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=150`;
+            // Always use the avatar service URL - either with user's picture or fallback
+            const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=150`;
+            
+            // If user has a picture URL and it's valid, use it; otherwise use fallback
+            let avatarUrl = fallbackUrl;
+            if (user.picture && typeof user.picture === 'string' && user.picture.trim().length > 0 && user.picture !== 'null') {
+                avatarUrl = user.picture;
+            }
+            
+            console.log('[Profile] User picture value:', user.picture);
+            console.log('[Profile] Using avatar URL:', avatarUrl);
 
             // Profile header
             document.getElementById('profileName').textContent = displayName;
             document.getElementById('profileEmail').textContent = user.email || '-';
-            document.getElementById('profileAvatar').src = avatarUrl;
+            
+            const avatarElement = document.getElementById('profileAvatar');
+            // Set fallback first to ensure something always displays
+            avatarElement.src = fallbackUrl;
+            
+            // Add error handler before setting the actual URL
+            avatarElement.onerror = function() {
+                console.warn('[Profile] Failed to load profile picture, using fallback');
+                this.onerror = null; // Prevent infinite loop
+                this.src = fallbackUrl;
+            };
+            
+            // Now set the actual URL (might be same as fallback)
+            avatarElement.src = avatarUrl;
 
             // Role badge
             const roleBadge = document.getElementById('profileRoleBadge');
