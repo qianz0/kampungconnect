@@ -1,0 +1,34 @@
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+        http:
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks
+    pool:
+      max_workers: 100
+      queue_depth: 10000
+
+compactor:
+  compaction:
+    block_retention: 1h
+
+query_frontend:
+  search:
+    max_duration: 1h
+    default_result_limit: 20
+
+querier:
+  frontend_worker:
+    frontend_address: tempo:9095

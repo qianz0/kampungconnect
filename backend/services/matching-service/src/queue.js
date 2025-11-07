@@ -8,6 +8,23 @@ let onConnectedCallback = null;
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
 
+// ====== Prometheus Metrics ======
+const client = require('prom-client');
+
+// Collect default Node.js + process metrics (CPU, memory, event loop)
+client.collectDefaultMetrics();
+
+// Custom message counters
+const messageProcessed = new client.Counter({
+  name: 'messages_processed_total',
+  help: 'Total number of messages successfully processed by matching-service',
+});
+
+const messageFailed = new client.Counter({
+  name: 'messages_failed_total',
+  help: 'Total number of messages that failed processing (sent to DLQ)',
+});
+
 /**
  * Connect to RabbitMQ (with automatic reconnects)
  */
@@ -54,7 +71,7 @@ async function connectQueue() {
   }
 }
 
-// 👉 DLQ helper
+// DLQ helper
 async function assertQueueWithDLQ(ch, queueName, extraArgs = {}) {
   await ch.assertQueue(`${queueName}.dlq`, { durable: true });
   await ch.assertQueue(queueName, {
@@ -94,10 +111,10 @@ async function publishMessage(queueName, message, priority = 1) {
 
     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
       persistent: true,
-      priority, // 👈 Priority support
+      priority, // Priority support
     });
 
-    console.log(`📤 [matching-service] Sent message to queue: ${queueName} (priority=${priority})`);
+    console.log(`[matching-service] Sent message to queue: ${queueName} (priority=${priority})`);
   } catch (err) {
     console.error("❌ [matching-service] Failed to publish message:", err);
   }
@@ -109,7 +126,7 @@ async function publishMessage(queueName, message, priority = 1) {
 async function consumeQueue(queueName, callback) {
   onConnectedCallback = async (ch) => {
     await assertQueueWithDLQ(ch, queueName, { "x-max-priority": 10 });
-    console.log(`👂 [matching-service] Listening on queue: ${queueName}`);
+    console.log(`[matching-service] Listening on queue: ${queueName}`);
 
     ch.consume(
       queueName,
@@ -119,10 +136,23 @@ async function consumeQueue(queueName, callback) {
         try {
           const data = JSON.parse(msg.content.toString());
           await callback(data);
+          messageProcessed.inc(); //count success
           ch.ack(msg);
         } catch (err) {
           console.error("❌ Error handling message:", err);
-          ch.nack(msg, false, false);
+          messageFailed.inc(); // count failure
+
+          if (attempt >= MAX_RETRIES) {
+            console.warn(`Max retries reached (${attempt}). Sending to DLQ.`);
+            ch.sendToQueue(`${queueName}.dlq`, msg.content, { persistent: true });
+            ch.ack(msg);
+          } else {
+            ch.sendToQueue("request_retry", msg.content, {
+              headers: { "x-retry-count": attempt + 1 },
+            });
+            ch.ack(msg);
+          }
+          //ch.nack(msg, false, false);
         }
       },
       { noAck: false }
