@@ -16,10 +16,90 @@
             margin-bottom: 20px;
         }
         
+        .badge-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .badge-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: var(--badge-color);
+        }
+
+        .badge-icon-container {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--badge-bg);
+            position: relative;
+        }
+
         .badge-icon {
-            font-size: 3rem;
-            margin: 10px;
-            animation: bounce 2s infinite;
+            font-size: 2.5rem;
+            color: var(--badge-color);
+        }
+
+        .badge-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--badge-color);
+            animation: pulse 2s infinite;
+        }
+
+        .badge-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .badge-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+        }
+
+        .badge-tier {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tier-bronze { background: #cd7f32; color: white; }
+        .tier-silver { background: #c0c0c0; color: #333; }
+        .tier-gold { background: #ffd700; color: #333; }
+        .tier-platinum { background: #e5e4e2; color: #333; }
+        .tier-diamond { background: #b9f2ff; color: #333; }
+        .tier-legendary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+
+        .no-badges {
+            text-align: center;
+            padding: 3rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .no-badges i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 1rem;
         }
         
         @keyframes bounce {
@@ -151,6 +231,24 @@
                                 <h5><i class="fas fa-list me-2"></i>Help by Category</h5>
                                 <div id="helperCategories">
                                     <p class="text-muted">No category data available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Badges Section -->
+                <div class="row mb-4" id="badgesSection">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="mb-4">
+                                    <i class="fas fa-trophy me-2 text-warning"></i>
+                                    Your Badges
+                                    <span class="badge bg-primary ms-2" id="badgeCount">0</span>
+                                </h5>
+                                <div id="badgesContainer" class="row">
+                                    <!-- Badges will be populated here -->
                                 </div>
                             </div>
                         </div>
@@ -346,6 +444,40 @@
             }
         }
 
+        // Display badges
+        function displayBadges(badges) {
+            const badgesContainer = document.getElementById('badgesContainer');
+            const badgeCount = document.getElementById('badgeCount');
+
+            if (!badges || badges.length === 0) {
+                badgesContainer.innerHTML = `
+                    <div class="col-12">
+                        <div class="no-badges">
+                            <i class="fas fa-trophy"></i>
+                            <h5>No Badges Yet</h5>
+                            <p class="text-muted">Complete requests and improve your stats to earn badges!</p>
+                        </div>
+                    </div>
+                `;
+                badgeCount.textContent = '0';
+                return;
+            }
+            badgeCount.textContent = badges.length;
+            badgesContainer.innerHTML = badges.map(badge => `
+                <div class="col-md-4 col-lg-3 mb-4">
+                    <div class="badge-card" style="--badge-color: ${badge.color}; --badge-bg: ${badge.color}20;">
+                        <div class="badge-icon-container">
+                            <div class="badge-glow"></div>
+                            <i class="fas ${badge.icon} badge-icon"></i>
+                        </div>
+                        <div class="badge-name">${badge.name}</div>
+                        <div class="badge-description">${badge.description}</div>
+                        <span class="badge-tier tier-${badge.tier}">${badge.tier}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function displayHelperStats(data) {
             console.log('Helper stats:', data);
 
@@ -376,6 +508,11 @@
                         </div>
                     `).join('');
                     document.getElementById('helperCategories').innerHTML = categoriesHtml;
+            }
+
+            // Badges
+            if (data.badges) {
+                displayBadges(data.badges);
             }
         }
 

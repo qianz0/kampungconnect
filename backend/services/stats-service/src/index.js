@@ -29,6 +29,217 @@ function formatHoursMinutes(totalHours) {
     return `${hours}h ${minutes}m`;
 }
 
+// Function to calculate badges for helpers
+function calculateBadges(stats) {
+    const badges = [];
+
+    // Completion Milestones
+    if (stats.total_completed >= 1) {
+        badges.push({
+            id: 'first_help',
+            name: 'First Help',
+            description: 'Completed your first request',
+            icon: 'fa-star',
+            color: '#ffc107',
+            tier: 'bronze'
+        })
+    }
+    if (stats.total_completed >= 5) {
+        badges.push({
+            id: 'helping_hand',
+            name: 'Helping Hand',
+            description: 'Completed 5 requests',
+            icon: 'fa-hand-holding-heart',
+            color: '#17a2b8',
+            tier: 'silver'
+        })
+    }
+    if (stats.total_completed >= 10) {
+        badges.push({
+            id: 'community_helper',
+            name: 'Community Helper',
+            description: 'Completed 10 requests',
+            icon: 'fa-hands-helping',
+            color: '#28a745',
+            tier: 'gold'
+        });
+    }
+    if (stats.total_completed >= 25) {
+        badges.push({
+            id: 'super_volunteer',
+            name: 'Super Volunteer',
+            description: 'Completed 25 requests',
+            icon: 'fa-trophy',
+            color: '#6f42c1',
+            tier: 'platinum'
+        });
+    }
+    if (stats.total_completed >= 50) {
+        badges.push({
+            id: 'champion',
+            name: 'Champion',
+            description: 'Completed 50 requests',
+            icon: 'fa-crown',
+            color: '#fd7e14',
+            tier: 'diamond'
+        });
+    }
+    if (stats.total_completed >= 100) {
+        badges.push({
+            id: 'legend',
+            name: 'Legend',
+            description: 'Completed 100 requests',
+            icon: 'fa-medal',
+            color: '#e83e8c',
+            tier: 'legendary'
+        });
+    }
+
+    // Time based
+    if (stats.total_hours >= 10) {
+        badges.push({
+            id: 'dedicated_10',
+            name: 'Dedicated Helper',
+            description: 'Volunteered 10+ hours',
+            icon: 'fa-clock',
+            color: '#17a2b8',
+            tier: 'silver'
+        });
+    }
+    if (stats.total_hours >= 50) {
+        badges.push({
+            id: 'time_warrior',
+            name: 'Time Warrior',
+            description: 'Volunteered 50+ hours',
+            icon: 'fa-hourglass-half',
+            color: '#28a745',
+            tier: 'gold'
+        });
+    }
+    if (stats.total_hours >= 100) {
+        badges.push({
+            id: 'marathon_volunteer',
+            name: 'Marathon Volunteer',
+            description: 'Volunteered 100+ hours',
+            icon: 'fa-running',
+            color: '#6f42c1',
+            tier: 'platinum'
+        });
+    }
+
+    // Ratings
+    if (stats.avg_rating >= 4.5 && stats.total_ratings >= 5) {
+        badges.push({
+            id: 'highly_rated',
+            name: 'Highly Rated',
+            description: '4.5+ star average with 5+ ratings',
+            icon: 'fa-star',
+            color: '#ffc107',
+            tier: 'gold'
+        });
+    }
+    if (stats.avg_rating >= 4.8 && stats.total_ratings >= 10) {
+        badges.push({
+            id: 'five_star_hero',
+            name: 'Five Star Hero',
+            description: '4.8+ star average with 10+ ratings',
+            icon: 'fa-certificate',
+            color: '#fd7e14',
+            tier: 'platinum'
+        });
+    }
+
+    // Perfect rating
+    const perfectRatingPercent = stats.total_ratings > 0 ? (stats.five_star_count / stats.total_ratings) * 100 : 0;
+    if (perfectRatingPercent >= 80 && stats.total_ratings >= 5) {
+        badges.push({
+            id: 'excellence',
+            name: 'Excellence Award',
+            description: '80%+ five-star ratings',
+            icon: 'fa-gem',
+            color: '#e83e8c',
+            tier: 'diamond'
+        });
+    }
+
+    // Completion rate
+    if (stats.completion_rate >= 90 && stats.total_completed >= 10) {
+        badges.push({
+            id: 'reliable',
+            name: 'Reliable Helper',
+            description: '90%+ completion rate',
+            icon: 'fa-check-circle',
+            color: '#28a745',
+            tier: 'gold'
+        });
+    }
+    if (stats.completion_rate >= 95 && stats.total_completed >= 20) {
+        badges.push({
+            id: 'dependable',
+            name: 'Dependable Pro',
+            description: '95%+ completion rate',
+            icon: 'fa-shield-alt',
+            color: '#6f42c1',
+            tier: 'platinum'
+        });
+    }
+
+    // Response time
+    if (stats.avg_response_minutes <= 30 && stats.total_completed >= 5) {
+        badges.push({
+            id: 'quick_responder',
+            name: 'Quick Responder',
+            description: 'Average response under 30 minutes',
+            icon: 'fa-bolt',
+            color: '#ffc107',
+            tier: 'gold'
+        });
+    }
+    if (stats.avg_response_minutes <= 10 && stats.total_completed >= 10) {
+        badges.push({
+            id: 'lightning_fast',
+            name: 'Lightning Fast',
+            description: 'Average response under 10 minutes',
+            icon: 'fa-zap',
+            color: '#fd7e14',
+            tier: 'platinum'
+        });
+    }
+
+    // Rank 
+    if (stats.rank_percentage <= 10 && stats.total_completed >= 10) {
+        badges.push({
+            id: 'top_10',
+            name: 'Top 10%',
+            description: 'Ranked in top 10% of helpers',
+            icon: 'fa-award',
+            color: '#6f42c1',
+            tier: 'platinum'
+        });
+    }
+    if (stats.rank_percentage <= 5 && stats.total_completed >= 20) {
+        badges.push({
+            id: 'elite',
+            name: 'Elite Helper',
+            description: 'Ranked in top 5% of helpers',
+            icon: 'fa-star-of-life',
+            color: '#e83e8c',
+            tier: 'diamond'
+        });
+    }
+    if (stats.rank_percentage <= 1 && stats.total_completed >= 50) {
+        badges.push({
+            id: 'top_1',
+            name: 'Top 1%',
+            description: 'Ranked in top 1% of helpers',
+            icon: 'fa-crown',
+            color: '#dc3545',
+            tier: 'legendary'
+        });
+    }
+    return badges;
+}
+
 // Function to get helper stats
 async function getHelperStatsData(helperId) {
     // Request Statistics
@@ -129,6 +340,18 @@ async function getHelperStatsData(helperId) {
         WHERE helper_id = $1
     `, [helperId]);
     const rank = rankStats.rows[0] || { top_percentage: 100, completed: 0 };
+
+    // Calculate badges
+    const badges = calculateBadges({
+        total_completed: parseInt(stats.total_completed),
+        total_hours: parseFloat(timeData.total_hours || 0),
+        avg_rating: parseFloat(ratingData.avg_rating || 0),
+        five_star_count: parseInt(ratingData.five_star_count || 0),
+        total_ratings: parseInt(ratingData.total_ratings || 0),
+        completion_rate: parseFloat(completionRate),
+        avg_response_minutes: parseFloat(avgResponseMinutes),
+        rank_percentage: parseInt(rank.top_percentage)
+    });
     
     return {
         helper_id: parseInt(helperId),
@@ -164,6 +387,7 @@ async function getHelperStatsData(helperId) {
             acc[row.category] = parseInt(row.count);
             return acc;
         }, {}),
+        badges: badges
     }
 }
 
