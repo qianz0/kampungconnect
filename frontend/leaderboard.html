@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/header.css">
+    <style>
+        .leaderboard-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-pane {
+            min-height: 400px;
+        }
+        
+        .rank-badge {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .rank-1 { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #333; }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%); color: #333; }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32 0%, #d4956d 100%); color: white; }
+        .rank-other { background: #f8f9fa; color: #666; }
+        
+        .leaderboard-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .leaderboard-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .leaderboard-item.current-user {
+            border-color: #667eea;
+            background: #667eea10;
+        }
+
+        .leaderboard-item.current-user:hover {
+            background: linear-gradient(135deg, #667eea20, #764ba220);
+        }
+        
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .user-info {
+            flex-grow: 1;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+        
+        .tab-icon {
+            font-size: 1.2rem;
+            margin-right: 8px;
+        }
+        
+        .your-position {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .fire-icon {
+            animation: flicker 1.5s infinite;
+        }
+        
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Common Header will be loaded here -->
+    <div id="commonHeader"></div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="leaderboard-card">
+                    <h2><i class="fas fa-trophy me-2"></i>Community Leaderboard</h2>
+                    <p class="mb-0">Celebrating our top helpers and their amazing contributions!</p>
+                </div>
+            </div>
+        </div>
+        <!-- Your Position Card -->
+        <div id="yourPositionCard" style="display: none;">
+            <div class="your-position">
+                <h5><i class="fas fa-user me-2"></i>Your Position</h5>
+                <div id="yourPositionContent"></div>
+            </div>
+        </div>
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="leaderboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button">
+                    <i class="fas fa-check-circle tab-icon"></i>Most Completed
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="rating-tab" data-bs-toggle="tab" data-bs-target="#rating" type="button">
+                    <i class="fas fa-star tab-icon"></i>Highest Rated
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="hours-tab" data-bs-toggle="tab" data-bs-target="#hours" type="button">
+                    <i class="fas fa-clock tab-icon"></i>Most Hours
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="streak-tab" data-bs-toggle="tab" data-bs-target="#streak" type="button">
+                    <i class="fas fa-fire tab-icon fire-icon"></i>Longest Streaks
+                </button>
+            </li>
+        </ul>
+        <!-- Tab Content -->
+        <div class="tab-content" id="leaderboardTabContent">
+            <!-- Completed Tab -->
+            <div class="tab-pane fade show active" id="completed" role="tabpanel">
+                <div id="completedLoading" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="completedLeaderboard"></div>
+            </div>
+            <!-- Rating Tab -->
+            <div class="tab-pane fade" id="rating" role="tabpanel">
+                <div id="ratingLoading" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="ratingLeaderboard"></div>
+            </div>
+            <!-- Hours Tab -->
+            <div class="tab-pane fade" id="hours" role="tabpanel">
+                <div id="hoursLoading" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="hoursLeaderboard"></div>
+            </div>
+            <!-- Streak Tab -->
+            <div class="tab-pane fade" id="streak" role="tabpanel">
+                <div id="streakLoading" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="streakLeaderboard"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Stats Modal -->
+    <div class="modal fade" id="userStatsModal" tabindex="-1" aria-labelledby="userStatsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userStatsModalLabel">
+                        <i class="fas fa-chart-line me-2"></i>User Statistics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="userStatsContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/stats.js"></script>
+    <script>
+        let currentUser = null;
+
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50; // 5 seconds max
+                function checkAuthManager() {
+                    attempts++;
+                    console.log(`[Leaderboard] Checking for AuthManager (attempt ${attempts}/${maxAttempts})...`);
+                    if (window.AuthManager &&
+                        typeof window.AuthManager === 'object' &&
+                        typeof window.AuthManager.initialize === 'function') {
+                        console.log('[Leaderboard] AuthManager found and ready');
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        console.error('[Leaderboard] AuthManager not available after maximum attempts');
+                        reject(new Error('AuthManager not available after timeout'));
+                    } else {
+                        setTimeout(checkAuthManager, 100);
+                    }
+                }
+                checkAuthManager();
+            });
+        }
+        
+        async function loadLeaderboard(type) {
+            const loadingEl = document.getElementById(`${type}Loading`);
+            const contentEl = document.getElementById(`${type}Leaderboard`);
+            loadingEl.style.display = 'flex';
+            contentEl.innerHTML = '';
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch(`http://localhost:5009/stats/leaderboard/${type}`);
+    
+                if (!response.ok) {
+                    throw new Error('Failed to load leaderboard');
+                }
+                const data = await response.json();
+                loadingEl.style.display = 'none';
+                
+                if (data.leaderboard.length === 0) {
+                    contentEl.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No data available yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+                renderLeaderboard(data.leaderboard, type, contentEl);
+            } catch (error) {
+                console.error(`Error loading ${type} leaderboard:`, error);
+                loadingEl.style.display = 'none';
+                contentEl.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load leaderboard. Please try again.
+                    </div>
+                `;
+            }
+        }
+
+        function renderLeaderboard(data, type, container) {
+            const html = data.map((item, index) => {
+                const rank = parseInt(item.rank) || (index + 1);
+                console.log(`${item.firstname}: index=${index}, rank=${rank}, medal=${rank === 1 ? 'Gold' : rank === 2 ? 'Silver' : rank === 3 ? 'Bronze' : 'None'}`);
+                const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                const isCurrentUser = currentUser && item.id === currentUser.id;
+                let statDisplay = '';
+
+                switch(type) {
+                    case 'completed':
+                        statDisplay = `${item.completed_count} requests`;
+                        break;
+                    case 'rating':
+                        statDisplay = `<i class="fas fa-star text-warning"></i> ${item.avg_rating}`;
+                        break;
+                    case 'hours':
+                        statDisplay = `${item.total_hours}h`;
+                        break;
+                    case 'streak':
+                        statDisplay = `<i class="fas fa-fire text-danger"></i> ${item.current_streak} days`;
+                        break;
+                }
+                const name = `${item.firstname || ''} ${item.lastname || ''}`.trim() || 'Anonymous';
+                const avatar = item.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6c757d&color=fff`;
+                let rankDisplay;
+                if (rank === 1) {
+                    rankDisplay = '🥇';
+                } else if (rank === 2) {
+                    rankDisplay = '🥈';
+                } else if (rank === 3) {
+                    rankDisplay = '🥉';
+                } else {
+                    rankDisplay = rank;
+                }
+                const safeName = name.replace(/'/g, "\\'");
+                return `
+                    <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}" 
+                        style="cursor: pointer;"
+                        onclick="viewUserStats(${item.id}, '${safeName}')">
+                        <div class="rank-badge ${rankClass}">
+                            ${rankDisplay}
+                        </div>
+                        <img src="${avatar}" alt="${name}" class="user-avatar">
+                        <div class="user-info">
+                            <strong>${name}</strong> ${isCurrentUser ? '<span class="badge bg-primary ms-2">You</span>' : ''}
+                            <br>
+                            <small class="text-muted">${item.role || 'Helper'}</small>
+                        </div>
+                        <div class="stat-value">${statDisplay}</div>
+                    </div>
+                `;
+            }).join('');
+            container.innerHTML = html;
+        }
+
+        async function loadYourPosition(type) {
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch(`http://localhost:5009/stats/leaderboard/${type}/position`);
+                
+                if (!response.ok) return;
+                const data = await response.json();
+                
+                if (!data.rank) return;
+                const card = document.getElementById('yourPositionCard');
+                const content = document.getElementById('yourPositionContent');
+                card.style.display = 'block';
+                let message = '';
+
+                switch(type) {
+                    case 'completed':
+                        message = `You're ranked #${data.rank} with ${data.completed_count} completed requests!`;
+                        break;
+                    case 'rating':
+                        message = `You're ranked #${data.rank} with a ${data.avg_rating} star average!`;
+                        break;
+                    case 'hours':
+                        message = `You're ranked #${data.rank} with ${data.total_hours} hours volunteered!`;
+                        break;
+                    case 'streak':
+                        message = `You're ranked #${data.rank} with a ${data.current_streak} day streak! 🔥`;
+                        break;
+                }
+                content.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-medal fa-2x me-3"></i>
+                        <div>
+                            <strong>${message}</strong>
+                            <br>
+                            <small>Keep up the great work!</small>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading position:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const authManager = window.AuthManager;
+                await authManager.initialize();
+                const isAuth = await authManager.checkAuthentication();
+
+                if (!isAuth) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                currentUser = authManager.getCurrentUser();
+                // Load initial leaderboard
+                await loadLeaderboard('completed');
+
+                if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                    await loadYourPosition('completed');
+                }
+                // Tab change handlers
+                document.getElementById('completed-tab').addEventListener('shown.bs.tab', async () => {
+                    await loadLeaderboard('completed');
+                    if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                        await loadYourPosition('completed');
+                    }
+                });
+                document.getElementById('rating-tab').addEventListener('shown.bs.tab', async () => {
+                    await loadLeaderboard('rating');
+                    if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                        await loadYourPosition('rating');
+                    }
+                });
+                document.getElementById('hours-tab').addEventListener('shown.bs.tab', async () => {
+                    await loadLeaderboard('hours');
+                    if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                        await loadYourPosition('hours');
+                    }
+                });
+                document.getElementById('streak-tab').addEventListener('shown.bs.tab', async () => {
+                    await loadLeaderboard('streak');
+                    if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                        await loadYourPosition('streak');
+                    }
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
