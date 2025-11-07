@@ -81,24 +81,24 @@ CREATE TABLE offers (
 -- Sample Users (mix of seniors, volunteers, caregivers, and admin)
 INSERT INTO users (provider_id, email, firstname, lastname, address, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at) VALUES
 -- Senior users
-(NULL, 'alice.tan@example.com', 'Alice', 'Tan', '10 Bedok North Ave 3, #05-123', '$2b$10$samplehashedpassword2', NULL, 'email', 'senior', 4.8, '460010', TRUE, TRUE, NOW() - INTERVAL '60 days'),
+(NULL, 'alice.tan@example.com', 'Alice', 'Tan', '10 Bedok North Ave 3, #05-123', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.8, '460010', TRUE, TRUE, NOW() - INTERVAL '60 days'),
 ('google_102938475', 'robert.wong@gmail.com', 'Robert', 'Wong', '45 Jurong West Street 42, #12-456', NULL, 'https://lh3.googleusercontent.com/sample1', 'google', 'senior', 4.9, '640045', TRUE, TRUE, NOW() - INTERVAL '45 days'),
-(NULL, 'margaret.lim@example.com', 'Margaret', 'Lim', '88 Hougang Ave 8, #03-789', '$2b$10$samplehashedpassword3', NULL, 'email', 'senior', 5.0, '530088', TRUE, TRUE, NOW() - INTERVAL '30 days'),
+(NULL, 'margaret.lim@example.com', 'Margaret', 'Lim', '88 Hougang Ave 8, #03-789', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 5.0, '530088', TRUE, TRUE, NOW() - INTERVAL '30 days'),
 ('azure_aad_12345', 'david.chen@outlook.com', 'David', 'Chen', '22 Woodlands Ring Road, #07-234', NULL, 'https://graph.microsoft.com/sample2', 'azure', 'senior', 4.7, '730022', TRUE, TRUE, NOW() - INTERVAL '20 days'),
 
 -- Volunteer users
-(NULL, 'john.doe@example.com', 'John', 'Doe', '15 Orchard Road, #10-100', '$2b$10$samplehashedpassword4', NULL, 'email', 'volunteer', 4.9, '238841', TRUE, TRUE, NOW() - INTERVAL '75 days'),
+(NULL, 'john.doe@example.com', 'John', 'Doe', '15 Orchard Road, #10-100', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.9, '238841', TRUE, TRUE, NOW() - INTERVAL '75 days'),
 ('google_384756291', 'sarah.lee@gmail.com', 'Sarah', 'Lee', '33 Tampines Street 32, #08-567', NULL, 'https://lh3.googleusercontent.com/sample3', 'google', 'volunteer', 5.0, '529033', TRUE, TRUE, NOW() - INTERVAL '50 days'),
-(NULL, 'michael.ng@example.com', 'Michael', 'Ng', '77 Yishun Ave 5, #14-890', '$2b$10$samplehashedpassword5', NULL, 'email', 'volunteer', 4.8, '760077', TRUE, TRUE, NOW() - INTERVAL '40 days'),
-(NULL, 'emily.tan@example.com', 'Emily', 'Tan', '99 Clementi Ave 2, #06-345', '$2b$10$samplehashedpassword6', NULL, 'email', 'volunteer', 4.7, '129899', TRUE, TRUE, NOW() - INTERVAL '25 days'),
+(NULL, 'michael.ng@example.com', 'Michael', 'Ng', '77 Yishun Ave 5, #14-890', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.8, '760077', TRUE, TRUE, NOW() - INTERVAL '40 days'),
+(NULL, 'emily.tan@example.com', 'Emily', 'Tan', '99 Clementi Ave 2, #06-345', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.7, '129899', TRUE, TRUE, NOW() - INTERVAL '25 days'),
 
 -- Caregiver users
-(NULL, 'linda.koh@example.com', 'Linda', 'Koh', '55 Marine Parade Road, #11-222', '$2b$10$samplehashedpassword7', NULL, 'email', 'caregiver', 4.9, '449055', TRUE, TRUE, NOW() - INTERVAL '65 days'),
+(NULL, 'linda.koh@example.com', 'Linda', 'Koh', '55 Marine Parade Road, #11-222', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.9, '449055', TRUE, TRUE, NOW() - INTERVAL '65 days'),
 ('azure_aad_67890', 'james.liu@outlook.com', 'James', 'Liu', '12 Bukit Batok Street 21, #09-678', NULL, 'https://graph.microsoft.com/sample4', 'azure', 'caregiver', 5.0, '651012', TRUE, TRUE, NOW() - INTERVAL '35 days'),
-(NULL, 'rachel.goh@example.com', 'Rachel', 'Goh', '66 Ang Mo Kio Ave 4, #13-444', '$2b$10$samplehashedpassword8', NULL, 'email', 'caregiver', 4.8, '560066', TRUE, TRUE, NOW() - INTERVAL '15 days'),
+(NULL, 'rachel.goh@example.com', 'Rachel', 'Goh', '66 Ang Mo Kio Ave 4, #13-444', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.8, '560066', TRUE, TRUE, NOW() - INTERVAL '15 days'),
 
 -- New user without role (incomplete registration)
-(NULL, 'newbie@example.com', 'New', 'User', NULL, '$2b$10$samplehashedpassword9', NULL, 'email', NULL, 5.0, NULL, TRUE, TRUE, NOW() - INTERVAL '2 days');
+(NULL, 'newbie@example.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days'),
 
 -- Sample Requests from seniors
 INSERT INTO requests (user_id, title, category, description, urgency, status, created_at) VALUES

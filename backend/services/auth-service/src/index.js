@@ -793,6 +793,85 @@ app.get('/me', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
     }
 });
 
+// Get khakis (seniors) - all or by location
+app.get('/khakis', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
+    try {
+        // Only seniors can view other seniors
+        if (req.user.role !== 'senior') {
+            return res.status(403).json({ error: 'Only seniors can view khakis' });
+        }
+
+        const { nearby } = req.query;
+        const currentUser = await dbService.getUserById(req.user.id);
+
+        if (!currentUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let query;
+        let params;
+
+        if (nearby === 'true') {
+            // Get seniors in the same location (excluding current user)
+            query = `
+                SELECT 
+                    id, email, firstname, lastname, picture, 
+                    location, rating, created_at
+                FROM users 
+                WHERE role = 'senior' 
+                    AND id != $1 
+                    AND is_active = true
+                    AND location IS NOT NULL
+                    AND location = $2
+                ORDER BY rating DESC, created_at DESC
+            `;
+            params = [currentUser.id, currentUser.location];
+        } else {
+            // Get all seniors (excluding current user)
+            query = `
+                SELECT 
+                    id, email, firstname, lastname, picture, 
+                    location, rating, created_at
+                FROM users 
+                WHERE role = 'senior' 
+                    AND id != $1 
+                    AND is_active = true
+                ORDER BY rating DESC, created_at DESC
+            `;
+            params = [currentUser.id];
+        }
+
+        const result = await dbService.pool.query(query, params);
+
+        // Process results to add fallback profile pictures
+        const khakis = result.rows.map(khaki => {
+            let picture = khaki.picture;
+            if (!picture || picture === 'null' || picture.trim() === '') {
+                const displayName = khaki.firstname && khaki.lastname 
+                    ? `${khaki.firstname} ${khaki.lastname}`.trim()
+                    : khaki.email || 'User';
+                picture = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=200`;
+            }
+
+            return {
+                ...khaki,
+                picture
+            };
+        });
+
+        res.json({
+            khakis,
+            count: khakis.length,
+            currentUserLocation: currentUser.location,
+            filter: nearby === 'true' ? 'nearby' : 'all'
+        });
+
+    } catch (error) {
+        console.error('Get khakis error:', error);
+        res.status(500).json({ error: 'Failed to fetch khakis' });
+    }
+});
+
 // Logout endpoint
 app.post('/logout', (req, res) => {
     res.clearCookie('auth_token');

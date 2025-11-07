@@ -752,7 +752,6 @@ if (typeof window !== 'undefined') {
             
             window.AuthManager = authManagerInstance;
             console.log('[AuthManager] Global instance created successfully:', window.AuthManager);
-            console.log('[AuthManager] Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.AuthManager)).filter(name => name !== 'constructor'));
         } else {
             console.log('[AuthManager] Global instance already exists');
         }

@@ -59,6 +59,7 @@ app.get('/api/admin/stats/overview',
                     (SELECT COUNT(*) FROM users WHERE role = 'volunteer') as total_volunteers,
                     (SELECT COUNT(*) FROM users WHERE role = 'caregiver') as total_caregivers,
                     (SELECT COUNT(*) FROM users WHERE role = 'admin') as total_admins,
+                    (SELECT COUNT(*) FROM users WHERE role IS NULL OR email_verified = false) as pending_users,
                     (SELECT COUNT(*) FROM requests) as total_requests,
                     (SELECT COUNT(*) FROM requests WHERE status = 'pending') as pending_requests,
                     (SELECT COUNT(*) FROM requests WHERE status = 'matched') as matched_requests,
@@ -275,8 +276,13 @@ app.get('/api/admin/users',
                 params.push(email_verified === 'true');
             }
             if (is_active !== undefined) {
-                conditions.push(`is_active = $${paramCount++}`);
-                params.push(is_active === 'true');
+                // Handle special case for "pending" status
+                if (is_active === 'pending') {
+                    conditions.push(`(role IS NULL OR email_verified = false)`);
+                } else {
+                    conditions.push(`is_active = $${paramCount++}`);
+                    params.push(is_active === 'true');
+                }
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -293,12 +299,17 @@ app.get('/api/admin/users',
             );
             const totalUsers = parseInt(countResult.rows[0].count);
 
-            // Get users
+            // Get users with computed status
             params.push(parseInt(limit), offset);
             const users = await pool.query(
                 `SELECT 
                     id, email, firstname, lastname, provider, role, rating, location,
-                    email_verified, is_active, created_at, updated_at, last_login
+                    email_verified, is_active, created_at, updated_at, last_login, password_hash,
+                    CASE 
+                        WHEN role IS NULL OR email_verified = false THEN 'Pending'
+                        WHEN is_active = true THEN 'Active'
+                        ELSE 'Inactive'
+                    END as status
                 FROM users 
                 ${whereClause}
                 ORDER BY ${sortColumn} ${sortDirection}
@@ -331,7 +342,14 @@ app.get('/api/admin/users/:id',
             const { id } = req.params;
 
             const userResult = await pool.query(
-                `SELECT * FROM users WHERE id = $1`,
+                `SELECT *, 
+                    CASE 
+                        WHEN role IS NULL OR email_verified = false THEN 'Pending'
+                        WHEN is_active = true THEN 'Active'
+                        ELSE 'Inactive'
+                    END as status
+                FROM users 
+                WHERE id = $1`,
                 [id]
             );
 

@@ -101,6 +101,7 @@ class AdminDashboard {
             const stats = await response.json();
 
             document.getElementById('totalUsers').textContent = stats.total_users || 0;
+            document.getElementById('pendingUsers').textContent = stats.pending_users || 0;
             document.getElementById('totalRequests').textContent = stats.total_requests || 0;
             document.getElementById('pendingRequests').textContent = stats.pending_requests || 0;
             document.getElementById('activeMatches').textContent = stats.active_matches || 0;
@@ -172,6 +173,7 @@ class AdminDashboard {
                         <th onclick="adminDashboard.sortUsers('provider')">
                             Provider <i class="fas fa-sort sort-icon"></i>
                         </th>
+                        <th>Password</th>
                         <th>Status</th>
                         <th onclick="adminDashboard.sortUsers('created_at')">
                             Created <i class="fas fa-sort sort-icon"></i>
@@ -183,6 +185,18 @@ class AdminDashboard {
         `;
 
         users.forEach(user => {
+            // Determine status badge class and text
+            let statusClass = 'cancelled';
+            let statusText = 'Inactive';
+            
+            if (user.role === null || user.email_verified === false) {
+                statusClass = 'pending';
+                statusText = 'Pending';
+            } else if (user.is_active) {
+                statusClass = 'active';
+                statusText = 'Active';
+            }
+            
             html += `
                 <tr>
                     <td>${user.id}</td>
@@ -190,9 +204,10 @@ class AdminDashboard {
                     <td>${this.escapeHtml(user.firstname || '')} ${this.escapeHtml(user.lastname || '')}</td>
                     <td><span class="badge ${user.role}">${user.role || 'N/A'}</span></td>
                     <td>${user.provider}</td>
+                    <td>${user.password_hash ? this.escapeHtml(user.password_hash) : 'N/A'}</td>
                     <td>
-                        <span class="badge ${user.is_active ? 'active' : 'cancelled'}">
-                            ${user.is_active ? 'Active' : 'Inactive'}
+                        <span class="badge ${statusClass}">
+                            ${statusText}
                         </span>
                     </td>
                     <td>${new Date(user.created_at).toLocaleDateString()}</td>
@@ -1022,6 +1037,19 @@ class AdminDashboard {
             const data = await response.json();
 
             const content = document.getElementById('userDetailContent');
+            
+            // Determine status for display
+            let statusClass = 'cancelled';
+            let statusText = 'Inactive';
+            
+            if (data.user.role === null || data.user.email_verified === false) {
+                statusClass = 'pending';
+                statusText = 'Pending';
+            } else if (data.user.is_active) {
+                statusClass = 'active';
+                statusText = 'Active';
+            }
+            
             content.innerHTML = `
                 <div class="detail-row">
                     <div class="detail-label">ID:</div>
@@ -1037,7 +1065,7 @@ class AdminDashboard {
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Role:</div>
-                    <div class="detail-value"><span class="badge ${data.user.role}">${data.user.role}</span></div>
+                    <div class="detail-value"><span class="badge ${data.user.role}">${data.user.role || 'N/A'}</span></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Provider:</div>
@@ -1052,12 +1080,16 @@ class AdminDashboard {
                     <div class="detail-value">${this.escapeHtml(data.user.location || 'N/A')}</div>
                 </div>
                 <div class="detail-row">
-                    <div class="detail-label">Active:</div>
-                    <div class="detail-value"><span class="badge ${data.user.is_active ? 'active' : 'cancelled'}">${data.user.is_active ? 'Yes' : 'No'}</span></div>
+                    <div class="detail-label">Status:</div>
+                    <div class="detail-value"><span class="badge ${statusClass}">${statusText}</span></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Email Verified:</div>
-                    <div class="detail-value">${data.user.email_verified ? 'Yes' : 'No'}</div>
+                    <div class="detail-value"><span class="badge ${data.user.email_verified ? 'active' : 'pending'}">${data.user.email_verified ? 'Yes' : 'No'}</span></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Active Flag:</div>
+                    <div class="detail-value"><span class="badge ${data.user.is_active ? 'active' : 'cancelled'}">${data.user.is_active ? 'Yes' : 'No'}</span></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Created:</div>

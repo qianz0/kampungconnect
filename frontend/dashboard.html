@@ -159,6 +159,19 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col-md-4 mb-3" id="khakisCard" style="display: none;">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">View Khakis Near Me</h5>
+                        <p class="card-text">Connect with fellow seniors in your area and beyond.</p>
+                        <a href="khakis.html" class="btn btn-primary">
+                            <i class="fas fa-map-marker-alt me-1"></i>Find Khakis
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Recent Requests Section -->
@@ -268,6 +281,7 @@
                     return;
                 }
 
+                populateUserInfo(currentUser);
                 showNewRequestButton(currentUser);
                 showMatchButton(currentUser);
 
@@ -298,6 +312,11 @@
                     const myRequestsMenuItem = document.getElementById("myRequestsMenuItem");
                     if (myRequestsMenuItem) {
                         myRequestsMenuItem.style.display = "block";
+                    }
+                    // Show Khakis card for seniors
+                    const khakisCard = document.getElementById("khakisCard");
+                    if (khakisCard) {
+                        khakisCard.style.display = "block";
                     }
                 }
 
@@ -343,6 +362,19 @@
                 }
             }
         });
+
+        // Populate user information
+        function populateUserInfo(user) {
+            if (!user) return;
+
+            // Create display name from firstname and lastname, fallback to email
+            const displayName = user.firstname && user.lastname
+                ? `${user.firstname} ${user.lastname}`
+                : user.firstname || user.email || 'User';
+
+            // Update welcome section (header is handled by HeaderManager)
+            document.getElementById('welcomeName').textContent = displayName;
+        }
 
         // Reusable modal confirmation
         function showConfirmModal(message, onConfirm) {

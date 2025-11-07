@@ -15,7 +15,7 @@
 
         /* ========== Navbar ========== */
         .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #212529;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             position: sticky;
             top: 0;
@@ -115,17 +115,29 @@
             opacity: 1;
         }
 
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
         .stat-card .icon {
             font-size: 3em;
-            margin-bottom: 20px;
             opacity: 0.9;
             display: flex;
             align-items: center;
             justify-content: center;
             width: 80px;
             height: 80px;
+            flex-shrink: 0;
             border-radius: 50%;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .stat-card .stat-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .stat-card .value {
@@ -136,6 +148,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            line-height: 1;
         }
 
         .stat-card .label {
@@ -346,15 +359,60 @@
             font-weight: 600;
         }
 
+        /* Table container with horizontal scroll */
+        #usersTableContainer,
+        #requestsTableContainer,
+        #matchesTableContainer,
+        #ratingsTableContainer {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 1000px; /* Minimum width to ensure columns don't get too cramped */
         }
 
         th, td {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
+            white-space: nowrap;
+        }
+
+        /* Password column styling - fixed width with horizontal scroll */
+        th:has(+ th + th + th + th + th),
+        td:nth-child(6) {
+            max-width: 150px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        /* Custom scrollbar for password column */
+        td:nth-child(6)::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        td:nth-child(6)::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        td:nth-child(6)::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        td:nth-child(6)::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* For users table specifically - target the password column header */
+        #usersTableContainer table th:nth-child(6) {
+            max-width: 150px;
         }
 
         th {
@@ -636,28 +694,41 @@
         <div id="statsContainer" class="stats-grid">
             <div class="stat-card primary">
                 <div class="icon"><i class="fas fa-users"></i></div>
-                <div class="value" id="totalUsers">-</div>
-                <div class="label">Total Users</div>
+                <div class="stat-content">
+                    <div class="value">
+                        <span id="totalUsers">-</span>
+                        <span style="font-size: 0.5em; color: #ffc107; display: block; margin-top: 5px;">
+                            (<span id="pendingUsers">-</span> pending)
+                        </span>
+                    </div>
+                    <div class="label">Total Users</div>
+                </div>
             </div>
             <div class="stat-card success">
                 <div class="icon"><i class="fas fa-list"></i></div>
-                <div class="value" id="totalRequests">-</div>
-                <div class="label">Total Requests</div>
-            </div>
-            <div class="stat-card warning">
-                <div class="icon"><i class="fas fa-clock"></i></div>
-                <div class="value" id="pendingRequests">-</div>
-                <div class="label">Pending Requests</div>
+                <div class="stat-content">
+                    <div class="value">
+                        <span id="totalRequests">-</span>
+                        <span style="font-size: 0.5em; color: #ffc107; display: block; margin-top: 5px;">
+                            (<span id="pendingRequests">-</span> pending)
+                        </span>
+                    </div>
+                    <div class="label">Total Requests</div>
+                </div>
             </div>
             <div class="stat-card info">
                 <div class="icon"><i class="fas fa-handshake"></i></div>
-                <div class="value" id="activeMatches">-</div>
-                <div class="label">Active Matches</div>
+                <div class="stat-content">
+                    <div class="value" id="activeMatches">-</div>
+                    <div class="label">Active Matches</div>
+                </div>
             </div>
             <div class="stat-card danger">
                 <div class="icon"><i class="fas fa-star"></i></div>
-                <div class="value" id="avgRating">-</div>
-                <div class="label">Average Rating</div>
+                <div class="stat-content">
+                    <div class="value" id="avgRating">-</div>
+                    <div class="label">Average Rating</div>
+                </div>
             </div>
         </div>
 
@@ -701,6 +772,7 @@
                         <label>Status</label>
                         <select id="userStatusFilter">
                             <option value="">All Status</option>
+                            <option value="pending">Pending</option>
                             <option value="true">Active</option>
                             <option value="false">Inactive</option>
                         </select>
