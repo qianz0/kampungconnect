@@ -1,3 +1,4 @@
+require('./tracing');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -35,6 +36,12 @@ app.get('/', (req, res) => {
 const messagesPublished = new client.Counter({
   name: 'messages_published_total',
   help: 'Total number of messages published to RabbitMQ by request-service',
+});
+
+// count every created matched (for Prometheus)
+const messageProcessedNonInstant = new client.Counter({
+  name: 'messages_processed_non_instant_total',
+  help: 'Total number of messages successfully processed by matching-service',
 });
 
 // ====== Prometheus Metrics Endpoint ======
@@ -453,6 +460,8 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
        RETURNING *`,
             [request_id, helper_id]
         );
+        // increment when matched
+        messageProcessedNonInstant.inc();
 
         // 3 Update request status
         await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);

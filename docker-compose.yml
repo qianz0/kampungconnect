@@ -81,6 +81,8 @@ services:
       - DB_USER=admin
       - DB_PASSWORD=password
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - SERVICE_NAME=request-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     depends_on:
       db:
         condition: service_healthy
@@ -109,6 +111,8 @@ services:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - NOTIFICATION_QUEUE=notification_events
       - FRONTEND_URL=${FRONTEND_URL}
+      - SERVICE_NAME=matching-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     depends_on:
       db:
         condition: service_healthy
@@ -329,6 +333,32 @@ services:
       - grafana-data:/var/lib/grafana
     networks:
       - kampungconnect
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"  # gRPC for OTLP
+      - "4318:4318"  # HTTP for OTLP
+    networks:
+      - kampungconnect
+
+  # Grafana Tempo for Traces
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"     # HTTP API
+    networks:
+      - kampungconnect
+
 
 volumes:
   postgres_data:

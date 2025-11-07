@@ -141,7 +141,18 @@ async function consumeQueue(queueName, callback) {
         } catch (err) {
           console.error("❌ Error handling message:", err);
           messageFailed.inc(); // count failure
-          ch.nack(msg, false, false);
+
+          if (attempt >= MAX_RETRIES) {
+            console.warn(`Max retries reached (${attempt}). Sending to DLQ.`);
+            ch.sendToQueue(`${queueName}.dlq`, msg.content, { persistent: true });
+            ch.ack(msg);
+          } else {
+            ch.sendToQueue("request_retry", msg.content, {
+              headers: { "x-retry-count": attempt + 1 },
+            });
+            ch.ack(msg);
+          }
+          //ch.nack(msg, false, false);
         }
       },
       { noAck: false }
