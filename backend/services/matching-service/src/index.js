@@ -8,6 +8,8 @@ const { connectQueue, consumeQueue, publishMessage } = require("./queue");
 const { findBestHelper } = require("./matcher");
 const AuthMiddleware = require("/app/shared/auth-middleware");
 const client = require('prom-client');
+const { getAreaFromPostalCode } = require("./postal-utils");
+
 
 const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
@@ -77,7 +79,8 @@ app.get("/matches/senior", authMiddleware.authenticateToken, async (req, res) =>
     SELECT m.*, 
        r.title, r.category, r.urgency, r.status AS request_status,
        CONCAT(h.firstname, ' ', h.lastname) AS helper_name,
-       h.rating AS helper_rating
+       h.rating AS helper_rating,
+       h.location AS helper_location
 FROM matches m
 JOIN requests r ON m.request_id = r.id
 JOIN users h ON m.helper_id = h.id
@@ -87,7 +90,11 @@ ORDER BY m.matched_at DESC
     `,
       [userId]
     );
-    res.json({ matches: result.rows });
+    const rows = result.rows.map(r => ({
+    ...r,
+    helper_area: getAreaFromPostalCode(r.helper_location)
+  }));
+    res.json({ matches: rows });
   } catch (err) {
     console.error("Error fetching senior matches:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -106,6 +113,7 @@ SELECT m.*,
        r.title, r.category, r.urgency, r.status AS request_status,
        CONCAT(s.firstname, ' ', s.lastname) AS senior_name,
        s.rating AS senior_rating,
+       s.location AS senior_location,
        (SELECT COUNT(*) FROM matches WHERE helper_id = m.helper_id AND status = 'active') AS active_count
 FROM matches m
 JOIN requests r ON m.request_id = r.id
@@ -117,7 +125,11 @@ ORDER BY m.matched_at DESC;
     `,
       [userId]
     );
-    res.json({ matches: result.rows });
+    const rows = result.rows.map(m => ({
+    ...m,
+    senior_area: getAreaFromPostalCode(m.senior_location)
+  }));
+    res.json({ matches: rows });
   } catch (err) {
     console.error("Error fetching helper matches:", err);
     res.status(500).json({ error: "Internal server error" });

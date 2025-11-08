@@ -233,6 +233,10 @@
             <hr>
             <p><i class="fas fa-user"></i> <strong>Helper:</strong> ${helperName}</p>
             <p><i class="fas fa-star"></i> <strong>Rating:</strong> ${rating}</p>
+            <p class="card-text text-muted mb-1">
+  <i class="fas fa-map-marker-alt text-danger"></i>
+  <strong>Location:</strong> ${match.helper_area || "Unknown"} (${match.helper_location || "N/A"})
+</p>
             <small class="text-muted"><i class="far fa-calendar"></i>
               ${new Date(match.matched_at || match.created_at).toLocaleString()}
             </small>
