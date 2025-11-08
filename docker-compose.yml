@@ -138,9 +138,18 @@ services:
       - DB_NAME=kampungconnect
       - DB_USER=admin
       - DB_PASSWORD=password
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      # Gmail SMTP configuration for sending matching email notifications 
+      - SMTP_ENABLED=${SMTP_ENABLED:-true}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
     depends_on:
       - db
       - auth-service
+      - rabbitmq
     volumes:
       - ./backend/shared:/app/shared
 
