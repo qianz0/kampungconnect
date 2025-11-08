@@ -275,10 +275,10 @@
                 // Load notification counts
                 loadNotificationCounts();
 
-                // Refresh notification counts every 30 seconds
+                // Refresh notification counts every 5 seconds
                 setInterval(() => {
                     loadNotificationCounts();
-                }, 30000);
+                }, 5000);
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -567,15 +567,20 @@
                 let totalUnread = 0;
 
                 // For each request, calculate unread counts
+                console.log('[Dashboard] Total requests to check:', requests.length);
                 for (const req of requests) {
                     try {
                         // Get last viewed timestamp for this request
                         const viewKey = `request_${req.id}_lastView`;
                         const lastViewStr = localStorage.getItem(viewKey);
                         const lastViewTime = lastViewStr ? new Date(lastViewStr).getTime() : 0;
+                        console.log(`[Dashboard] ==================== Request ${req.id} ====================`);
+                        console.log(`[Dashboard] Request ${req.id} status: ${req.status}`);
+                        console.log(`[Dashboard] Request ${req.id} lastViewTime:`, lastViewTime === 0 ? 'NEVER VIEWED' : new Date(lastViewTime));
 
                         // Fetch responses for this request
                         const respResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/responses`);
+                        console.log(`[Dashboard] Fetching responses for request ${req.id}:`, respResp?.ok);
                         if (respResp && respResp.ok) {
                             const respData = await respResp.json();
                             const responses = respData.responses || [];
@@ -620,21 +625,42 @@
                         }
 
                         // Fetch offers for this request (only for seniors)
+                        console.log(`[Dashboard] User role check: ${role}, is senior? ${role === 'senior'}`);
                         if (role === 'senior') {
+                            console.log(`[Dashboard] Fetching offers for request ${req.id}...`);
                             const offersResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/offers`);
+                            console.log(`[Dashboard] Offers response OK:`, offersResp?.ok, 'Status:', offersResp?.status);
+                            
                             if (offersResp && offersResp.ok) {
                                 const offersData = await offersResp.json();
+                                console.log(`[Dashboard] Raw offers data for request ${req.id}:`, offersData);
                                 const offers = offersData.offers || [];
+                                console.log(`[Dashboard] Offers array length:`, offers.length);
+                                console.log(`[Dashboard] Request ${req.id} lastViewTime:`, lastViewTime === 0 ? 'NEVER VIEWED' : new Date(lastViewTime));
 
                                 // Count new pending offers
                                 const newOffers = offers.filter(o => {
                                     const createdAt = new Date(o.created_at || o.createdAt).getTime();
                                     const isPending = (o.status || '').toLowerCase() === 'pending';
-                                    return createdAt > lastViewTime && isPending;
+                                    const isNew = createdAt > lastViewTime;
+                                    console.log(`[Dashboard] Offer ${o.id}:`, {
+                                        created: new Date(createdAt).toLocaleString(),
+                                        status: o.status,
+                                        isPending,
+                                        isNew,
+                                        lastViewTime: lastViewTime === 0 ? 'never' : new Date(lastViewTime).toLocaleString()
+                                    });
+                                    return isNew && isPending;
                                 }).length;
 
+                                console.log(`[Dashboard] ✅ Request ${req.id} NEW PENDING OFFERS COUNT:`, newOffers);
                                 totalUnread += newOffers;
+                                console.log(`[Dashboard] Running total unread:`, totalUnread);
+                            } else {
+                                console.log(`[Dashboard] ❌ Failed to fetch offers for request ${req.id}`);
                             }
+                        } else {
+                            console.log(`[Dashboard] Skipping offers check - user role is '${role}', not 'senior'`);
                         }
 
                         // Check if status changed to fulfilled/completed/matched
