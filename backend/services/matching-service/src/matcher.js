@@ -22,7 +22,7 @@ async function findBestHelper(request) {
   const seniorArea = getAreaFromPostalCode(seniorLocation);
 
   if (!seniorArea) {
-    console.warn(`⚠️ Could not map postal code ${seniorPostal} to an area`);
+    console.warn(`⚠️ Could not map postal code ${seniorLocation} to an area`);
     return await findFallbackHelper(request);
   }
 
