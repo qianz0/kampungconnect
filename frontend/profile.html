@@ -561,6 +561,13 @@
             return starsHtml;
         }
 
+        // Global function to refresh volunteer rating (callable from other pages)
+        window.refreshProfileVolunteerRating = async function() {
+            if (currentUser && (currentUser.role === 'volunteer' || currentUser.role === 'helper')) {
+                await loadVolunteerRating();
+            }
+        };
+
         // Edit profile button handler
         document.getElementById('editProfileBtn').addEventListener('click', () => {
             if (!currentUser) return;

@@ -203,12 +203,67 @@ async function submitRating(event) {
             loadPendingRatings();
         }, 1000);
 
+        // Refresh past ratings if they are currently visible
+        setTimeout(() => {
+            refreshPastRatingsIfVisible();
+        }, 1500);
+
     } catch (error) {
         console.error('Error submitting rating:', error);
         showAlert(`❌ ${error.message}`, 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit Rating';
+    }
+}
+
+// Function to refresh past ratings if they are currently visible
+async function refreshPastRatingsIfVisible() {
+    const pastRatingsSection = document.getElementById('pastRatingsSection');
+    
+    // Only refresh if the past ratings section is currently visible
+    if (pastRatingsSection && pastRatingsSection.style.display === 'block') {
+        console.log('Refreshing past ratings after new rating submission...');
+        
+        // Show temporary loading indicator
+        const pastRatingsContent = document.getElementById('pastRatingsContent');
+        const originalContent = pastRatingsContent.innerHTML;
+        
+        // Add subtle loading indicator
+        pastRatingsContent.innerHTML += `
+            <div class="alert alert-info text-center mt-2" id="refreshingIndicator">
+                <i class="fas fa-sync fa-spin me-2"></i>
+                <small>Updating your reviews...</small>
+            </div>
+        `;
+        
+        try {
+            // Force reload the ratings data
+            pastRatingsLoaded = false;
+            await loadPastRatings();
+            
+            // Remove the loading indicator (it will be replaced by new content)
+            const refreshingIndicator = document.getElementById('refreshingIndicator');
+            if (refreshingIndicator) {
+                refreshingIndicator.remove();
+            }
+            
+            // Show a subtle indicator that the list was updated
+            showAlert('✨ Your new rating has been added to your past reviews!', 'success');
+            
+            // Also refresh profile page volunteer rating if it exists (for same-page updates)
+            if (typeof window.refreshProfileVolunteerRating === 'function') {
+                window.refreshProfileVolunteerRating();
+            }
+        } catch (error) {
+            console.error('Failed to refresh past ratings:', error);
+            // Remove loading indicator and restore original content on error
+            const refreshingIndicator = document.getElementById('refreshingIndicator');
+            if (refreshingIndicator) {
+                refreshingIndicator.remove();
+            }
+            // Silently fail - don't disrupt the user experience
+        }
     }
 }
 
