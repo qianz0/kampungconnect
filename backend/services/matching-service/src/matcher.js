@@ -1,4 +1,5 @@
 const db = require("./db");
+const { getAreaFromPostalCode } = require("./postal-utils");
 
 async function findBestHelper(request) {
   if (!request || !request.user_id) {
@@ -18,6 +19,33 @@ async function findBestHelper(request) {
   }
 
   const seniorLocation = senior.rows[0].location;
+  const seniorArea = getAreaFromPostalCode(seniorLocation);
+
+  if (!seniorArea) {
+    console.warn(`⚠️ Could not map postal code ${seniorPostal} to an area`);
+    return await findFallbackHelper(request);
+  }
+
+   const helpers = await db.query(`
+    SELECT location FROM users
+    WHERE role IN ('volunteer', 'caregiver')
+      AND is_active = TRUE
+      AND location IS NOT NULL
+  `);
+
+  const areaPostalCodes = helpers.rows
+    .map(h => h.location)
+    .filter(p => getAreaFromPostalCode(p) === seniorArea);
+
+
+    console.log(
+    `Helpers in area '${seniorArea}': ${areaPostalCodes.length > 0 ? areaPostalCodes.join(", ") : "none"}`
+  );
+
+  if (areaPostalCodes.length === 0) {
+    console.warn(`⚠️ No helpers found in area '${seniorArea}', using fallback`);
+    return await findFallbackHelper(request);
+  }
 
   // 2️⃣ Find best helper in same location that satisfies limits
   const result = await db.query(
@@ -30,7 +58,7 @@ async function findBestHelper(request) {
     FROM users u
     WHERE u.role IN ('volunteer', 'caregiver')
       AND u.is_active = true
-      AND u.location ILIKE $1
+      AND u.location = ANY($1)
       AND (
         SELECT COUNT(*) 
         FROM matches m
@@ -52,13 +80,13 @@ async function findBestHelper(request) {
     ORDER BY u.rating DESC, RANDOM()
     LIMIT 1
     `,
-    [seniorLocation, request.urgency]
+    [areaPostalCodes, request.urgency]
   );
 
   // 3️⃣ Fallback if none in location
   if (result.rowCount === 0) {
     console.warn(
-      `⚠️ No eligible helpers found in '${seniorLocation}', using fallback`
+      `⚠️ No eligible helpers found in '${seniorArea}', using fallback`
     );
     return await findFallbackHelper(request);
   }
@@ -105,3 +133,8 @@ async function findFallbackHelper(request) {
 }
 
 module.exports = { findBestHelper };
+
+
+
+
+

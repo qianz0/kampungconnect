@@ -152,7 +152,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="row">
                     <!-- Requests Stats -->
                     <div class="col-md-3 mb-3">
@@ -165,7 +164,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-md-3 mb-3">
                         <div class="card text-center">
                             <div class="card-body">
@@ -175,7 +173,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-md-3 mb-3">
                         <div class="card text-center">
                             <div class="card-body">
@@ -186,7 +183,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-md-3 mb-3">
                         <div class="card text-center">
                             <div class="card-body">
@@ -198,7 +194,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Performance -->
                 <div class="row mb-4">
                     <div class="col-md-6">
@@ -211,7 +206,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-body">
@@ -223,7 +217,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Category Breakdown -->
                 <div class="row mb-4">
                     <div class="col-12">
@@ -237,7 +230,29 @@
                         </div>
                     </div>
                 </div>
-
+                <!-- Streak Section -->
+                <div class="row mb-4" id="streakSection">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-fire fa-3x mb-3" style="color: #ff6b6b;"></i>
+                                <h5>Current Streak</h5>
+                                <h2 id="currentStreak" class="mb-0">0</h2>
+                                <p class="text-muted" id="streakStatus">days</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-crown fa-2x mb-2 text-warning"></i>
+                                <h5>Longest Streak</h5>
+                                <h2 id="longestStreak" class="mb-0">0</h2>
+                                <p class="text-muted">days</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Badges Section -->
                 <div class="row mb-4" id="badgesSection">
                     <div class="col-12">
@@ -479,8 +494,35 @@
             `).join('');
         }
 
+        // Fuction to display streak
+        function displayStreak(streakData) {
+            document.getElementById('currentStreak').textContent = streakData.current_streak || 0;
+            document.getElementById('longestStreak').textContent = streakData.longest_streak || 0;        
+            const statusEl = document.getElementById('streakStatus');
+            
+            if (streakData.is_active && streakData.current_streak > 0) {
+                statusEl.innerHTML = 'days <i class="fas fa-fire text-danger ms-1"></i>';
+                statusEl.className = 'text-success fw-bold';
+            } else if (streakData.current_streak === 0) {
+                statusEl.textContent = 'Start your streak today!';
+                statusEl.className = 'text-muted';
+            } else {
+                statusEl.textContent = 'streak ended';
+                statusEl.className = 'text-muted';
+            }
+        }
+
         function displayHelperStats(data) {
             console.log('Helper stats:', data);
+            // Display streak
+            if (data.streak) {
+                displayStreak(data.streak);
+            }
+
+            // Display badges
+            if (data.badges) {
+                displayBadges(data.badges);
+            }
 
             // Populate helper stats
             document.getElementById('helperCompleted').textContent = data.request_stats.total_completed;
@@ -491,7 +533,7 @@
             document.getElementById('helperRatingCount').textContent = data.rating_stats.total_ratings + ' ratings';
             document.getElementById('helperResponseTime').textContent = data.performance.avg_response_time;
             document.getElementById('helperRank').textContent = data.performance.rank;
-            document.getElementById('helperTotalHours').textContent = data.time_stats.total_hours_volunteered + ' hours';
+            document.getElementById('helperTotalHours').textContent = data.time_stats.total_hours_volunteered;
             document.getElementById('helperThisMonth').textContent = data.trends.requests_this_month;
             document.getElementById('helperLastMonth').textContent = data.trends.requests_last_month;
 
@@ -510,17 +552,12 @@
                     `).join('');
                     document.getElementById('helperCategories').innerHTML = categoriesHtml;
             }
-
-            // Badges
-            if (data.badges) {
-                displayBadges(data.badges);
-            }
         }
 
         function displaySeniorStats(data) {
             console.log('Senior stats:', data);
 
-             // Populate senior stats
+            // Populate senior stats
             document.getElementById('seniorPosted').textContent = data.request_stats.total_posted;
             document.getElementById('seniorFulfilled').textContent = data.request_stats.total_fulfilled;
             document.getElementById('seniorPending').textContent = data.request_stats.total_pending;

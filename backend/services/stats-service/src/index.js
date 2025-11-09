@@ -29,7 +29,84 @@ function formatHoursMinutes(totalHours) {
     return `${hours}h ${minutes}m`;
 }
 
-// Function to calculate badges for helpers
+// Function to get streaks
+async function getStreakData(helperId) {
+    // Get current streak
+    const currentStreak = await db.query(`
+        WITH daily_activity AS (
+            SELECT DISTINCT DATE(matched_at) as activity_date
+            FROM matches
+            WHERE helper_id = $1 AND status = 'completed'
+            ORDER BY activity_date DESC
+        ),
+        numbered_days AS (
+            SELECT 
+                activity_date,
+                ROW_NUMBER() OVER (ORDER BY activity_date DESC) as rn,
+                activity_date + (ROW_NUMBER() OVER (ORDER BY activity_date DESC))::integer as streak_group
+            FROM daily_activity
+        )
+        SELECT COUNT(*) as streak_days
+        FROM numbered_days
+        WHERE streak_group = (
+            SELECT streak_group 
+            FROM numbered_days 
+            WHERE activity_date = (SELECT MAX(activity_date) FROM daily_activity)
+        )
+    `, [helperId]);
+
+    // Get longest streak
+    const longestStreak = await db.query(`
+        WITH daily_activity AS (
+            SELECT DISTINCT DATE(matched_at) as activity_date
+            FROM matches
+            WHERE helper_id = $1 AND status = 'completed'
+            ORDER BY activity_date
+        ),
+        streak_groups AS (
+            SELECT 
+                activity_date,
+                activity_date - ROW_NUMBER() OVER (ORDER BY activity_date)::integer as streak_id
+            FROM daily_activity
+        ),
+        streak_lengths AS (
+            SELECT 
+                COUNT(*) as streak_length,
+                MIN(activity_date) as streak_start,
+                MAX(activity_date) as streak_end
+            FROM streak_groups
+            GROUP BY streak_id
+        )
+        SELECT 
+            COALESCE(MAX(streak_length), 0) as longest_streak
+        FROM streak_lengths
+    `, [helperId]);
+
+    const current = parseInt(currentStreak.rows[0]?.streak_days || 0);
+    const longest = parseInt(longestStreak.rows[0]?.longest_streak || 0);
+
+    // Check if streak is active (2 days)
+    const lastActivity = await db.query(`
+        SELECT MAX(DATE(matched_at)) as last_date
+        FROM matches
+        WHERE helper_id = $1 AND status = 'completed'
+    `, [helperId]);
+
+    const lastDate = lastActivity.rows[0]?.last_date;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSinceActivity = lastDate ? Math.floor((today - new Date(lastDate)) / (1000 * 60 * 60 * 24)) : 999;
+    const isActive = daysSinceActivity <= 1;
+
+    return {
+        current_streak: isActive ? current : 0,
+        longest_streak: longest,
+        is_active: isActive,
+        last_activity_date: lastDate ? lastDate.toISOString().split('T')[0] : null
+    };
+}
+
+// Function to get badges for helpers
 function calculateBadges(stats) {
     const badges = [];
 
@@ -237,6 +314,48 @@ function calculateBadges(stats) {
             tier: 'legendary'
         });
     }
+
+    // Streak
+    if (stats.current_streak >= 3) {
+        badges.push({
+            id: 'streak_3',
+            name: 'On Fire!',
+            description: '3 day streak',
+            icon: 'fa-fire',
+            color: '#ff6b6b',
+            tier: 'bronze'
+        });
+    }
+    if (stats.current_streak >= 7) {
+        badges.push({
+            id: 'streak_7',
+            name: 'Week Warrior',
+            description: '7 day streak',
+            icon: 'fa-fire-alt',
+            color: '#ff6b6b',
+            tier: 'silver'
+        });
+    }
+    if (stats.current_streak >= 30) {
+        badges.push({
+            id: 'streak_30',
+            name: 'Consistency King',
+            description: '30 day streak',
+            icon: 'fa-fire',
+            color: '#ff4757',
+            tier: 'gold'
+        });
+    }
+    if (stats.longest_streak >= 100) {
+        badges.push({
+            id: 'streak_100',
+            name: 'Unstoppable',
+            description: '100 day streak achieved',
+            icon: 'fa-fire',
+            color: '#c0392b',
+            tier: 'legendary'
+        });
+    }
     return badges;
 }
 
@@ -341,6 +460,9 @@ async function getHelperStatsData(helperId) {
     `, [helperId]);
     const rank = rankStats.rows[0] || { top_percentage: 100, completed: 0 };
 
+    // Streak data
+    const streakData = await getStreakData(helperId);
+
     // Calculate badges
     const badges = calculateBadges({
         total_completed: parseInt(stats.total_completed),
@@ -350,7 +472,9 @@ async function getHelperStatsData(helperId) {
         total_ratings: parseInt(ratingData.total_ratings || 0),
         completion_rate: parseFloat(completionRate),
         avg_response_minutes: parseFloat(avgResponseMinutes),
-        rank_percentage: parseInt(rank.top_percentage)
+        rank_percentage: parseInt(rank.top_percentage),
+        current_streak: streakData.current_streak,
+        longest_streak: streakData.longest_streak
     });
     
     return {
@@ -387,6 +511,7 @@ async function getHelperStatsData(helperId) {
             acc[row.category] = parseInt(row.count);
             return acc;
         }, {}),
+        streak: streakData,
         badges: badges
     }
 }
@@ -509,6 +634,231 @@ app.get('/stats/senior/:id', authMiddleware.authenticateToken, async (req, res) 
         res.json(stats);
     } catch (error) {
         console.error('[Stats] Get senior stats error:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
+// Route for leaderboard
+app.get('/stats/leaderboard/:type', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const { type } = req.params;
+        const limit = parseInt(req.query.limit) || 10;
+        let query;
+        let resultKey;
+        switch (type) {
+            case 'completed':
+                query = `
+                    SELECT 
+                        u.id,
+                        u.firstname,
+                        u.lastname,
+                        u.picture,
+                        u.role,
+                        COUNT(*) as completed_count,
+                        RANK() OVER (ORDER BY COUNT(*) DESC) as rank
+                    FROM matches m
+                    JOIN users u ON m.helper_id = u.id
+                    WHERE m.status = 'completed'
+                    GROUP BY u.id, u.firstname, u.lastname, u.picture, u.role
+                    ORDER BY completed_count DESC, u.id
+                    LIMIT $1
+                `;
+                resultKey = 'completed_count';
+                break;
+            case 'rating':
+                query = `
+                    SELECT 
+                        u.id,
+                        u.firstname,
+                        u.lastname,
+                        u.picture,
+                        u.role,
+                        ROUND(AVG(r.score)::numeric, 2) as avg_rating,
+                        COUNT(r.id) as rating_count,
+                        RANK() OVER (ORDER BY AVG(r.score) DESC, COUNT(r.id) DESC) as rank
+                    FROM ratings r
+                    JOIN users u ON r.ratee_id = u.id
+                    WHERE u.role IN ('volunteer', 'caregiver')
+                    GROUP BY u.id, u.firstname, u.lastname, u.picture, u.role
+                    HAVING COUNT(r.id) >= 3
+                    ORDER BY avg_rating DESC, rating_count DESC, u.id
+                    LIMIT $1
+                `;
+                resultKey = 'avg_rating';
+                break;
+            case 'hours':
+                query = `
+                    SELECT 
+                        u.id,
+                        u.firstname,
+                        u.lastname,
+                        u.picture,
+                        u.role,
+                        ROUND(SUM(EXTRACT(EPOCH FROM (m.completed_at - m.matched_at)) / 3600)::numeric, 1) as total_hours,
+                        RANK() OVER (ORDER BY SUM(EXTRACT(EPOCH FROM (m.completed_at - m.matched_at)) / 3600) DESC) as rank
+                    FROM matches m
+                    JOIN users u ON m.helper_id = u.id
+                    WHERE m.status = 'completed' 
+                        AND m.completed_at IS NOT NULL 
+                        AND m.matched_at IS NOT NULL
+                    GROUP BY u.id, u.firstname, u.lastname, u.picture, u.role
+                    ORDER BY total_hours DESC, u.id
+                    LIMIT $1
+                `;
+                resultKey = 'total_hours';
+                break;
+            case 'streak':
+                // Calculate streaks for all users
+                const allHelpers = await db.query(`
+                    SELECT DISTINCT helper_id as id
+                    FROM matches
+                    WHERE status = 'completed'
+                `);
+                const streakPromises = allHelpers.rows.map(async (helper) => {
+                    const streakData = await getStreakData(helper.id);
+                    const userInfo = await db.query(`
+                        SELECT id, firstname, lastname, picture, role
+                        FROM users
+                        WHERE id = $1
+                    `, [helper.id]);
+                    return {
+                        ...userInfo.rows[0],
+                        current_streak: streakData.current_streak,
+                        longest_streak: streakData.longest_streak,
+                        is_active: streakData.is_active
+                    };
+                });
+                const allStreaks = await Promise.all(streakPromises);
+                const sortedStreaks = allStreaks
+                    .filter(h => h.current_streak > 0) // Only show active streaks
+                    .sort((a, b) => b.current_streak - a.current_streak)
+                    .slice(0, limit)
+                    .map((helper, index) => ({
+                        ...helper,
+                        rank: index + 1
+                    }));
+                return res.json({ 
+                    leaderboard: sortedStreaks, 
+                    type,
+                    total: sortedStreaks.length 
+                });
+            default:
+                return res.status(400).json({ error: 'Invalid leaderboard type. Use: completed, rating, hours, or streak' });
+        }
+        const result = await db.query(query, [limit]);
+        res.json({ 
+            leaderboard: result.rows, 
+            type,
+            total: result.rows.length 
+        });
+    } catch (error) {
+        console.error('[Stats] Leaderboard error:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
+// Route for leaderboard position
+app.get('/stats/leaderboard/:type/position', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const { type } = req.params;
+        const userId = req.user.id;
+        let query;
+        
+        switch(type) {
+            case 'completed':
+                query = `
+                    WITH ranked_helpers AS (
+                        SELECT 
+                            helper_id,
+                            COUNT(*) as completed_count,
+                            RANK() OVER (ORDER BY COUNT(*) DESC) as rank
+                        FROM matches
+                        WHERE status = 'completed'
+                        GROUP BY helper_id
+                    )
+                    SELECT rank, completed_count
+                    FROM ranked_helpers
+                    WHERE helper_id = $1
+                `;
+                break; 
+            case 'rating':
+                query = `
+                    WITH ranked_helpers AS (
+                        SELECT 
+                            ratee_id,
+                            ROUND(AVG(score)::numeric, 2) as avg_rating,
+                            COUNT(*) as rating_count,
+                            RANK() OVER (ORDER BY AVG(score) DESC, COUNT(*) DESC) as rank
+                        FROM ratings
+                        GROUP BY ratee_id
+                        HAVING COUNT(*) >= 3
+                    )
+                    SELECT rank, avg_rating, rating_count
+                    FROM ranked_helpers
+                    WHERE ratee_id = $1
+                `;
+                break;
+            case 'hours':
+                query = `
+                    WITH ranked_helpers AS (
+                        SELECT 
+                            helper_id,
+                            ROUND(SUM(EXTRACT(EPOCH FROM (completed_at - matched_at)) / 3600)::numeric, 1) as total_hours,
+                            RANK() OVER (ORDER BY SUM(EXTRACT(EPOCH FROM (completed_at - matched_at)) / 3600) DESC) as rank
+                        FROM matches
+                        WHERE status = 'completed' 
+                            AND completed_at IS NOT NULL 
+                            AND matched_at IS NOT NULL
+                        GROUP BY helper_id
+                    )
+                    SELECT rank, total_hours
+                    FROM ranked_helpers
+                    WHERE helper_id = $1
+                `;
+                break;
+            case 'streak':
+                const streakData = await getStreakData(userId);
+                if (!streakData.is_active || streakData.current_streak === 0) {
+                    return res.json({ 
+                        rank: null, 
+                        current_streak: 0,
+                        message: 'No active streak' 
+                    });
+                }
+                // Count how many users have a higher streak
+                const allHelpers = await db.query(`
+                    SELECT DISTINCT helper_id
+                    FROM matches
+                    WHERE status = 'completed'
+                `);
+                const streakPromises = allHelpers.rows.map(async (helper) => {
+                    const data = await getStreakData(helper.helper_id);
+                    return {
+                        helper_id: helper.helper_id,
+                        current_streak: data.current_streak,
+                        is_active: data.is_active
+                    };
+                });
+                const allStreaks = await Promise.all(streakPromises);
+                const activeStreaks = allStreaks
+                    .filter(s => s.is_active && s.current_streak > 0)
+                    .sort((a, b) => b.current_streak - a.current_streak);
+                const userPosition = activeStreaks.findIndex(s => s.helper_id === userId);
+                return res.json({
+                    rank: userPosition >= 0 ? userPosition + 1 : null,
+                    current_streak: streakData.current_streak,
+                    total_with_streaks: activeStreaks.length
+                });
+            default:
+                return res.status(400).json({ error: 'Invalid leaderboard type' });
+        }
+        const result = await db.query(query, [userId]);
+        if (result.rows.length === 0) {
+            return res.json({ rank: null, message: 'Not ranked yet' });
+        }
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('[Stats] Position check error:', error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });

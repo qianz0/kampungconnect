@@ -389,6 +389,41 @@ app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, re
             [requestId, helperId]
         );
 
+        // Send email notification to senior, if someone offer a match
+        try {
+            const requestInfo = await db.query(
+                `SELECT r.title, r.user_id, u.email, CONCAT(u.firstname, ' ', u.lastname) AS senior_name
+                 FROM requests r
+                 JOIN users u ON r.user_id = u.id
+                 WHERE r.id = $1`,
+                [requestId]
+            );
+            
+            const helperInfo = await db.query(
+                `SELECT CONCAT(firstname, ' ', lastname) AS name, role, rating FROM users WHERE id = $1`,
+                [helperId]
+            );
+            
+            if (requestInfo.rowCount > 0 && helperInfo.rowCount > 0) {
+                const { title, user_id: seniorId, email: seniorEmail, senior_name } = requestInfo.rows[0];
+                const { name: helperName, role: helperRole, rating: helperRating } = helperInfo.rows[0];
+                
+                await axios.post('http://notification-service:5000/notify/offer', {
+                    seniorId,
+                    seniorEmail,
+                    seniorName: senior_name,
+                    requestTitle: title,
+                    helperName,
+                    helperRole,
+                    helperRating,
+                    offerId: insert.rows[0].id,
+                    requestId
+                }).catch(err => console.warn('[request-service] Failed to send offer notification:', err.message));
+            }
+        } catch (err) {
+            console.warn("[request-service] Failed to send email notification:", err.message);
+        }
+
         // Optional: notify matching-service
         try {
             await publishMessage("offer_created", insert.rows[0]);
@@ -486,6 +521,40 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
             [requester_id]
         );
 
+        // Send email notification to helper (volunteer/caregiver) if match
+        try {
+            const requestInfo = await db.query(
+                `SELECT title, category, urgency FROM requests WHERE id = $1`,
+                [request_id]
+            );
+            
+            // Get helper role to personalize the email
+            const helperDetails = await db.query(
+                `SELECT CONCAT(firstname, ' ', lastname) AS name, email, role FROM users WHERE id = $1`,
+                [helper_id]
+            );
+            
+            if (requestInfo.rowCount > 0 && helperDetails.rowCount > 0 && senior.rowCount > 0) {
+                const { title, category, urgency } = requestInfo.rows[0];
+                const { email: helperEmail, name: helperName, role: helperRole } = helperDetails.rows[0];
+                const { name: seniorName } = senior.rows[0];
+                
+                await axios.post('http://notification-service:5000/notify/match', {
+                    helperId: helper_id,
+                    helperEmail,
+                    helperName,
+                    helperRole,  
+                    requestTitle: title,
+                    seniorName,
+                    category,
+                    urgency,
+                    requestId: request_id
+                }).catch(err => console.warn('[request-service] Failed to send match notification:', err.message));
+            }
+        } catch (err) {
+            console.warn("[request-service] Failed to send match email notification:", err.message);
+        }
+
         res.json({
             message: "Offer accepted successfully! Helper has been assigned.",
             match: match.rows[0],
@@ -576,7 +645,7 @@ app.get('/matches', authMiddleware.authenticateToken, async (req, res) => {
 
         const results = await db.query(`
       SELECT m.*, 
-       r.id AS request_id, r.title, r.category, r.description, r.urgency,
+       r.id AS request_id, r.title, r.category, r.description, r.urgency, r.status AS request_status,
        CONCAT(u.firstname, ' ', u.lastname) AS requester_name,
        u.email AS requester_email
 FROM matches m

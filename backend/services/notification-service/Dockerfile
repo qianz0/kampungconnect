@@ -5,5 +5,5 @@ COPY backend/services/notification-service/package*.json ./
 COPY backend/services/notification-service/src ./src
 
 RUN npm install --production
-#COPY . .
+COPY src ./src
 CMD ["npm", "start"]

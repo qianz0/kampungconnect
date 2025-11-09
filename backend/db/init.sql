@@ -74,6 +74,23 @@ CREATE TABLE offers (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Notification preferences for users
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    enabled BOOLEAN DEFAULT TRUE,
+    email VARCHAR(255),
+    notify_new_responses BOOLEAN DEFAULT TRUE,
+    notify_new_offers BOOLEAN DEFAULT TRUE,
+    notify_request_updates BOOLEAN DEFAULT TRUE,
+    notify_replies BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_notification_prefs_user ON notification_preferences(user_id);
+
 -- ========================================
 -- SAMPLE DATA INSERTS
 -- ========================================

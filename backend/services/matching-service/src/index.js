@@ -8,6 +8,8 @@ const { connectQueue, consumeQueue, publishMessage } = require("./queue");
 const { findBestHelper } = require("./matcher");
 const AuthMiddleware = require("/app/shared/auth-middleware");
 const client = require('prom-client');
+const { getAreaFromPostalCode } = require("./postal-utils");
+
 
 const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
@@ -18,7 +20,7 @@ const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:8080",
-    credentials: true, // ✅ needed for cookie-based Google auth
+    credentials: true, // Use for cookie-based Google auth
   })
 );
 app.use(express.json());
@@ -77,7 +79,8 @@ app.get("/matches/senior", authMiddleware.authenticateToken, async (req, res) =>
     SELECT m.*, 
        r.title, r.category, r.urgency, r.status AS request_status,
        CONCAT(h.firstname, ' ', h.lastname) AS helper_name,
-       h.rating AS helper_rating
+       h.rating AS helper_rating,
+       h.location AS helper_location
 FROM matches m
 JOIN requests r ON m.request_id = r.id
 JOIN users h ON m.helper_id = h.id
@@ -87,7 +90,11 @@ ORDER BY m.matched_at DESC
     `,
       [userId]
     );
-    res.json({ matches: result.rows });
+    const rows = result.rows.map(r => ({
+    ...r,
+    helper_area: getAreaFromPostalCode(r.helper_location)
+  }));
+    res.json({ matches: rows });
   } catch (err) {
     console.error("Error fetching senior matches:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -106,6 +113,7 @@ SELECT m.*,
        r.title, r.category, r.urgency, r.status AS request_status,
        CONCAT(s.firstname, ' ', s.lastname) AS senior_name,
        s.rating AS senior_rating,
+       s.location AS senior_location,
        (SELECT COUNT(*) FROM matches WHERE helper_id = m.helper_id AND status = 'active') AS active_count
 FROM matches m
 JOIN requests r ON m.request_id = r.id
@@ -117,7 +125,11 @@ ORDER BY m.matched_at DESC;
     `,
       [userId]
     );
-    res.json({ matches: result.rows });
+    const rows = result.rows.map(m => ({
+    ...m,
+    senior_area: getAreaFromPostalCode(m.senior_location)
+  }));
+    res.json({ matches: rows });
   } catch (err) {
     console.error("Error fetching helper matches:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -225,7 +237,7 @@ async function handleNewRequest(request) {
     const helper = await findBestHelper(request);
 
     if (!helper) {
-      console.log(`⚠️ No helper found for request ${request.id}. Retrying in 30s...`);
+      // console.log(`No helper found for request ${request.id}. Retrying in 30s...`);
       await publishMessage("request_retry", request);
       return;
     }
@@ -241,9 +253,52 @@ async function handleNewRequest(request) {
     // Update the request to 'matched'
     await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
 
-   
+    // console.log(" Match created:", result.rows[0]);
 
-    console.log("✅ Match created:", result.rows[0]);
+    // Send email notification to the matched helper
+    try {
+      const axios = require('axios');
+      
+      // Get helper's email and role
+      const helperData = await db.query(
+        `SELECT email, role FROM users WHERE id = $1`,
+        [helper.id]
+      );
+      
+      if (helperData.rows.length > 0) {
+        const helperEmail = helperData.rows[0].email;
+        const helperRole = helperData.rows[0].role;
+        
+        // Get senior's name
+        const seniorData = await db.query(
+          `SELECT CONCAT(firstname, ' ', lastname) AS name FROM users WHERE id = $1`,
+          [request.user_id]
+        );
+        
+        const seniorName = seniorData.rows.length > 0 
+          ? seniorData.rows[0].name 
+          : 'A community member';
+        
+        await axios.post('http://notification-service:5000/notify/instant-match', {
+          helperId: helper.id,
+          helperEmail: helperEmail,
+          helperName: helper.name,
+          helperRole: helperRole,
+          requestTitle: request.title,
+          requestDescription: request.description,
+          seniorName: seniorName,
+          category: request.category,
+          urgency: request.urgency,
+          requestId: request.id
+        });
+        
+        // console.log(` Instant match notification sent to ${helperRole}: ${helperEmail}`);
+      }
+    } catch (notifyErr) {
+      // console.warn('Failed to send instant match notification:', notifyErr.message);
+      // Don't fail the match creation if notification fails
+    }
+
   } catch (err) {
     console.error("Error handling new request:", err);
   }
