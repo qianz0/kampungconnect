@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service
+  namespace: kampungconnect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stats-service
+  template:
+    metadata:
+      labels:
+        app: stats-service
+    spec:
+      containers:
+        - name: stats-service
+          image: kampungconnect-stats-service
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5009
+          env:
+            - name: PORT
+              value: "5009"
+            - name: JWT_SECRET
+              value: secret
+            - name: AUTH_SERVICE_URL
+              value: http://auth-service:5000
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: kampungconnect
+            - name: DB_USER
+              value: admin
+            - name: DB_PASSWORD
+              value: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stats-service
+  namespace: kampungconnect
+spec:
+  selector:
+    app: stats-service
+  ports:
+    - port: 5009
+      targetPort: 5009

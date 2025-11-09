@@ -2,9 +2,11 @@
  * Authentication Manager for OIDC/SSO and Email/Password
  * Handles authentication flow, token management, and user sessions
  */
+
 class AuthManager {
     constructor() {
-        this.authServiceUrl = 'http://localhost:5001';
+        //this.authServiceUrl = 'http://localhost:5001';
+        this.authServiceUrl = window?.API_BASE?.AUTH_SERVICE || 'http://localhost:5001';
         this.currentUser = null;
         this.authConfig = null;
     }

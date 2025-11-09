@@ -1,6 +1,8 @@
 services:
   auth-service:
-    build: ./backend/services/auth-service
+    build:
+      context: .
+      dockerfile: backend/services/auth-service/Dockerfile
     ports:
       - "5001:5000"
     networks:
@@ -67,7 +69,9 @@ services:
       user: "999:999"
 
   request-service:
-    build: ./backend/services/request-service
+    build: 
+      context: .
+      dockerfile: backend/services/request-service/Dockerfile
     ports:
       - "5002:5002"
     networks:
@@ -95,7 +99,9 @@ services:
       - ./backend/shared:/app/shared   
   
   matching-service:
-    build: ./backend/services/matching-service
+    build: 
+      context: .
+      dockerfile: backend/services/matching-service/Dockerfile
     ports:
       - "5003:5003"
     networks:
@@ -125,7 +131,9 @@ services:
     restart: always
     
   notification-service:
-    build: ./backend/services/notification-service
+    build: 
+      context: .
+      dockerfile: backend/services/notification-service/Dockerfile
     ports:
       - "5004:5000"
     networks:
@@ -138,15 +146,26 @@ services:
       - DB_NAME=kampungconnect
       - DB_USER=admin
       - DB_PASSWORD=password
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      # Gmail SMTP configuration for sending matching email notifications 
+      - SMTP_ENABLED=${SMTP_ENABLED:-true}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
     depends_on:
       - db
       - auth-service
+      - rabbitmq
     volumes:
       - ./backend/shared:/app/shared
 
   
   rating-service:
-    build: ./backend/services/rating-service
+    build:  
+      context: .
+      dockerfile: backend/services/rating-service/Dockerfile
     ports:
       - "5006:5000"
     networks:
@@ -166,7 +185,9 @@ services:
       - ./backend/shared:/app/shared
 
   admin-service:
-    build: ./backend/services/admin-service
+    build: 
+      context: .
+      dockerfile: backend/services/admin-service/Dockerfile
     ports:
       - "5007:5000"
     networks:
@@ -189,7 +210,9 @@ services:
       - ./backend/shared:/app/shared
 
   stats-service:
-    build: ./backend/services/stats-service
+    build: 
+      context: .
+      dockerfile: backend/services/stats-service/Dockerfile
     ports:
       - "5009:5009"
     networks:

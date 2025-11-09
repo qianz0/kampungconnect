@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="css/header.css" rel="stylesheet">
+    <script src="js/config.js"></script>
     <style>
         .welcome-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -288,10 +289,10 @@
                 // Load notification counts
                 loadNotificationCounts();
 
-                // Refresh notification counts every 30 seconds
+                // Refresh notification counts every 5 seconds
                 setInterval(() => {
                     loadNotificationCounts();
-                }, 30000);
+                }, 5000);
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -538,7 +539,7 @@
                 // Helper function to fetch latest status
                 async function fetchLatestStatus(requestId) {
                     try {
-                        const resp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}`);
+                        const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}`);
                         if (resp && resp.ok) {
                             const json = await resp.json();
                             const req = json.request || json;
@@ -550,7 +551,7 @@
 
                 // Fetch requests based on role
                 if (role === 'helper' || role === 'volunteer' || role === 'caregiver') {
-                    const resp = await authManager.authenticatedFetch('http://localhost:5002/matches');
+                    const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/matches`);
                     if (resp && resp.ok) {
                         const json = await resp.json();
                         const matchedRequests = (json.matches || []).map(m => ({
@@ -570,7 +571,7 @@
                         }));
                     }
                 } else if (role === 'senior') {
-                    const resp = await authManager.authenticatedFetch('http://localhost:5002/requests');
+                    const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests`);
                     if (resp && resp.ok) {
                         const json = await resp.json();
                         requests = (json.requests || []).map(r => ({
@@ -585,15 +586,20 @@
                 let totalUnread = 0;
 
                 // For each request, calculate unread counts
+                console.log('[Dashboard] Total requests to check:', requests.length);
                 for (const req of requests) {
                     try {
                         // Get last viewed timestamp for this request
                         const viewKey = `request_${req.id}_lastView`;
                         const lastViewStr = localStorage.getItem(viewKey);
                         const lastViewTime = lastViewStr ? new Date(lastViewStr).getTime() : 0;
+                        console.log(`[Dashboard] ==================== Request ${req.id} ====================`);
+                        console.log(`[Dashboard] Request ${req.id} status: ${req.status}`);
+                        console.log(`[Dashboard] Request ${req.id} lastViewTime:`, lastViewTime === 0 ? 'NEVER VIEWED' : new Date(lastViewTime));
 
                         // Fetch responses for this request
-                        const respResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/responses`);
+                        const respResp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${req.id}/responses`);
+                        console.log(`[Dashboard] Fetching responses for request ${req.id}:`, respResp?.ok);
                         if (respResp && respResp.ok) {
                             const respData = await respResp.json();
                             const responses = respData.responses || [];
@@ -638,21 +644,42 @@
                         }
 
                         // Fetch offers for this request (only for seniors)
+                        console.log(`[Dashboard] User role check: ${role}, is senior? ${role === 'senior'}`);
                         if (role === 'senior') {
+                            console.log(`[Dashboard] Fetching offers for request ${req.id}...`);
                             const offersResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/offers`);
+                            console.log(`[Dashboard] Offers response OK:`, offersResp?.ok, 'Status:', offersResp?.status);
+                            
                             if (offersResp && offersResp.ok) {
                                 const offersData = await offersResp.json();
+                                console.log(`[Dashboard] Raw offers data for request ${req.id}:`, offersData);
                                 const offers = offersData.offers || [];
+                                console.log(`[Dashboard] Offers array length:`, offers.length);
+                                console.log(`[Dashboard] Request ${req.id} lastViewTime:`, lastViewTime === 0 ? 'NEVER VIEWED' : new Date(lastViewTime));
 
                                 // Count new pending offers
                                 const newOffers = offers.filter(o => {
                                     const createdAt = new Date(o.created_at || o.createdAt).getTime();
                                     const isPending = (o.status || '').toLowerCase() === 'pending';
-                                    return createdAt > lastViewTime && isPending;
+                                    const isNew = createdAt > lastViewTime;
+                                    console.log(`[Dashboard] Offer ${o.id}:`, {
+                                        created: new Date(createdAt).toLocaleString(),
+                                        status: o.status,
+                                        isPending,
+                                        isNew,
+                                        lastViewTime: lastViewTime === 0 ? 'never' : new Date(lastViewTime).toLocaleString()
+                                    });
+                                    return isNew && isPending;
                                 }).length;
 
+                                console.log(`[Dashboard] ✅ Request ${req.id} NEW PENDING OFFERS COUNT:`, newOffers);
                                 totalUnread += newOffers;
+                                console.log(`[Dashboard] Running total unread:`, totalUnread);
+                            } else {
+                                console.log(`[Dashboard] ❌ Failed to fetch offers for request ${req.id}`);
                             }
+                        } else {
+                            console.log(`[Dashboard] Skipping offers check - user role is '${role}', not 'senior'`);
                         }
 
                         // Check if status changed to fulfilled/completed/matched
@@ -719,7 +746,7 @@
                 const isAuthenticated = await authManager.checkAuthentication();
                 if (!isAuthenticated) return;
 
-                const response = await authManager.authenticatedFetch('http://localhost:5002/requests/latest3/all');
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/latest3/all`);
                 const data = await response.json();
 
                 const requestContainer = document.getElementById('recentRequests');
