@@ -1,4 +1,5 @@
 const amqp = require("amqplib");
+const client = require('prom-client');
 
 let channel;
 let isConnecting = false;
@@ -15,7 +16,7 @@ async function connectQueue() {
       process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672"
     );
     channel = await connection.createChannel();
-    retryCount = 0; // Reset retry count on successful connection
+    retryCount = 0;
     console.log("✅ [request-service] Connected to RabbitMQ");
 
     connection.on("close", () => {
@@ -32,7 +33,7 @@ async function connectQueue() {
     console.error(`❌ [request-service] RabbitMQ connection error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, err.message);
     isConnecting = false;
     retryCount++;
-    
+
     if (retryCount < MAX_RETRIES) {
       const delay = Math.min(5000, INITIAL_DELAY * Math.pow(1.5, retryCount - 1));
       console.log(`⏳ [request-service] Retrying in ${delay}ms...`);
@@ -43,37 +44,21 @@ async function connectQueue() {
   }
 }
 
-// 👉 DLQ helper: ensure <queue> and <queue>.dlq are created & linked
-async function assertQueueWithDLQ(ch, queueName) {
+// 🧩 DLQ + priority helper
+async function assertQueueWithDLQ(ch, queueName, extraArgs = {}) {
   await ch.assertQueue(`${queueName}.dlq`, { durable: true });
   await ch.assertQueue(queueName, {
     durable: true,
     arguments: {
-      "x-dead-letter-exchange": "", // default exchange
+      "x-dead-letter-exchange": "",
       "x-dead-letter-routing-key": `${queueName}.dlq`,
+      "x-max-priority": 10, // 👈 add priority support here
+      ...extraArgs,
     },
   });
 }
 
-// async function publishMessage(queueName, message) {
-//   try {
-//     if (!channel) {
-//       console.warn("⚠️ [request-service] No channel yet, retrying...");
-//       await connectQueue(); // try to reconnect
-//       if (!channel) {
-//         console.error("❌ [request-service] Channel still not ready. Message dropped.");
-//         return;
-//       }
-//     }
-
-//     await channel.assertQueue(queueName, { durable: true });
-//     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
-//     console.log(`📤 [request-service] Sent message to queue: ${queueName}`);
-//   } catch (err) {
-//     console.error("❌ [request-service] Failed to publish message:", err);
-//   }
-// }
-
+// 📨 Publish messages with priority based on urgency
 async function publishMessage(queueName, message) {
   try {
     if (!channel) {
@@ -85,12 +70,20 @@ async function publishMessage(queueName, message) {
       }
     }
 
-    // ensure queue + its DLQ exist
     await assertQueueWithDLQ(channel, queueName);
 
+    // Map urgency → priority
+    const priorityMap = { low: 1, medium: 3, high: 6, urgent: 9 };
+    const urgency = message.urgency?.toLowerCase() || "low";
+    const priority = priorityMap[urgency] || 1;
+
     const payload = Buffer.from(JSON.stringify(message));
-    channel.sendToQueue(queueName, payload, { persistent: true });
-    console.log(`📤 [request-service] Sent message to queue: ${queueName}`);
+    channel.sendToQueue(queueName, payload, {
+      persistent: true,
+      priority, //  here
+    });
+
+    console.log(`📤 [request-service] Sent message to queue: ${queueName} (priority=${priority})`);
   } catch (err) {
     console.error("❌ [request-service] Failed to publish message:", err);
   }

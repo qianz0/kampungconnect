@@ -14,9 +14,16 @@
     "stop": "docker-compose down"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.8.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.49.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.52.1",
+    "@opentelemetry/resources": "^1.24.0",
+    "@opentelemetry/sdk-node": "^0.52.1",
+    "@opentelemetry/semantic-conventions": "^1.24.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "prom-client": "^15.1.3"
   }
 }

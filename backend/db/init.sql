@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS matches (
     request_id INT REFERENCES requests(id) ON DELETE CASCADE,
     helper_id INT REFERENCES users(id),
     matched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
     status VARCHAR(20) DEFAULT 'active' -- active, completed, cancelled
 );
 
@@ -72,6 +73,23 @@ CREATE TABLE offers (
   status VARCHAR(50) DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Notification preferences for users
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    enabled BOOLEAN DEFAULT TRUE,
+    email VARCHAR(255),
+    notify_new_responses BOOLEAN DEFAULT TRUE,
+    notify_new_offers BOOLEAN DEFAULT TRUE,
+    notify_request_updates BOOLEAN DEFAULT TRUE,
+    notify_replies BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_notification_prefs_user ON notification_preferences(user_id);
 
 -- ========================================
 -- SAMPLE DATA INSERTS

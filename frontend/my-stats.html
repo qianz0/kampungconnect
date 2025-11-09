@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Stats - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/header.css">
+    <script src="js/config.js"></script>
+    <style>
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .badge-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .badge-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: var(--badge-color);
+        }
+
+        .badge-icon-container {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--badge-bg);
+            position: relative;
+        }
+
+        .badge-icon {
+            font-size: 2.5rem;
+            color: var(--badge-color);
+        }
+
+        .badge-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--badge-color);
+            animation: pulse 2s infinite;
+        }
+
+        .badge-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .badge-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+        }
+
+        .badge-tier {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tier-bronze { background: #cd7f32; color: white; }
+        .tier-silver { background: #c0c0c0; color: #333; }
+        .tier-gold { background: #ffd700; color: #333; }
+        .tier-platinum { background: #e5e4e2; color: #333; }
+        .tier-diamond { background: #b9f2ff; color: #333; }
+        .tier-legendary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+
+        .no-badges {
+            text-align: center;
+            padding: 3rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .no-badges i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .trend-up { color: #28a745; }
+        .trend-down { color: #dc3545; }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Common Header will be loaded here -->
+    <div id="commonHeader"></div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2><i class="fas fa-chart-line me-2"></i>My Statistics</h2>
+                <p class="text-muted">Track your activity and performance on KampungConnect</p>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Stats Content (Hidden until loaded) -->
+        <div id="statsContent" style="display: none;">
+            
+            <!-- Volunteer/Caregiver Stats Section -->
+            <div id="helperStatsSection" style="display: none;">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="stat-card">
+                            <h3><i class="fas fa-hands-helping me-2"></i>Helper Statistics</h3>
+                            <p class="mb-0">Your contribution to the community</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <!-- Requests Stats -->
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                <h5 class="card-title">Completed</h5>
+                                <h2 id="helperCompleted">0</h2>
+                                <p class="text-muted small" id="helperCompletionRate">0% completion rate</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-hourglass-half fa-2x text-warning mb-2"></i>
+                                <h5 class="card-title">Ongoing</h5>
+                                <h2 id="helperOngoing">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                                <h5 class="card-title">Avg Time</h5>
+                                <h2 id="helperAvgTime">0h</h2>
+                                <p class="text-muted small">per request</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                                <h5 class="card-title">Rating</h5>
+                                <h2 id="helperRating">0.0</h2>
+                                <p class="text-muted small" id="helperRatingCount">0 ratings</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Performance -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="fas fa-bolt me-2 text-warning"></i>Performance</h5>
+                                <p>Response Time: <strong id="helperResponseTime">0 min</strong></p>
+                                <p>Rank: <strong id="helperRank" class="text-primary">Top 100%</strong></p>
+                                <p>Total Hours: <strong id="helperTotalHours">0</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="fas fa-chart-line me-2 text-success"></i>Trends</h5>
+                                <p>This Month: <strong id="helperThisMonth">0</strong></p>
+                                <p>Last Month: <strong id="helperLastMonth">0</strong></p>
+                                <p>Trend: <strong id="helperTrend">--</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Category Breakdown -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="fas fa-list me-2"></i>Help by Category</h5>
+                                <div id="helperCategories">
+                                    <p class="text-muted">No category data available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Streak Section -->
+                <div class="row mb-4" id="streakSection">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-fire fa-3x mb-3" style="color: #ff6b6b;"></i>
+                                <h5>Current Streak</h5>
+                                <h2 id="currentStreak" class="mb-0">0</h2>
+                                <p class="text-muted" id="streakStatus">days</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-crown fa-2x mb-2 text-warning"></i>
+                                <h5>Longest Streak</h5>
+                                <h2 id="longestStreak" class="mb-0">0</h2>
+                                <p class="text-muted">days</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Badges Section -->
+                <div class="row mb-4" id="badgesSection">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="mb-4">
+                                    <i class="fas fa-trophy me-2 text-warning"></i>
+                                    Your Badges
+                                    <span class="badge bg-primary ms-2" id="badgeCount">0</span>
+                                </h5>
+                                <div id="badgesContainer" class="row">
+                                    <!-- Badges will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Senior Stats Section -->
+            <div id="seniorStatsSection" style="display: none;">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="stat-card">
+                            <h3><i class="fas fa-user me-2"></i>Your Request Statistics</h3>
+                            <p class="mb-0">Overview of your help requests</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                                <h5 class="card-title">Posted</h5>
+                                <h2 id="seniorPosted">0</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                <h5 class="card-title">Fulfilled</h5>
+                                <h2 id="seniorFulfilled">0</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                                <h5 class="card-title">Pending</h5>
+                                <h2 id="seniorPending">0</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-percentage fa-2x text-info mb-2"></i>
+                                <h5 class="card-title">Success Rate</h5>
+                                <h2 id="seniorSuccessRate">0%</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ratings Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="fas fa-star me-2 text-warning"></i>Your Ratings</h5>
+                                <p>Avg Rating Given: <strong id="seniorAvgRating">0.0</strong></p>
+                                <p>Total Ratings: <strong id="seniorTotalRatings">0</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trends -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="fas fa-chart-line me-2 text-success"></i>Activity Trends</h5>
+                                <p>This Month: <strong id="seniorThisMonth">0</strong></p>
+                                <p>Last Month: <strong id="seniorLastMonth">0</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="fas fa-list me-2"></i>Requests by Category</h5>
+                                <p>Most Requested: <strong id="seniorMostCategory">N/A</strong></p>
+                                <div id="seniorCategories" class="mt-3">
+                                    <p class="text-muted">No category data available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script>
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Wait for auth
+                const authManager = window.AuthManager;
+                await authManager.initialize();
+                
+                const isAuth = await authManager.checkAuthentication();
+                if (!isAuth) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                currentUser = authManager.getCurrentUser();
+                console.log('[My Stats] Current user:', currentUser);
+                populateUserInfo(currentUser);
+                // Load stats based on role
+                await loadMyStats();
+            } catch (error) {
+                console.error('[My Stats] Error loading stats:', error);
+                showError('Failed to load statistics: ' + error.message);
+            }
+        });
+
+        // Load user role
+        async function loadMyStats() {
+            try {
+                const authManager = window.AuthManager;
+                const currentUser = authManager.getCurrentUser();
+
+                console.log('[My Stats] Loading stats for role:', currentUser.role);
+
+                let endpoint;
+                if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                    endpoint = `${window.API_BASE.STATS_SERVICE}/stats/helper`;
+                } else if (currentUser.role === 'senior') {
+                    endpoint = `${window.API_BASE.STATS_SERVICE}/stats/senior`;
+                } else {
+                    throw new Error('Unknown user role: ' + currentUser.role);
+                }
+
+                console.log('[My Stats] Calling endpoint:', endpoint);
+                const response = await authManager.authenticatedFetch(endpoint);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch stats: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('[My Stats] Data received:', data);
+
+                if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
+                    displayHelperStats(data);
+                    document.getElementById('helperStatsSection').style.display = 'block';
+                } else if (currentUser.role === 'senior') {
+                    displaySeniorStats(data);
+                    document.getElementById('seniorStatsSection').style.display = 'block';
+                }
+
+                // Hide loading, show content
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('statsContent').style.display = 'block';
+
+            } catch (error) {
+                console.error('[My Stats] Error in loadMyStats:', error);
+                showError('Failed to load statistics: ' + error.message);
+            }
+        }
+
+        // Function to get user info
+        function populateUserInfo(user) {
+            if (!user) return;
+            const fullName = [user.firstname, user.lastname].filter(Boolean).join(' ') || 'User';
+            
+            const userNameEl = document.getElementById('userName');
+            if (userNameEl) {
+                userNameEl.textContent = fullName;
+            }
+
+            const avatar = document.getElementById('userAvatar');
+            if (avatar) {
+                avatar.src = user.picture ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6c757d&color=fff`;
+                avatar.alt = fullName;
+            }
+        }
+
+        // Display badges
+        function displayBadges(badges) {
+            const badgesContainer = document.getElementById('badgesContainer');
+            const badgeCount = document.getElementById('badgeCount');
+
+            if (!badges || badges.length === 0) {
+                badgesContainer.innerHTML = `
+                    <div class="col-12">
+                        <div class="no-badges">
+                            <i class="fas fa-trophy"></i>
+                            <h5>No Badges Yet</h5>
+                            <p class="text-muted">Complete requests and improve your stats to earn badges!</p>
+                        </div>
+                    </div>
+                `;
+                badgeCount.textContent = '0';
+                return;
+            }
+            badgeCount.textContent = badges.length;
+            badgesContainer.innerHTML = badges.map(badge => `
+                <div class="col-md-4 col-lg-3 mb-4">
+                    <div class="badge-card" style="--badge-color: ${badge.color}; --badge-bg: ${badge.color}20;">
+                        <div class="badge-icon-container">
+                            <div class="badge-glow"></div>
+                            <i class="fas ${badge.icon} badge-icon"></i>
+                        </div>
+                        <div class="badge-name">${badge.name}</div>
+                        <div class="badge-description">${badge.description}</div>
+                        <span class="badge-tier tier-${badge.tier}">${badge.tier}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Fuction to display streak
+        function displayStreak(streakData) {
+            document.getElementById('currentStreak').textContent = streakData.current_streak || 0;
+            document.getElementById('longestStreak').textContent = streakData.longest_streak || 0;        
+            const statusEl = document.getElementById('streakStatus');
+            
+            if (streakData.is_active && streakData.current_streak > 0) {
+                statusEl.innerHTML = 'days <i class="fas fa-fire text-danger ms-1"></i>';
+                statusEl.className = 'text-success fw-bold';
+            } else if (streakData.current_streak === 0) {
+                statusEl.textContent = 'Start your streak today!';
+                statusEl.className = 'text-muted';
+            } else {
+                statusEl.textContent = 'streak ended';
+                statusEl.className = 'text-muted';
+            }
+        }
+
+        function displayHelperStats(data) {
+            console.log('Helper stats:', data);
+            // Display streak
+            if (data.streak) {
+                displayStreak(data.streak);
+            }
+
+            // Display badges
+            if (data.badges) {
+                displayBadges(data.badges);
+            }
+
+            // Populate helper stats
+            document.getElementById('helperCompleted').textContent = data.request_stats.total_completed;
+            document.getElementById('helperOngoing').textContent = data.request_stats.total_ongoing;
+            document.getElementById('helperCompletionRate').textContent = data.request_stats.completion_rate + ' completion rate';
+            document.getElementById('helperAvgTime').textContent = data.time_stats.avg_completion_time;
+            document.getElementById('helperRating').textContent = data.rating_stats.avg_rating;
+            document.getElementById('helperRatingCount').textContent = data.rating_stats.total_ratings + ' ratings';
+            document.getElementById('helperResponseTime').textContent = data.performance.avg_response_time;
+            document.getElementById('helperRank').textContent = data.performance.rank;
+            document.getElementById('helperTotalHours').textContent = data.time_stats.total_hours_volunteered;
+            document.getElementById('helperThisMonth').textContent = data.trends.requests_this_month;
+            document.getElementById('helperLastMonth').textContent = data.trends.requests_last_month;
+
+            const trendEl = document.getElementById('helperTrend');
+            trendEl.textContent = data.trends.trend;
+            trendEl.className = data.trends.trend.includes('↑') ? 'trend-up' : 'trend-down';
+
+            // Categories
+            if (data.category_breakdown && Object.keys(data.category_breakdown).length > 0) {
+                const categoriesHtml = Object.entries(data.category_breakdown)
+                    .map(([cat, count]) => `
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>${cat}</span>
+                            <span class="badge bg-primary">${count}</span>
+                        </div>
+                    `).join('');
+                    document.getElementById('helperCategories').innerHTML = categoriesHtml;
+            }
+        }
+
+        function displaySeniorStats(data) {
+            console.log('Senior stats:', data);
+
+            // Populate senior stats
+            document.getElementById('seniorPosted').textContent = data.request_stats.total_posted;
+            document.getElementById('seniorFulfilled').textContent = data.request_stats.total_fulfilled;
+            document.getElementById('seniorPending').textContent = data.request_stats.total_pending;
+            document.getElementById('seniorSuccessRate').textContent = data.request_stats.fulfillment_rate;
+            document.getElementById('seniorAvgRating').textContent = data.rating_stats.avg_rating_given;
+            document.getElementById('seniorTotalRatings').textContent = data.rating_stats.total_ratings_given;
+            document.getElementById('seniorThisMonth').textContent = data.trends.requests_this_month;
+            document.getElementById('seniorLastMonth').textContent = data.trends.requests_last_month;
+            document.getElementById('seniorMostCategory').textContent = data.category_breakdown.most_requested;
+
+            // Categories
+            if (data.category_breakdown.breakdown && Object.keys(data.category_breakdown.breakdown).length > 0) {
+                const categoriesHtml = Object.entries(data.category_breakdown.breakdown)
+                    .map(([cat, count]) => `
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>${cat}</span>
+                            <span class="badge bg-info">${count}</span>
+                        </div>
+                    `).join('');
+                    document.getElementById('seniorCategories').innerHTML = categoriesHtml;
+            }
+        }        
+
+        function showError(message) {
+            document.getElementById('loadingSpinner').innerHTML = `
+                <div class="alert alert-danger">
+                     <i class="fas fa-exclamation-triangle me-2"></i>${message}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

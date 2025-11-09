@@ -8,6 +8,23 @@ let onConnectedCallback = null;
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
 
+// ====== Prometheus Metrics ======
+const client = require('prom-client');
+
+// Collect default Node.js + process metrics (CPU, memory, event loop)
+client.collectDefaultMetrics();
+
+// Custom message counters
+const messageProcessed = new client.Counter({
+  name: 'messages_processed_total',
+  help: 'Total number of messages successfully processed by matching-service',
+});
+
+const messageFailed = new client.Counter({
+  name: 'messages_failed_total',
+  help: 'Total number of messages that failed processing (sent to DLQ)',
+});
+
 /**
  * Connect to RabbitMQ (with automatic reconnects)
  */
@@ -19,8 +36,12 @@ async function connectQueue() {
     connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
 
-    await assertQueueWithDLQ(channel, "request_created");
-    await setupRetryQueue(channel); // 🧩 add this line
+    // Declare the main priority queue + DLQ once
+    await assertQueueWithDLQ(channel, "request_created", {
+      "x-max-priority": 10, // <-- Priority support
+    });
+
+    await setupRetryQueue(channel);
 
     console.log("✅ [matching-service] Connected to RabbitMQ");
 
@@ -50,14 +71,15 @@ async function connectQueue() {
   }
 }
 
-// 👉 DLQ helper
-async function assertQueueWithDLQ(ch, queueName) {
+// DLQ helper
+async function assertQueueWithDLQ(ch, queueName, extraArgs = {}) {
   await ch.assertQueue(`${queueName}.dlq`, { durable: true });
-   await ch.assertQueue(queueName, {
+  await ch.assertQueue(queueName, {
     durable: true,
     arguments: {
       "x-dead-letter-exchange": "",
       "x-dead-letter-routing-key": `${queueName}.dlq`,
+      ...extraArgs, // <-- merge in custom arguments like x-max-priority
     },
   });
 }
@@ -68,68 +90,43 @@ async function setupRetryQueue(ch) {
     arguments: {
       "x-dead-letter-exchange": "",
       "x-dead-letter-routing-key": "request_created",
-      "x-message-ttl": 30000 // retry every 30 seconds
-    }
+      "x-message-ttl": 5000, // 5 seconds retry (for testing)
+    },
   });
 }
 
 /**
- * Publish message to a queue
+ * Publish message with optional priority
  */
-// async function publishMessage(queueName, message) {
-//   try {
-//     if (!channel) await connectQueue();
-//     await channel.assertQueue(queueName, { durable: true });
-//     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
-//     console.log(`📤 [matching-service] Sent message to queue: ${queueName}`);
-//   } catch (err) {
-//     console.error("❌ [matching-service] Failed to publish message:", err);
-//   }
-// }
-
-async function publishMessage(queueName, message) {
+async function publishMessage(queueName, message, priority = 1) {
   try {
     if (!channel) await connectQueue();
-    await assertQueueWithDLQ(channel, queueName); // ensure both main & DLQ exist
-    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), { persistent: true });
-    console.log(`📤 [matching-service] Sent message to queue: ${queueName}`);
+
+    // Skip reasserting retry queue
+    if (queueName !== "request_retry") {
+      await assertQueueWithDLQ(channel, queueName, {
+        "x-max-priority": 10,
+      });
+    }
+
+    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
+      persistent: true,
+      priority, // Priority support
+    });
+
+    console.log(`[matching-service] Sent message to queue: ${queueName} (priority=${priority})`);
   } catch (err) {
     console.error("❌ [matching-service] Failed to publish message:", err);
   }
 }
 
 /**
- * Consume messages from a queue
+ * Consume messages normally — RabbitMQ auto-prioritizes delivery
  */
-// async function consumeQueue(queueName, callback) {
-//   // this inner function is async, so awaits are legal
-//   onConnectedCallback = async (ch) => {
-//     await ch.assertQueue(queueName, { durable: true });
-//     console.log(`👂 [matching-service] Listening on queue: ${queueName}`);
-
-//     ch.consume(queueName, async (msg) => {
-//       if (!msg) return;
-//       try {
-//         const data = JSON.parse(msg.content.toString());
-//         await callback(data);
-//         ch.ack(msg);
-//       } catch (err) {
-//         console.error("❌ [matching-service] Error handling message:", err);
-//       }
-//     });
-//   };
-
-//   if (channel) {
-//     await onConnectedCallback(channel);
-//   } else {
-//     console.warn("⚠️ [matching-service] Channel not ready yet, will listen after connect.");
-//   }
-// }
-
 async function consumeQueue(queueName, callback) {
   onConnectedCallback = async (ch) => {
-    await assertQueueWithDLQ(ch, queueName);
-    console.log(`👂 [matching-service] Listening on queue: ${queueName}`);
+    await assertQueueWithDLQ(ch, queueName, { "x-max-priority": 10 });
+    console.log(`[matching-service] Listening on queue: ${queueName}`);
 
     ch.consume(
       queueName,
@@ -137,39 +134,25 @@ async function consumeQueue(queueName, callback) {
         if (!msg) return;
 
         try {
-          let data;
-          const body = msg.content.toString();
-
-          // Step 1: Try parse JSON
-          try {
-            data = JSON.parse(body);
-          } catch (e) {
-            console.error(`❌ Invalid JSON on ${queueName}:`, body);
-            return ch.nack(msg, false, false); // → DLQ
-          }
-        
-        // ✅ Smart schema validation depending on queue type
-          if (queueName === "request_created") {
-            if (!data.id || !data.user_id) {
-              console.error(`❌ Bad schema for request_created:`, data);
-              return ch.nack(msg, false, false);
-            }
-        }
-          // Step 2: Schema validation (example: must have request_id + helper_id)
-           else if (queueName === "offer_created") {
-            if (!data.request_id || !data.helper_id) {
-              console.error(`❌ Bad schema for offer_created:`, data);
-              return ch.nack(msg, false, false);
-            }
-          }
-
-          // Step 3: Call business logic
+          const data = JSON.parse(msg.content.toString());
           await callback(data);
+          messageProcessed.inc(); //count success
           ch.ack(msg);
-
         } catch (err) {
           console.error("❌ Error handling message:", err);
-          ch.nack(msg, false, false); // → DLQ
+          messageFailed.inc(); // count failure
+
+          if (attempt >= MAX_RETRIES) {
+            console.warn(`Max retries reached (${attempt}). Sending to DLQ.`);
+            ch.sendToQueue(`${queueName}.dlq`, msg.content, { persistent: true });
+            ch.ack(msg);
+          } else {
+            ch.sendToQueue("request_retry", msg.content, {
+              headers: { "x-retry-count": attempt + 1 },
+            });
+            ch.ack(msg);
+          }
+          //ch.nack(msg, false, false);
         }
       },
       { noAck: false }
@@ -182,7 +165,5 @@ async function consumeQueue(queueName, callback) {
     console.warn("⚠️ Channel not ready yet, will listen after connect.");
   }
 }
-
-
 
 module.exports = { connectQueue, publishMessage, consumeQueue };

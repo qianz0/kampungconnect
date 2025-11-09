@@ -6,18 +6,9 @@
     <title>Dashboard - KampungConnect</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="css/header.css" rel="stylesheet">
+    <script src="js/config.js"></script>
     <style>
-        .navbar-brand {
-            font-weight: bold;
-        }
-
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
         .welcome-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -67,6 +58,9 @@
 </head>
 
 <body>
+    <!-- Common Header will be loaded here -->
+    <div id="commonHeader"></div>
+
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center">
@@ -76,48 +70,6 @@
             <p class="mt-2">Loading dashboard...</p>
         </div>
     </div>
-
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-home me-2"></i>KampungConnect
-            </a>
-
-            <div class="navbar-nav ms-auto">
-                <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
-                        role="button" data-bs-toggle="dropdown">
-                        <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar">
-                        <span id="userName">Loading...</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="./profile.html"><i class="fas fa-user me-2"></i>Profile</a>
-                        </li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                        <li id="myRequestsMenuItem" style="display: none;">
-                            <a class="dropdown-item" href="./my-requests.html">
-                                <i class="fas fa-list me-2"></i>My Requests
-                            </a>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="#" id="switchAccountBtn">
-                                <i class="fas fa-user-friends me-2"></i>Switch Account
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="#" id="logoutBtn">
-                                <i class="fas fa-sign-out-alt me-2"></i>Logout
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </nav>
 
     <!-- Main Content -->
     <div class="container mt-4">
@@ -183,14 +135,42 @@
                 </div>
             </div>
         </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">My Matches</h5>
+                        <p class="card-text">View your connected helpers or assigned seniors.</p>
+                        <div id="matchButtonContainer"></div>
+                    </div>
+                </div>
+            </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card feature-card h-100">
-                <div class="card-body text-center">
-                    <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
-                    <h5 class="card-title">My Matches</h5>
-                    <p class="card-text">View your connected helpers or assigned seniors.</p>
-                    <div id="matchButtonContainer"></div>
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-bar fa-3x text-purple mb-3"></i>
+                        <h5 class="card-title">My Statistics</h5>
+                        <p class="card-text">View your activity stats, badges, and performance.</p>
+                        <a href="my-stats.html" class="btn btn-info">
+                            <i class="fas fa-chart-line me-1"></i>View My Stats
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">Leaderboard</h5>
+                        <p class="card-text">See top helpers and compare your performance.</p>
+                        <a href="leaderboard.html" class="btn btn-warning">
+                            <i class="fas fa-medal me-1"></i>View Rankings
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -218,8 +198,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/main.js"></script>
     <script>
         let currentUser = null;
         let isRedirecting = false;
@@ -308,10 +289,10 @@
                 // Load notification counts
                 loadNotificationCounts();
 
-                // Refresh notification counts every 30 seconds
+                // Refresh notification counts every 5 seconds
                 setInterval(() => {
                     loadNotificationCounts();
-                }, 30000);
+                }, 5000);
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -329,34 +310,51 @@
                 }
 
                 if (currentUser.role === "senior") {
-                    document.getElementById("myRequestsMenuItem").style.display = "block";
+                    const myRequestsMenuItem = document.getElementById("myRequestsMenuItem");
+                    if (myRequestsMenuItem) {
+                        myRequestsMenuItem.style.display = "block";
+                    }
                 }
 
                 // Show admin dashboard link for admin users
                 if (currentUser.role === "admin") {
-                    document.getElementById("adminDashboardMenuItem").style.display = "block";
-                    document.getElementById("adminFeatureCard").style.display = "block";
+                    const adminDashboardMenuItem = document.getElementById("adminDashboardMenuItem");
+                    const adminFeatureCard = document.getElementById("adminFeatureCard");
+                    if (adminDashboardMenuItem) {
+                        adminDashboardMenuItem.style.display = "block";
+                    }
+                    if (adminFeatureCard) {
+                        adminFeatureCard.style.display = "block";
+                    }
                 }
 
             } catch (error) {
                 console.error('[Dashboard] Dashboard initialization error:', error);
-                showErrorMessage('Failed to load dashboard. Please try logging in again.');
-
-                // Clear any tokens that might be causing issues
-                if (!isRedirecting) {
-                    isRedirecting = true;
-                    try {
-                        const authManager = await waitForAuthManager().catch(() => null);
-                        if (authManager) {
-                            authManager.removeToken();
+                
+                // Don't remove token for DOM-related errors
+                // Only remove token and redirect for authentication errors
+                if (error.message && error.message.includes('auth')) {
+                    showErrorMessage('Failed to load dashboard. Please try logging in again.');
+                    
+                    if (!isRedirecting) {
+                        isRedirecting = true;
+                        try {
+                            const authManager = await waitForAuthManager().catch(() => null);
+                            if (authManager) {
+                                authManager.removeToken();
+                            }
+                        } catch (err) {
+                            console.log('[Dashboard] Could not access AuthManager for token cleanup');
                         }
-                    } catch (err) {
-                        console.log('[Dashboard] Could not access AuthManager for token cleanup');
-                    }
 
-                    setTimeout(() => {
-                        window.location.href = '/login.html';
-                    }, 3000);
+                        setTimeout(() => {
+                            window.location.href = '/login.html';
+                        }, 3000);
+                    }
+                } else {
+                    // For non-auth errors, just hide the loading overlay and show an error
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    console.error('[Dashboard] Non-authentication error, continuing with dashboard load');
                 }
             }
         });
@@ -370,56 +368,9 @@
                 ? `${user.firstname} ${user.lastname}`
                 : user.firstname || user.email || 'User';
 
-            // Update navigation
-            document.getElementById('userName').textContent = displayName;
-            const avatar = document.getElementById('userAvatar');
-            avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
-            avatar.alt = displayName;
-
-            // Update welcome section
+            // Update welcome section (header is handled by HeaderManager)
             document.getElementById('welcomeName').textContent = displayName;
         }
-
-        // Logout handler
-        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-
-            showConfirmModal('Are you sure you want to log out?', async () => {
-                try {
-                    const authManager = await waitForAuthManager();
-                    await authManager.logout();
-                    showSuccessMessage('You have been logged out successfully.');
-                } catch (error) {
-                    console.error('[Dashboard] Logout error:', error);
-                    // Fallback: manually clear and redirect
-                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-                    localStorage.removeItem('auth_token');
-                    window.location.href = '/login.html';
-                }
-            });
-        });
-
-        // Switch Account handler
-        document.getElementById('switchAccountBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-
-            showConfirmModal('Are you sure you want to switch accounts?', async () => {
-                try {
-                    const authManager = await waitForAuthManager();
-                    authManager.removeToken();
-                    showSuccessMessage('Switching account...');
-                    setTimeout(() => {
-                        window.location.href = '/login.html?switch_account=true';
-                    }, 1000);
-                } catch (error) {
-                    console.error('[Dashboard] Switch account error:', error);
-                    // Fallback: manually clear and redirect
-                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-                    localStorage.removeItem('auth_token');
-                    window.location.href = '/login.html?switch_account=true';
-                }
-            });
-        });
 
         // Reusable modal confirmation
         function showConfirmModal(message, onConfirm) {
@@ -583,7 +534,7 @@
                 // Helper function to fetch latest status
                 async function fetchLatestStatus(requestId) {
                     try {
-                        const resp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}`);
+                        const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}`);
                         if (resp && resp.ok) {
                             const json = await resp.json();
                             const req = json.request || json;
@@ -595,7 +546,7 @@
 
                 // Fetch requests based on role
                 if (role === 'helper' || role === 'volunteer' || role === 'caregiver') {
-                    const resp = await authManager.authenticatedFetch('http://localhost:5002/matches');
+                    const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/matches`);
                     if (resp && resp.ok) {
                         const json = await resp.json();
                         const matchedRequests = (json.matches || []).map(m => ({
@@ -615,7 +566,7 @@
                         }));
                     }
                 } else if (role === 'senior') {
-                    const resp = await authManager.authenticatedFetch('http://localhost:5002/requests');
+                    const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests`);
                     if (resp && resp.ok) {
                         const json = await resp.json();
                         requests = (json.requests || []).map(r => ({
@@ -630,15 +581,20 @@
                 let totalUnread = 0;
 
                 // For each request, calculate unread counts
+                console.log('[Dashboard] Total requests to check:', requests.length);
                 for (const req of requests) {
                     try {
                         // Get last viewed timestamp for this request
                         const viewKey = `request_${req.id}_lastView`;
                         const lastViewStr = localStorage.getItem(viewKey);
                         const lastViewTime = lastViewStr ? new Date(lastViewStr).getTime() : 0;
+                        console.log(`[Dashboard] ==================== Request ${req.id} ====================`);
+                        console.log(`[Dashboard] Request ${req.id} status: ${req.status}`);
+                        console.log(`[Dashboard] Request ${req.id} lastViewTime:`, lastViewTime === 0 ? 'NEVER VIEWED' : new Date(lastViewTime));
 
                         // Fetch responses for this request
-                        const respResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/responses`);
+                        const respResp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${req.id}/responses`);
+                        console.log(`[Dashboard] Fetching responses for request ${req.id}:`, respResp?.ok);
                         if (respResp && respResp.ok) {
                             const respData = await respResp.json();
                             const responses = respData.responses || [];
@@ -683,21 +639,42 @@
                         }
 
                         // Fetch offers for this request (only for seniors)
+                        console.log(`[Dashboard] User role check: ${role}, is senior? ${role === 'senior'}`);
                         if (role === 'senior') {
+                            console.log(`[Dashboard] Fetching offers for request ${req.id}...`);
                             const offersResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/offers`);
+                            console.log(`[Dashboard] Offers response OK:`, offersResp?.ok, 'Status:', offersResp?.status);
+                            
                             if (offersResp && offersResp.ok) {
                                 const offersData = await offersResp.json();
+                                console.log(`[Dashboard] Raw offers data for request ${req.id}:`, offersData);
                                 const offers = offersData.offers || [];
+                                console.log(`[Dashboard] Offers array length:`, offers.length);
+                                console.log(`[Dashboard] Request ${req.id} lastViewTime:`, lastViewTime === 0 ? 'NEVER VIEWED' : new Date(lastViewTime));
 
                                 // Count new pending offers
                                 const newOffers = offers.filter(o => {
                                     const createdAt = new Date(o.created_at || o.createdAt).getTime();
                                     const isPending = (o.status || '').toLowerCase() === 'pending';
-                                    return createdAt > lastViewTime && isPending;
+                                    const isNew = createdAt > lastViewTime;
+                                    console.log(`[Dashboard] Offer ${o.id}:`, {
+                                        created: new Date(createdAt).toLocaleString(),
+                                        status: o.status,
+                                        isPending,
+                                        isNew,
+                                        lastViewTime: lastViewTime === 0 ? 'never' : new Date(lastViewTime).toLocaleString()
+                                    });
+                                    return isNew && isPending;
                                 }).length;
 
+                                console.log(`[Dashboard] ✅ Request ${req.id} NEW PENDING OFFERS COUNT:`, newOffers);
                                 totalUnread += newOffers;
+                                console.log(`[Dashboard] Running total unread:`, totalUnread);
+                            } else {
+                                console.log(`[Dashboard] ❌ Failed to fetch offers for request ${req.id}`);
                             }
+                        } else {
+                            console.log(`[Dashboard] Skipping offers check - user role is '${role}', not 'senior'`);
                         }
 
                         // Check if status changed to fulfilled/completed/matched
@@ -764,7 +741,7 @@
                 const isAuthenticated = await authManager.checkAuthentication();
                 if (!isAuthenticated) return;
 
-                const response = await authManager.authenticatedFetch('http://localhost:5002/requests/latest3/all');
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/latest3/all`);
                 const data = await response.json();
 
                 const requestContainer = document.getElementById('recentRequests');

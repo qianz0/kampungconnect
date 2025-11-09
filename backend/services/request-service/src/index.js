@@ -1,10 +1,13 @@
+require('./tracing');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
-const { connectQueue, getChannel, publishMessage } = require("./queue");
+const { connectQueue, getChannel, publishMessage, consumeQueue } = require("./queue");
 const axios = require("axios");
+const client = require('prom-client');
+client.collectDefaultMetrics();
 
 // Import authentication middleware
 const AuthMiddleware = require('/app/shared/auth-middleware');
@@ -27,6 +30,28 @@ app.get('/', (req, res) => {
         status: "running",
         auth_required: true
     });
+});
+
+// Count every created request (for Prometheus)
+const messagesPublished = new client.Counter({
+  name: 'messages_published_total',
+  help: 'Total number of messages published to RabbitMQ by request-service',
+});
+
+// count every created matched (for Prometheus)
+const messageProcessedNonInstant = new client.Counter({
+  name: 'messages_processed_non_instant_total',
+  help: 'Total number of messages successfully processed by matching-service',
+});
+
+// ====== Prometheus Metrics Endpoint ======
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
 });
 
 // Public endpoint to get service info
@@ -69,6 +94,9 @@ app.post('/postRequest', authMiddleware.authenticateToken, async (req, res) => {
             [userId, title, category, description, urgency, status]
         );
 
+        // Count every created request (for Prometheus)
+        messagesPublished.inc(); // count published messages
+
         const newRequest = result.rows[0];
 
         // Call priority router for urgent or high-priority requests
@@ -93,7 +121,7 @@ app.post('/postRequest', authMiddleware.authenticateToken, async (req, res) => {
             console.error("Failed to trigger Priority Router:", err.message);
         }
 
-        // 2️⃣ Publish event to matching-service via RabbitMQ
+        // 2 Publish event to matching-service via RabbitMQ
         if (instantMatch) {
             try {
                 await publishMessage("request_created", {
@@ -106,9 +134,9 @@ app.post('/postRequest', authMiddleware.authenticateToken, async (req, res) => {
                     instantMatch: true,
                     status: 'matching',
                 });
-                console.log("📤 [request-service] Sent message to queue: request_created (instant match)");
+                console.log("[request-service] Sent message to queue: request_created (instant match)");
             } catch (err) {
-                console.error("❌ [request-service] Failed to publish message:", err);
+                console.error("[request-service] Failed to publish message:", err);
             }
         } else {
             console.log("🕓 [request-service] Skipped queue publish — normal post request.");
@@ -361,12 +389,47 @@ app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, re
             [requestId, helperId]
         );
 
+        // Send email notification to senior, if someone offer a match
+        try {
+            const requestInfo = await db.query(
+                `SELECT r.title, r.user_id, u.email, CONCAT(u.firstname, ' ', u.lastname) AS senior_name
+                 FROM requests r
+                 JOIN users u ON r.user_id = u.id
+                 WHERE r.id = $1`,
+                [requestId]
+            );
+            
+            const helperInfo = await db.query(
+                `SELECT CONCAT(firstname, ' ', lastname) AS name, role, rating FROM users WHERE id = $1`,
+                [helperId]
+            );
+            
+            if (requestInfo.rowCount > 0 && helperInfo.rowCount > 0) {
+                const { title, user_id: seniorId, email: seniorEmail, senior_name } = requestInfo.rows[0];
+                const { name: helperName, role: helperRole, rating: helperRating } = helperInfo.rows[0];
+                
+                await axios.post('http://notification-service:5000/notify/offer', {
+                    seniorId,
+                    seniorEmail,
+                    seniorName: senior_name,
+                    requestTitle: title,
+                    helperName,
+                    helperRole,
+                    helperRating,
+                    offerId: insert.rows[0].id,
+                    requestId
+                }).catch(err => console.warn('[request-service] Failed to send offer notification:', err.message));
+            }
+        } catch (err) {
+            console.warn("[request-service] Failed to send email notification:", err.message);
+        }
+
         // Optional: notify matching-service
         try {
             await publishMessage("offer_created", insert.rows[0]);
-            console.log("📤 [request-service] Sent offer_created event");
+            console.log("[request-service] Sent offer_created event");
         } catch (err) {
-            console.warn("⚠️ Failed to publish offer_created:", err.message);
+            console.warn("Failed to publish offer_created:", err.message);
         }
 
         res.json({ message: "Offer submitted successfully!", offer: insert.rows[0] });
@@ -382,7 +445,7 @@ app.get("/requests/:id/offers", authMiddleware.authenticateToken, async (req, re
     try {
         const requestId = req.params.id;
         const results = await db.query(`
-      SELECT o.id, o.helper_id, o.status, o.created_at,
+      SELECT o.id, o.helper_id, o.status, o.created_at, u.location, u.rating,
              CONCAT(u.firstname, ' ', u.lastname) AS helper_name,
              u.role AS helper_role
       FROM offers o
@@ -405,7 +468,7 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
         const offerId = req.params.id;
         const seniorId = req.user.id;
 
-        // 1️⃣ Get offer info
+        // 1 Get offer info
         const offer = await db.query(
             `SELECT o.*, r.user_id AS requester_id
        FROM offers o
@@ -425,24 +488,26 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
             return res.status(403).json({ error: "You are not allowed to accept this offer." });
         }
 
-        // 2️⃣ Create a match
+        // 2 Create a match
         const match = await db.query(
             `INSERT INTO matches (request_id, helper_id, matched_at, status)
        VALUES ($1, $2, NOW(), 'active')
        RETURNING *`,
             [request_id, helper_id]
         );
+        // increment when matched
+        messageProcessedNonInstant.inc();
 
-        // 3️⃣ Update request status
+        // 3 Update request status
         await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);
 
-        // 4️⃣ Reject other offers for this request
+        // 4 Reject other offers for this request
         await db.query(
             `UPDATE offers SET status = 'rejected' WHERE request_id = $1 AND id <> $2`,
             [request_id, offerId]
         );
 
-        // 5️⃣ Mark accepted offer
+        // 5 Mark accepted offer
         await db.query(`UPDATE offers SET status = 'accepted' WHERE id = $1`, [offerId]);
 
         // 6 fetch contact details of both side
@@ -455,6 +520,40 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
             `SELECT id, CONCAT(firstname, ' ', lastname) AS name, email FROM users WHERE id = $1`,
             [requester_id]
         );
+
+        // Send email notification to helper (volunteer/caregiver) if match
+        try {
+            const requestInfo = await db.query(
+                `SELECT title, category, urgency FROM requests WHERE id = $1`,
+                [request_id]
+            );
+            
+            // Get helper role to personalize the email
+            const helperDetails = await db.query(
+                `SELECT CONCAT(firstname, ' ', lastname) AS name, email, role FROM users WHERE id = $1`,
+                [helper_id]
+            );
+            
+            if (requestInfo.rowCount > 0 && helperDetails.rowCount > 0 && senior.rowCount > 0) {
+                const { title, category, urgency } = requestInfo.rows[0];
+                const { email: helperEmail, name: helperName, role: helperRole } = helperDetails.rows[0];
+                const { name: seniorName } = senior.rows[0];
+                
+                await axios.post('http://notification-service:5000/notify/match', {
+                    helperId: helper_id,
+                    helperEmail,
+                    helperName,
+                    helperRole,  
+                    requestTitle: title,
+                    seniorName,
+                    category,
+                    urgency,
+                    requestId: request_id
+                }).catch(err => console.warn('[request-service] Failed to send match notification:', err.message));
+            }
+        } catch (err) {
+            console.warn("[request-service] Failed to send match email notification:", err.message);
+        }
 
         res.json({
             message: "Offer accepted successfully! Helper has been assigned.",
@@ -546,7 +645,7 @@ app.get('/matches', authMiddleware.authenticateToken, async (req, res) => {
 
         const results = await db.query(`
       SELECT m.*, 
-       r.id AS request_id, r.title, r.category, r.description, r.urgency,
+       r.id AS request_id, r.title, r.category, r.description, r.urgency, r.status AS request_status,
        CONCAT(u.firstname, ' ', u.lastname) AS requester_name,
        u.email AS requester_email
 FROM matches m
@@ -565,7 +664,7 @@ ORDER BY m.matched_at DESC
 });
 
 
-// Update a request (only by the owner senior or admin, and only if not matched/fulfilled)
+// Update a request (only by the owner senior or admin, and only if not matched/completed)
 app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const requestId = req.params.id;
@@ -587,9 +686,9 @@ app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'You are not allowed to edit this request' });
         }
 
-        // Block editing if already matched or fulfilled
-        if (['matched', 'fulfilled'].includes(request.status)) {
-            return res.status(400).json({ error: 'Cannot edit a request that has already been matched or fulfilled' });
+        // Block editing if already matched or completed
+        if (['matched', 'completed'].includes(request.status)) {
+            return res.status(400).json({ error: 'Cannot edit a request that has already been matched or completed' });
         }
 
         // Proceed with update
@@ -608,7 +707,7 @@ app.put('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     }
 });
 
-// Delete a request (only by the owner senior or admin, and only if not matched/fulfilled)
+// Delete a request (only by the owner senior or admin, and only if not matched/completed)
 app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) => {
     try {
         const requestId = req.params.id;
@@ -628,9 +727,9 @@ app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) =
             return res.status(403).json({ error: 'You are not allowed to delete this request' });
         }
 
-        // Block deleting if already matched or fulfilled
-        if (['matched', 'fulfilled'].includes(request.status)) {
-            return res.status(400).json({ error: 'Cannot delete a request that has already been matched or fulfilled' });
+        // Block deleting if already matched or completed
+        if (['matched', 'completed'].includes(request.status)) {
+            return res.status(400).json({ error: 'Cannot delete a request that has already been matched or completed' });
         }
 
         // Delete from DB
@@ -673,17 +772,17 @@ app.use((error, req, res, next) => {
 
 (async () => {
     try {
-        await connectQueue(); // ✅ connect to RabbitMQ when service starts
+        await connectQueue(); // connect to RabbitMQ when service starts
         await consumeQueue("request_created", async (data) => {
-            console.log("📥 [request-service] Received message:", data);
+            console.log("[request-service] Received message:", data);
         });
-        console.log("✅ Request-service connected to RabbitMQ");
+        console.log("Request-service connected to RabbitMQ");
     } catch (err) {
-        console.error("❌ Failed to connect to RabbitMQ:", err);
+        console.error("Failed to connect to RabbitMQ:", err);
     }
 })();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 app.listen(PORT, () => {
     console.log(`Request service running on port ${PORT}`);
     console.log(`Authentication: ${process.env.AUTH_SERVICE_URL || 'http://auth-service:5000'}`);

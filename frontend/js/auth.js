@@ -2,9 +2,11 @@
  * Authentication Manager for OIDC/SSO and Email/Password
  * Handles authentication flow, token management, and user sessions
  */
+
 class AuthManager {
     constructor() {
-        this.authServiceUrl = 'http://localhost:5001';
+        //this.authServiceUrl = 'http://localhost:5001';
+        this.authServiceUrl = window?.API_BASE?.AUTH_SERVICE || 'http://localhost:5001';
         this.currentUser = null;
         this.authConfig = null;
     }
@@ -529,8 +531,15 @@ class AuthManager {
             }
         }
         
+        console.log('[AuthManager] Token not found in cookie, checking localStorage');
         // Fallback to localStorage
         const localToken = localStorage.getItem('auth_token');
+        if (localToken) {
+            console.log('[AuthManager] Token found in localStorage');
+        } else {
+            console.log('[AuthManager] No token found in cookie or localStorage');
+            console.log('[AuthManager] All cookies:', document.cookie);
+        }
         return localToken;
     }
 

@@ -916,10 +916,23 @@ function startCleanupTasks() {
 }
 
 // Graceful shutdown
+
+let shuttingDown = false;
+
 process.on('SIGTERM', async () => {
-    console.log('Shutting down auth service...');
-    await dbService.close();
-    process.exit(0);
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log('⚙️ Graceful shutdown initiated...');
+    try {
+        await dbService.close();
+        console.log('✅ \Database connection closed');
+    } catch (err) {
+        console.error('Error during shutdown:', err);
+    }
+
+    // Don't exit immediately — let Kubernetes handle termination
+    // Keep process alive until K8s actually kills it
 });
 
 startServer();
