@@ -28,6 +28,22 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
+        .khaki-avatar-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 600;
+            color: white;
+            text-transform: uppercase;
+        }
+
         .rating-stars {
             color: #ffc107;
         }
@@ -352,6 +368,18 @@
             return sectorMap[sector] || 'Unknown Area';
         }
 
+        // Get initials from name
+        function getInitials(firstname, lastname) {
+            let initials = '';
+            if (firstname) {
+                initials += firstname.charAt(0).toUpperCase();
+            }
+            if (lastname) {
+                initials += lastname.charAt(0).toUpperCase();
+            }
+            return initials || '?';
+        }
+
         // Display khakis
         function displayKhakis(khakis, containerId) {
             const container = document.getElementById(containerId);
@@ -393,11 +421,26 @@
                 // Show area only in "All Khakis" tab
                 const showArea = containerId === 'allKhakisContainer';
 
+                // Get initials for fallback
+                const initials = getInitials(khaki.firstname, khaki.lastname);
+
                 return `
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card khaki-card h-100">
                             <div class="khaki-card-header text-center">
-                                <img src="${khaki.picture}" alt="${displayName}" class="khaki-avatar mb-2">
+                                ${khaki.picture ? `
+                                    <img src="${khaki.picture}" 
+                                         alt="${displayName}" 
+                                         class="khaki-avatar mb-2"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="khaki-avatar-placeholder mb-2" style="display: none; margin: 0 auto;">
+                                        ${initials}
+                                    </div>
+                                ` : `
+                                    <div class="khaki-avatar-placeholder mb-2" style="margin: 0 auto;">
+                                        ${initials}
+                                    </div>
+                                `}
                                 <h5 class="mb-0">${escapeHtml(displayName)}</h5>
                             </div>
                             <div class="card-body">

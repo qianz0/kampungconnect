@@ -322,6 +322,18 @@
             const roleCards = document.querySelectorAll('.role-card');
             const continueBtn = document.getElementById('continueBtn');
             const form = document.getElementById('roleSelectionForm');
+            const locationInput = document.getElementById('location');
+
+            // Function to check if form is valid and enable/disable button
+            function validateForm() {
+                const selectedRole = document.querySelector('input[name="role"]:checked');
+                const postalCode = locationInput.value.trim();
+                const postalCodeRegex = /^\d{6}$/;
+                
+                // Enable button only if role is selected AND postal code is valid
+                const isValid = selectedRole && postalCodeRegex.test(postalCode);
+                continueBtn.disabled = !isValid;
+            }
 
             // Handle role card selection
             roleCards.forEach(card => {
@@ -336,9 +348,14 @@
                     card.classList.add('selected');
                     radioInput.checked = true;
                     
-                    // Enable continue button
-                    continueBtn.disabled = false;
+                    // Validate form to check if button should be enabled
+                    validateForm();
                 });
+            });
+
+            // Handle postal code input
+            locationInput.addEventListener('input', () => {
+                validateForm();
             });
 
             // Handle form submission

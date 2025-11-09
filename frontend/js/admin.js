@@ -10,20 +10,24 @@ class AdminDashboard {
             users: 1,
             requests: 1,
             matches: 1,
-            ratings: 1
+            ratings: 1,
+            reports: 1
         };
         this.filters = {
             users: {},
             requests: {},
             matches: {},
-            ratings: {}
+            ratings: {},
+            reports: {}
         };
         this.sortConfig = {
             users: { column: 'created_at', order: 'DESC' },
             requests: { column: 'created_at', order: 'DESC' },
             matches: { column: 'matched_at', order: 'DESC' },
-            ratings: { column: 'created_at', order: 'DESC' }
+            ratings: { column: 'created_at', order: 'DESC' },
+            reports: { column: 'created_at', order: 'DESC' }
         };
+        this.currentReportId = null;
     }
 
     /**
@@ -40,6 +44,32 @@ class AdminDashboard {
         await this.loadUsers();
         
         console.log('[AdminDashboard] Initialized successfully');
+    }
+
+    /**
+     * Load enhanced statistics with queue info
+     */
+    async loadStatsEnhanced() {
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/stats/overview`
+            );
+            const stats = await response.json();
+
+            document.getElementById('totalUsers').textContent = stats.total_users || 0;
+            document.getElementById('pendingUsers').textContent = stats.pending_users || 0;
+            document.getElementById('totalRequests').textContent = stats.total_requests || 0;
+            document.getElementById('pendingRequests').textContent = stats.pending_requests || 0;
+            document.getElementById('activeMatches').textContent = stats.active_matches || 0;
+            document.getElementById('avgRating').textContent = stats.average_rating 
+                ? parseFloat(stats.average_rating).toFixed(2) 
+                : 'N/A';
+            document.getElementById('urgentPending').textContent = stats.urgent_pending || 0;
+            document.getElementById('normalPending').textContent = stats.normal_pending || 0;
+            document.getElementById('suspendedUsers').textContent = stats.suspended_users || 0;
+        } catch (error) {
+            console.error('[AdminDashboard] Error loading stats:', error);
+        }
     }
 
     /**
@@ -84,6 +114,12 @@ class AdminDashboard {
             case 'ratings':
                 await this.loadRatings();
                 break;
+            case 'reports':
+                await this.loadReports();
+                break;
+            case 'systemHealth':
+                await this.loadSystemHealth();
+                break;
             case 'analytics':
                 await this.loadAnalytics();
                 break;
@@ -108,6 +144,11 @@ class AdminDashboard {
             document.getElementById('avgRating').textContent = stats.average_rating 
                 ? parseFloat(stats.average_rating).toFixed(2) 
                 : 'N/A';
+            
+            // Enhanced stats
+            document.getElementById('urgentPending').textContent = stats.urgent_pending || 0;
+            document.getElementById('normalPending').textContent = stats.normal_pending || 0;
+            document.getElementById('suspendedUsers').textContent = stats.suspended_users || 0;
         } catch (error) {
             console.error('[AdminDashboard] Error loading stats:', error);
         }
@@ -213,12 +254,18 @@ class AdminDashboard {
                     <td>${new Date(user.created_at).toLocaleDateString()}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn-icon btn-view" onclick="adminDashboard.viewUser(${user.id})">
+                            <button class="btn-icon btn-view" onclick="adminDashboard.viewUser(${user.id})" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
                             <button class="btn-icon btn-edit" 
-                                onclick="adminDashboard.toggleUserStatus(${user.id}, ${!user.is_active})">
+                                onclick="adminDashboard.toggleUserStatus(${user.id}, ${!user.is_active})" 
+                                title="${user.is_active ? 'Suspend' : 'Activate'}">
                                 <i class="fas fa-${user.is_active ? 'ban' : 'check'}"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" 
+                                onclick="adminDashboard.deleteUser(${user.id})" 
+                                title="Delete User">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -302,8 +349,18 @@ class AdminDashboard {
                     <td>${new Date(req.created_at).toLocaleDateString()}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn-icon btn-view" onclick="adminDashboard.viewRequest(${req.id})">
+                            <button class="btn-icon btn-view" onclick="adminDashboard.viewRequest(${req.id})" title="View Details">
                                 <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-icon btn-edit" 
+                                onclick="adminDashboard.flagRequest(${req.id})" 
+                                title="Flag Request">
+                                <i class="fas fa-flag"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" 
+                                onclick="adminDashboard.deleteRequest(${req.id})" 
+                                title="Delete Request">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -1303,6 +1360,478 @@ class AdminDashboard {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ============= REPORTS MANAGEMENT =============
+
+    /**
+     * Load reports with current filters
+     */
+    async loadReports(page = 1) {
+        try {
+            const container = document.getElementById('reportsTableContainer');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> Loading...</div>';
+
+            const params = new URLSearchParams({
+                page,
+                limit: 50,
+                sort_by: 'created_at',
+                sort_order: 'DESC',
+                ...this.filters.reports
+            });
+
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/reports?${params}`
+            );
+            const data = await response.json();
+
+            this.renderReportsTable(data.reports, data.pagination);
+            this.currentPage.reports = page;
+        } catch (error) {
+            console.error('[AdminDashboard] Error loading reports:', error);
+            container.innerHTML = '<div class="error">Failed to load reports. Please try again.</div>';
+        }
+    }
+
+    /**
+     * Render reports table
+     */
+    renderReportsTable(reports, pagination) {
+        const container = document.getElementById('reportsTableContainer');
+        
+        if (!reports || reports.length === 0) {
+            container.innerHTML = '<div class="loading">No reports found.</div>';
+            return;
+        }
+
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Reporter</th>
+                        <th>Reported User</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        reports.forEach(report => {
+            html += `
+                <tr>
+                    <td>${report.id}</td>
+                    <td><span class="badge ${report.report_type}">${report.report_type}</span></td>
+                    <td>${this.escapeHtml(report.reporter_firstname || 'N/A')} ${this.escapeHtml(report.reporter_lastname || '')}</td>
+                    <td>${this.escapeHtml(report.reported_user_firstname || 'N/A')} ${this.escapeHtml(report.reported_user_lastname || '')}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${this.escapeHtml(report.description)}
+                    </td>
+                    <td><span class="badge ${report.status}">${report.status}</span></td>
+                    <td>${new Date(report.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon btn-view" onclick="adminDashboard.viewReport(${report.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        html += this.renderPagination(pagination, 'reports');
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * View report details
+     */
+    async viewReport(reportId) {
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/reports/${reportId}`
+            );
+            const report = await response.json();
+
+            const content = document.getElementById('reportDetailContent');
+            content.innerHTML = `
+                <div class="detail-row">
+                    <div class="detail-label">ID:</div>
+                    <div class="detail-value">${report.id}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Type:</div>
+                    <div class="detail-value"><span class="badge ${report.report_type}">${report.report_type}</span></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Reporter:</div>
+                    <div class="detail-value">${this.escapeHtml(report.reporter_firstname || 'N/A')} ${this.escapeHtml(report.reporter_lastname || '')} (${this.escapeHtml(report.reporter_email || 'N/A')})</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Reported User:</div>
+                    <div class="detail-value">${this.escapeHtml(report.reported_user_firstname || 'N/A')} ${this.escapeHtml(report.reported_user_lastname || '')} (${this.escapeHtml(report.reported_user_email || 'N/A')})</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Description:</div>
+                    <div class="detail-value">${this.escapeHtml(report.description)}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Status:</div>
+                    <div class="detail-value"><span class="badge ${report.status}">${report.status}</span></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Created:</div>
+                    <div class="detail-value">${new Date(report.created_at).toLocaleString()}</div>
+                </div>
+                ${report.action_taken ? `
+                <div class="detail-row">
+                    <div class="detail-label">Action Taken:</div>
+                    <div class="detail-value">${this.escapeHtml(report.action_taken)}</div>
+                </div>
+                ` : ''}
+                ${report.admin_notes ? `
+                <div class="detail-row">
+                    <div class="detail-label">Admin Notes:</div>
+                    <div class="detail-value">${this.escapeHtml(report.admin_notes)}</div>
+                </div>
+                ` : ''}
+            `;
+
+            // Set current values in the form
+            document.getElementById('reportStatusUpdate').value = report.status;
+            document.getElementById('reportAdminNotes').value = report.admin_notes || '';
+            document.getElementById('reportActionTaken').value = report.action_taken || '';
+            
+            // Store report ID for update
+            this.currentReportId = reportId;
+
+            this.openModal('reportModal');
+        } catch (error) {
+            console.error('[AdminDashboard] Error viewing report:', error);
+            alert('Failed to load report details');
+        }
+    }
+
+    /**
+     * Update report status
+     */
+    async updateReportStatus() {
+        try {
+            const status = document.getElementById('reportStatusUpdate').value;
+            const adminNotes = document.getElementById('reportAdminNotes').value;
+            const actionTaken = document.getElementById('reportActionTaken').value;
+
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/reports/${this.currentReportId}/status`,
+                {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status, admin_notes: adminNotes, action_taken: actionTaken })
+                }
+            );
+
+            if (response.ok) {
+                alert('Report updated successfully');
+                this.closeModal('reportModal');
+                this.loadReports(this.currentPage.reports || 1);
+            } else {
+                const error = await response.json();
+                alert(`Failed to update report: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('[AdminDashboard] Error updating report:', error);
+            alert('Failed to update report');
+        }
+    }
+
+    /**
+     * Apply report filters
+     */
+    applyReportFilters() {
+        this.filters.reports = {
+            status: document.getElementById('reportStatusFilter').value,
+            report_type: document.getElementById('reportTypeFilter').value
+        };
+        
+        Object.keys(this.filters.reports).forEach(key => {
+            if (!this.filters.reports[key]) delete this.filters.reports[key];
+        });
+
+        this.loadReports(1);
+    }
+
+    /**
+     * Reset report filters
+     */
+    resetReportFilters() {
+        document.getElementById('reportStatusFilter').value = '';
+        document.getElementById('reportTypeFilter').value = '';
+        this.filters.reports = {};
+        this.loadReports(1);
+    }
+
+    // ============= SYSTEM HEALTH MONITORING =============
+
+    /**
+     * Load system health data
+     */
+    async loadSystemHealth() {
+        try {
+            await this.loadSystemHealthMetrics();
+            await this.loadQueueStatus();
+        } catch (error) {
+            console.error('[AdminDashboard] Error loading system health:', error);
+        }
+    }
+
+    /**
+     * Load system health metrics
+     */
+    async loadSystemHealthMetrics() {
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/stats/system-health`
+            );
+            const metrics = await response.json();
+
+            document.getElementById('requestsLastHour').textContent = metrics.requests_last_hour || 0;
+            document.getElementById('matchesLastHour').textContent = metrics.matches_last_hour || 0;
+            document.getElementById('activeUsersLastHour').textContent = metrics.active_users_last_hour || 0;
+            
+            const avgMatchTime = metrics.avg_match_time_minutes_24h 
+                ? `${Math.round(metrics.avg_match_time_minutes_24h)} min`
+                : 'N/A';
+            document.getElementById('avgMatchTime').textContent = avgMatchTime;
+
+            // Render stale requests
+            const staleContainer = document.getElementById('staleRequestsContainer');
+            staleContainer.innerHTML = `
+                <div style="padding: 20px;">
+                    <p><strong>Stale Urgent Requests (> 2 hours):</strong> ${metrics.stale_urgent_requests || 0}</p>
+                    <p><strong>Stale All Requests (> 24 hours):</strong> ${metrics.stale_requests || 0}</p>
+                    ${metrics.stale_urgent_requests > 0 ? 
+                        '<p style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Action required: Urgent requests are waiting!</p>' 
+                        : '<p style="color: #28a745;"><i class="fas fa-check-circle"></i> All urgent requests handled in timely manner</p>'}
+                </div>
+            `;
+
+            // Render system metrics
+            const metricsContainer = document.getElementById('systemMetricsContainer');
+            const dbSizeMB = metrics.db_size_bytes ? (metrics.db_size_bytes / 1024 / 1024).toFixed(2) : 'N/A';
+            metricsContainer.innerHTML = `
+                <div style="padding: 20px;">
+                    <p><strong>Database Size:</strong> ${dbSizeMB} MB</p>
+                    <p><strong>Active Connections:</strong> ${metrics.active_connections || 0}</p>
+                    <p><strong>Ratings (24h):</strong> ${metrics.ratings_last_24h || 0}</p>
+                    <p><strong>Avg Rating (7d):</strong> ${metrics.avg_rating_last_week ? parseFloat(metrics.avg_rating_last_week).toFixed(2) : 'N/A'}</p>
+                    <p><strong>Last Updated:</strong> ${new Date(metrics.timestamp).toLocaleString()}</p>
+                </div>
+            `;
+        } catch (error) {
+            console.error('[AdminDashboard] Error loading system health metrics:', error);
+        }
+    }
+
+    /**
+     * Load queue status
+     */
+    async loadQueueStatus() {
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/stats/queue-status`
+            );
+            const data = await response.json();
+
+            const container = document.getElementById('queueStatusContainer');
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Urgency</th>
+                            <th>Status</th>
+                            <th>Count</th>
+                            <th>Avg Wait Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.queue_stats.forEach(stat => {
+                const avgWaitHours = stat.avg_wait_hours ? parseFloat(stat.avg_wait_hours).toFixed(1) : '0';
+                html += `
+                    <tr>
+                        <td><span class="badge ${stat.urgency}">${stat.urgency}</span></td>
+                        <td><span class="badge ${stat.status}">${stat.status}</span></td>
+                        <td>${stat.count}</td>
+                        <td>${avgWaitHours} hours</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            
+            if (data.oldest_pending && data.oldest_pending.length > 0) {
+                html += '<h4 style="margin-top: 20px;">Oldest Pending Requests</h4><table><thead><tr><th>ID</th><th>Title</th><th>Urgency</th><th>Wait Time</th></tr></thead><tbody>';
+                data.oldest_pending.slice(0, 5).forEach(req => {
+                    const waitHours = req.wait_hours ? parseFloat(req.wait_hours).toFixed(1) : '0';
+                    html += `
+                        <tr>
+                            <td>${req.id}</td>
+                            <td>${this.escapeHtml(req.title || 'N/A')}</td>
+                            <td><span class="badge ${req.urgency}">${req.urgency}</span></td>
+                            <td>${waitHours} hours</td>
+                        </tr>
+                    `;
+                });
+                html += '</tbody></table>';
+            }
+
+            container.innerHTML = html;
+        } catch (error) {
+            console.error('[AdminDashboard] Error loading queue status:', error);
+        }
+    }
+
+    /**
+     * Refresh system health manually
+     */
+    async refreshSystemHealth() {
+        await this.loadSystemHealth();
+        alert('System health metrics refreshed!');
+    }
+
+    // ============= USER MODERATION ACTIONS =============
+
+    /**
+     * Ban/suspend a user
+     */
+    async banUser(userId, reason) {
+        if (!confirm(`Are you sure you want to ban this user?\nReason: ${reason}`)) {
+            return;
+        }
+
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/users/${userId}/ban`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({ reason })
+                }
+            );
+
+            if (response.ok) {
+                alert('User banned successfully');
+                this.loadUsers(this.currentPage.users);
+            } else {
+                const error = await response.json();
+                alert(`Failed to ban user: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('[AdminDashboard] Error banning user:', error);
+            alert('Failed to ban user');
+        }
+    }
+
+    /**
+     * Delete a user
+     */
+    async deleteUser(userId) {
+        const reason = prompt('Enter reason for deletion:');
+        if (!reason) return;
+
+        if (!confirm('Are you sure you want to DELETE this user? This action cannot be undone!')) {
+            return;
+        }
+
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/users/${userId}`,
+                {
+                    method: 'DELETE',
+                    body: JSON.stringify({ reason })
+                }
+            );
+
+            if (response.ok) {
+                alert('User deleted successfully');
+                this.loadUsers(this.currentPage.users);
+            } else {
+                const error = await response.json();
+                alert(`Failed to delete user: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('[AdminDashboard] Error deleting user:', error);
+            alert('Failed to delete user');
+        }
+    }
+
+    /**
+     * Flag a request
+     */
+    async flagRequest(requestId) {
+        const reason = prompt('Enter reason for flagging this request:');
+        if (!reason) return;
+
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/requests/${requestId}/flag`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({ reason })
+                }
+            );
+
+            if (response.ok) {
+                alert('Request flagged successfully');
+                this.loadRequests(this.currentPage.requests);
+            } else {
+                const error = await response.json();
+                alert(`Failed to flag request: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('[AdminDashboard] Error flagging request:', error);
+            alert('Failed to flag request');
+        }
+    }
+
+    /**
+     * Delete a request
+     */
+    async deleteRequest(requestId) {
+        const reason = prompt('Enter reason for deleting this request:');
+        if (!reason) return;
+
+        if (!confirm('Are you sure you want to DELETE this request? This action cannot be undone!')) {
+            return;
+        }
+
+        try {
+            const response = await window.AuthManager.authenticatedFetch(
+                `${this.adminServiceUrl}/api/admin/requests/${requestId}`,
+                {
+                    method: 'DELETE',
+                    body: JSON.stringify({ reason })
+                }
+            );
+
+            if (response.ok) {
+                alert('Request deleted successfully');
+                this.loadRequests(this.currentPage.requests);
+            } else {
+                const error = await response.json();
+                alert(`Failed to delete request: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('[AdminDashboard] Error deleting request:', error);
+            alert('Failed to delete request');
+        }
     }
 }
 

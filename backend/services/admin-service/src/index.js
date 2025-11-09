@@ -70,13 +70,114 @@ app.get('/api/admin/stats/overview',
                     (SELECT COUNT(*) FROM ratings) as total_ratings,
                     (SELECT AVG(score) FROM ratings) as average_rating,
                     (SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days') as new_users_week,
-                    (SELECT COUNT(*) FROM requests WHERE created_at >= NOW() - INTERVAL '7 days') as new_requests_week
+                    (SELECT COUNT(*) FROM requests WHERE created_at >= NOW() - INTERVAL '7 days') as new_requests_week,
+                    (SELECT COUNT(*) FROM requests WHERE urgency = 'urgent' AND status = 'pending') as urgent_pending,
+                    (SELECT COUNT(*) FROM requests WHERE urgency != 'urgent' AND status = 'pending') as normal_pending,
+                    (SELECT COUNT(*) FROM users WHERE is_active = false) as suspended_users
             `);
 
             res.json(stats.rows[0]);
         } catch (error) {
             console.error('Error fetching overview stats:', error);
             res.status(500).json({ error: 'Failed to fetch statistics' });
+        }
+    }
+);
+
+// Get queue statistics (urgent vs normal)
+app.get('/api/admin/stats/queue-status',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                SELECT 
+                    urgency,
+                    status,
+                    COUNT(*) as count,
+                    AVG(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) as avg_wait_hours
+                FROM requests
+                WHERE status IN ('pending', 'matched')
+                GROUP BY urgency, status
+                ORDER BY 
+                    CASE urgency
+                        WHEN 'urgent' THEN 1
+                        WHEN 'high' THEN 2
+                        WHEN 'medium' THEN 3
+                        WHEN 'low' THEN 4
+                    END,
+                    status
+            `);
+
+            // Get oldest pending requests by urgency
+            const oldestRequests = await pool.query(`
+                SELECT 
+                    urgency,
+                    id,
+                    title,
+                    created_at,
+                    EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 as wait_hours
+                FROM requests
+                WHERE status = 'pending'
+                ORDER BY 
+                    CASE urgency
+                        WHEN 'urgent' THEN 1
+                        WHEN 'high' THEN 2
+                        WHEN 'medium' THEN 3
+                        WHEN 'low' THEN 4
+                    END,
+                    created_at ASC
+                LIMIT 10
+            `);
+
+            res.json({
+                queue_stats: result.rows,
+                oldest_pending: oldestRequests.rows
+            });
+        } catch (error) {
+            console.error('Error fetching queue status:', error);
+            res.status(500).json({ error: 'Failed to fetch queue status' });
+        }
+    }
+);
+
+// Get system health metrics
+app.get('/api/admin/stats/system-health',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const healthMetrics = await pool.query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM requests WHERE created_at >= NOW() - INTERVAL '1 hour') as requests_last_hour,
+                    (SELECT COUNT(*) FROM matches WHERE matched_at >= NOW() - INTERVAL '1 hour') as matches_last_hour,
+                    (SELECT COUNT(*) FROM users WHERE last_login >= NOW() - INTERVAL '1 hour') as active_users_last_hour,
+                    (SELECT COUNT(*) FROM requests WHERE status = 'pending' AND urgency = 'urgent' AND created_at < NOW() - INTERVAL '2 hours') as stale_urgent_requests,
+                    (SELECT COUNT(*) FROM requests WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours') as stale_requests,
+                    (SELECT AVG(EXTRACT(EPOCH FROM (matched_at - created_at)) / 60) 
+                     FROM (SELECT m.matched_at, r.created_at 
+                           FROM matches m 
+                           JOIN requests r ON m.request_id = r.id 
+                           WHERE m.matched_at >= NOW() - INTERVAL '24 hours') subq) as avg_match_time_minutes_24h,
+                    (SELECT COUNT(*) FROM ratings WHERE created_at >= NOW() - INTERVAL '24 hours') as ratings_last_24h,
+                    (SELECT AVG(score) FROM ratings WHERE created_at >= NOW() - INTERVAL '7 days') as avg_rating_last_week
+            `);
+
+            // Database statistics
+            const dbStats = await pool.query(`
+                SELECT 
+                    pg_database_size(current_database()) as db_size_bytes,
+                    (SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active') as active_connections
+            `);
+
+            res.json({
+                ...healthMetrics.rows[0],
+                ...dbStats.rows[0],
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Error fetching system health:', error);
+            res.status(500).json({ error: 'Failed to fetch system health' });
         }
     }
 );
@@ -826,6 +927,426 @@ app.get('/api/admin/ratings',
         } catch (error) {
             console.error('Error fetching ratings:', error);
             res.status(500).json({ error: 'Failed to fetch ratings' });
+        }
+    }
+);
+
+// ============= REPORTS MANAGEMENT =============
+
+// Get all reports with filtering
+app.get('/api/admin/reports',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { 
+                page = 1, 
+                limit = 50,
+                status,
+                report_type,
+                sort_by = 'created_at',
+                sort_order = 'DESC'
+            } = req.query;
+
+            const offset = (page - 1) * limit;
+            let conditions = [];
+            let params = [];
+            let paramCount = 1;
+
+            if (status) {
+                conditions.push(`rep.status = $${paramCount++}`);
+                params.push(status);
+            }
+            if (report_type) {
+                conditions.push(`rep.report_type = $${paramCount++}`);
+                params.push(report_type);
+            }
+
+            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+            // Get total count
+            const countResult = await pool.query(
+                `SELECT COUNT(*) FROM reports rep ${whereClause}`,
+                params
+            );
+            const totalReports = parseInt(countResult.rows[0].count);
+
+            // Get reports with user info
+            params.push(parseInt(limit), offset);
+            const reports = await pool.query(
+                `SELECT 
+                    rep.*,
+                    u1.firstname as reporter_firstname,
+                    u1.lastname as reporter_lastname,
+                    u1.email as reporter_email,
+                    u2.firstname as reported_user_firstname,
+                    u2.lastname as reported_user_lastname,
+                    u2.email as reported_user_email
+                FROM reports rep
+                LEFT JOIN users u1 ON rep.reporter_id = u1.id
+                LEFT JOIN users u2 ON rep.reported_user_id = u2.id
+                ${whereClause}
+                ORDER BY rep.${sort_by || 'created_at'} ${sort_order === 'ASC' ? 'ASC' : 'DESC'}
+                LIMIT $${paramCount++} OFFSET $${paramCount}`,
+                params
+            );
+
+            res.json({
+                reports: reports.rows,
+                pagination: {
+                    total: totalReports,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(totalReports / limit)
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching reports:', error);
+            res.status(500).json({ error: 'Failed to fetch reports' });
+        }
+    }
+);
+
+// Get single report details
+app.get('/api/admin/reports/:id',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const reportResult = await pool.query(
+                `SELECT 
+                    rep.*,
+                    u1.firstname as reporter_firstname,
+                    u1.lastname as reporter_lastname,
+                    u1.email as reporter_email,
+                    u2.firstname as reported_user_firstname,
+                    u2.lastname as reported_user_lastname,
+                    u2.email as reported_user_email
+                FROM reports rep
+                LEFT JOIN users u1 ON rep.reporter_id = u1.id
+                LEFT JOIN users u2 ON rep.reported_user_id = u2.id
+                WHERE rep.id = $1`,
+                [id]
+            );
+
+            if (reportResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Report not found' });
+            }
+
+            res.json(reportResult.rows[0]);
+        } catch (error) {
+            console.error('Error fetching report details:', error);
+            res.status(500).json({ error: 'Failed to fetch report details' });
+        }
+    }
+);
+
+// Update report status
+app.patch('/api/admin/reports/:id/status',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { status, action_taken, admin_notes } = req.body;
+
+            const validStatuses = ['pending', 'investigating', 'resolved', 'dismissed'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({ error: 'Invalid status' });
+            }
+
+            const result = await pool.query(
+                `UPDATE reports 
+                SET status = $1, action_taken = $2, admin_notes = $3, resolved_at = CASE WHEN $1 IN ('resolved', 'dismissed') THEN NOW() ELSE resolved_at END
+                WHERE id = $4 
+                RETURNING *`,
+                [status, action_taken, admin_notes, id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Report not found' });
+            }
+
+            res.json({
+                message: 'Report status updated successfully',
+                report: result.rows[0]
+            });
+        } catch (error) {
+            console.error('Error updating report status:', error);
+            res.status(500).json({ error: 'Failed to update report status' });
+        }
+    }
+);
+
+// ============= USER MODERATION =============
+
+// Ban/suspend user
+app.post('/api/admin/users/:id/ban',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { reason, duration_days } = req.body;
+
+            // Update user status
+            await pool.query(
+                `UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1`,
+                [id]
+            );
+
+            // Create audit log
+            await pool.query(
+                `INSERT INTO admin_actions (admin_id, action_type, target_user_id, reason, duration_days, created_at)
+                VALUES ($1, 'ban', $2, $3, $4, NOW())`,
+                [req.user.userId, id, reason, duration_days]
+            );
+
+            res.json({
+                message: 'User banned successfully',
+                user_id: id,
+                reason,
+                duration_days
+            });
+        } catch (error) {
+            console.error('Error banning user:', error);
+            res.status(500).json({ error: 'Failed to ban user' });
+        }
+    }
+);
+
+// Unban user
+app.post('/api/admin/users/:id/unban',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { reason } = req.body;
+
+            // Update user status
+            await pool.query(
+                `UPDATE users SET is_active = true, updated_at = NOW() WHERE id = $1`,
+                [id]
+            );
+
+            // Create audit log
+            await pool.query(
+                `INSERT INTO admin_actions (admin_id, action_type, target_user_id, reason, created_at)
+                VALUES ($1, 'unban', $2, $3, NOW())`,
+                [req.user.userId, id, reason]
+            );
+
+            res.json({
+                message: 'User unbanned successfully',
+                user_id: id
+            });
+        } catch (error) {
+            console.error('Error unbanning user:', error);
+            res.status(500).json({ error: 'Failed to unban user' });
+        }
+    }
+);
+
+// Delete user (hard delete with cascading)
+app.delete('/api/admin/users/:id',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { reason } = req.body;
+
+            // Create audit log before deletion
+            await pool.query(
+                `INSERT INTO admin_actions (admin_id, action_type, target_user_id, reason, created_at)
+                VALUES ($1, 'delete_user', $2, $3, NOW())`,
+                [req.user.userId, id, reason]
+            );
+
+            // Delete user (cascading will handle related records)
+            const result = await pool.query(
+                `DELETE FROM users WHERE id = $1 RETURNING email, firstname, lastname`,
+                [id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            res.json({
+                message: 'User deleted successfully',
+                deleted_user: result.rows[0]
+            });
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            res.status(500).json({ error: 'Failed to delete user' });
+        }
+    }
+);
+
+// ============= REQUEST MODERATION =============
+
+// Flag request as inappropriate
+app.post('/api/admin/requests/:id/flag',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { reason } = req.body;
+
+            await pool.query(
+                `UPDATE requests SET is_flagged = true, flag_reason = $1 WHERE id = $2`,
+                [reason, id]
+            );
+
+            // Create audit log
+            await pool.query(
+                `INSERT INTO admin_actions (admin_id, action_type, target_request_id, reason, created_at)
+                VALUES ($1, 'flag_request', $2, $3, NOW())`,
+                [req.user.userId, id, reason]
+            );
+
+            res.json({
+                message: 'Request flagged successfully',
+                request_id: id
+            });
+        } catch (error) {
+            console.error('Error flagging request:', error);
+            res.status(500).json({ error: 'Failed to flag request' });
+        }
+    }
+);
+
+// Remove flag from request
+app.post('/api/admin/requests/:id/unflag',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            await pool.query(
+                `UPDATE requests SET is_flagged = false, flag_reason = NULL WHERE id = $1`,
+                [id]
+            );
+
+            res.json({
+                message: 'Request flag removed successfully',
+                request_id: id
+            });
+        } catch (error) {
+            console.error('Error removing flag:', error);
+            res.status(500).json({ error: 'Failed to remove flag' });
+        }
+    }
+);
+
+// Delete request
+app.delete('/api/admin/requests/:id',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { reason } = req.body;
+
+            // Create audit log before deletion
+            await pool.query(
+                `INSERT INTO admin_actions (admin_id, action_type, target_request_id, reason, created_at)
+                VALUES ($1, 'delete_request', $2, $3, NOW())`,
+                [req.user.userId, id, reason]
+            );
+
+            // Delete request
+            const result = await pool.query(
+                `DELETE FROM requests WHERE id = $1 RETURNING title`,
+                [id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Request not found' });
+            }
+
+            res.json({
+                message: 'Request deleted successfully',
+                deleted_request: result.rows[0]
+            });
+        } catch (error) {
+            console.error('Error deleting request:', error);
+            res.status(500).json({ error: 'Failed to delete request' });
+        }
+    }
+);
+
+// Get admin action logs
+app.get('/api/admin/audit-logs',
+    authMiddleware.authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { 
+                page = 1, 
+                limit = 50,
+                action_type,
+                admin_id,
+                sort_order = 'DESC'
+            } = req.query;
+
+            const offset = (page - 1) * limit;
+            let conditions = [];
+            let params = [];
+            let paramCount = 1;
+
+            if (action_type) {
+                conditions.push(`a.action_type = $${paramCount++}`);
+                params.push(action_type);
+            }
+            if (admin_id) {
+                conditions.push(`a.admin_id = $${paramCount++}`);
+                params.push(parseInt(admin_id));
+            }
+
+            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+            // Get total count
+            const countResult = await pool.query(
+                `SELECT COUNT(*) FROM admin_actions a ${whereClause}`,
+                params
+            );
+            const totalLogs = parseInt(countResult.rows[0].count);
+
+            // Get logs
+            params.push(parseInt(limit), offset);
+            const logs = await pool.query(
+                `SELECT 
+                    a.*,
+                    u.firstname as admin_firstname,
+                    u.lastname as admin_lastname,
+                    u.email as admin_email
+                FROM admin_actions a
+                JOIN users u ON a.admin_id = u.id
+                ${whereClause}
+                ORDER BY a.created_at ${sort_order === 'ASC' ? 'ASC' : 'DESC'}
+                LIMIT $${paramCount++} OFFSET $${paramCount}`,
+                params
+            );
+
+            res.json({
+                logs: logs.rows,
+                pagination: {
+                    total: totalLogs,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(totalLogs / limit)
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching audit logs:', error);
+            res.status(500).json({ error: 'Failed to fetch audit logs' });
         }
     }
 );

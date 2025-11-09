@@ -450,10 +450,13 @@
         }
 
         .badge.pending { background: #fff3cd; color: #856404; }
+        .badge.investigating { background: #cfe2ff; color: #084298; }
+        .badge.resolved { background: #d4edda; color: #155724; }
+        .badge.dismissed { background: #e2e3e5; color: #41464b; }
         .badge.matched { background: #d1ecf1; color: #0c5460; }
         .badge.completed { background: #d4edda; color: #155724; }
         .badge.cancelled { background: #f8d7da; color: #721c24; }
-        .badge.active { background: #d4edda; color: #155724; }
+        .badge.active { background: #d1f4ff; color: #055160; }
         .badge.urgent { background: #f8d7da; color: #721c24; }
         .badge.high { background: #fff3cd; color: #856404; }
         .badge.medium { background: #d1ecf1; color: #0c5460; }
@@ -730,6 +733,27 @@
                     <div class="label">Average Rating</div>
                 </div>
             </div>
+            <div class="stat-card warning">
+                <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-content">
+                    <div class="value" id="urgentPending">-</div>
+                    <div class="label">Urgent Queue</div>
+                </div>
+            </div>
+            <div class="stat-card primary">
+                <div class="icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-content">
+                    <div class="value" id="normalPending">-</div>
+                    <div class="label">Normal Queue</div>
+                </div>
+            </div>
+            <div class="stat-card danger">
+                <div class="icon"><i class="fas fa-ban"></i></div>
+                <div class="stat-content">
+                    <div class="value" id="suspendedUsers">-</div>
+                    <div class="label">Suspended Users</div>
+                </div>
+            </div>
         </div>
 
         <!-- Tabs -->
@@ -738,6 +762,8 @@
             <button class="tab" data-tab="requests"><i class="fas fa-list"></i> Requests</button>
             <button class="tab" data-tab="matches"><i class="fas fa-handshake"></i> Matches</button>
             <button class="tab" data-tab="ratings"><i class="fas fa-star"></i> Ratings</button>
+            <button class="tab" data-tab="reports"><i class="fas fa-flag"></i> Reports</button>
+            <button class="tab" data-tab="systemHealth"><i class="fas fa-heartbeat"></i> System Health</button>
             <button class="tab" data-tab="analytics"><i class="fas fa-chart-bar"></i> Analytics</button>
         </div>
 
@@ -945,6 +971,117 @@
             </div>
         </div>
 
+        <!-- Reports Tab -->
+        <div id="reportsTab" class="tab-content">
+            <div class="filters">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select id="reportStatusFilter">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="investigating">Investigating</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="dismissed">Dismissed</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Report Type</label>
+                        <select id="reportTypeFilter">
+                            <option value="">All Types</option>
+                            <option value="spam">Spam</option>
+                            <option value="inappropriate">Inappropriate</option>
+                            <option value="harassment">Harassment</option>
+                            <option value="scam">Scam</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="adminDashboard.applyReportFilters()">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <button class="btn btn-secondary" onclick="adminDashboard.resetReportFilters()">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="data-table">
+                <div class="table-header">
+                    <h3>Reports Management</h3>
+                </div>
+                <div id="reportsTableContainer"></div>
+            </div>
+        </div>
+
+        <!-- System Health Tab -->
+        <div id="systemHealthTab" class="tab-content">
+            <h2 style="margin-bottom: 20px;"><i class="fas fa-heartbeat"></i> System Health Monitoring</h2>
+            
+            <!-- Real-time Metrics -->
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="stat-card success">
+                    <div class="icon"><i class="fas fa-file-alt"></i></div>
+                    <div class="stat-content">
+                        <div class="value" id="requestsLastHour">-</div>
+                        <div class="label">Requests (1h)</div>
+                    </div>
+                </div>
+                <div class="stat-card info">
+                    <div class="icon"><i class="fas fa-handshake"></i></div>
+                    <div class="stat-content">
+                        <div class="value" id="matchesLastHour">-</div>
+                        <div class="label">Matches (1h)</div>
+                    </div>
+                </div>
+                <div class="stat-card primary">
+                    <div class="icon"><i class="fas fa-user-check"></i></div>
+                    <div class="stat-content">
+                        <div class="value" id="activeUsersLastHour">-</div>
+                        <div class="label">Active Users (1h)</div>
+                    </div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-content">
+                        <div class="value" id="avgMatchTime">-</div>
+                        <div class="label">Avg Match Time (24h)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Queue Status -->
+            <div class="data-table" style="margin-bottom: 30px;">
+                <div class="table-header">
+                    <h3><i class="fas fa-list"></i> Queue Status</h3>
+                </div>
+                <div id="queueStatusContainer"></div>
+            </div>
+
+            <!-- Stale Requests Alert -->
+            <div class="data-table" style="margin-bottom: 30px;">
+                <div class="table-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Stale Requests</h3>
+                </div>
+                <div id="staleRequestsContainer"></div>
+            </div>
+
+            <!-- System Metrics -->
+            <div class="data-table">
+                <div class="table-header">
+                    <h3><i class="fas fa-database"></i> System Metrics</h3>
+                </div>
+                <div id="systemMetricsContainer"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" onclick="adminDashboard.refreshSystemHealth()">
+                    <i class="fas fa-sync"></i> Refresh Metrics
+                </button>
+            </div>
+        </div>
+
         <!-- Analytics Tab -->
         <div id="analyticsTab" class="tab-content">
             <div class="chart-container">
@@ -1018,6 +1155,35 @@
                 </button>
             </div>
             <div id="requestDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Report Detail Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Report Details</h2>
+                <button class="close-modal" onclick="adminDashboard.closeModal('reportModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="reportDetailContent"></div>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                <h4>Admin Actions</h4>
+                <div style="display: grid; gap: 10px; margin-top: 10px;">
+                    <select id="reportStatusUpdate" style="padding: 10px; border-radius: 8px; border: 2px solid #e0e0e0;">
+                        <option value="pending">Pending</option>
+                        <option value="investigating">Investigating</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="dismissed">Dismissed</option>
+                    </select>
+                    <textarea id="reportAdminNotes" placeholder="Admin notes..." style="padding: 10px; border-radius: 8px; border: 2px solid #e0e0e0; min-height: 80px;"></textarea>
+                    <textarea id="reportActionTaken" placeholder="Action taken..." style="padding: 10px; border-radius: 8px; border: 2px solid #e0e0e0; min-height: 60px;"></textarea>
+                    <button class="btn" onclick="adminDashboard.updateReportStatus()">
+                        <i class="fas fa-save"></i> Update Report
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
