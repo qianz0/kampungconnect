@@ -12,6 +12,8 @@ const getMyRatings = require('../controllers/getMyRatings');
 const updateRating = require('../controllers/updateRating');
 const deleteRating = require('../controllers/deleteRating');
 const getPendingRatings = require('../controllers/getPendingRatings');
+const completeMatch = require('../controllers/completeMatch');
+const getHelperProfile = require('../controllers/getHelperProfile');
 
 // Initialize auth middleware
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
@@ -21,11 +23,17 @@ const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 // ==================
 router.get('/helper/:helperId', authMiddleware.authenticateToken, getHelperRatings);
 
+// Get helper profile with ratings (for display in lists)
+router.get('/helper-profile/:helperId', authMiddleware.authenticateToken, getHelperProfile);
+
 // ==================
 // Protected endpoints (require authentication)
 // ==================
 // Submit a new rating
 router.post('/', authMiddleware.authenticateToken, createRating);
+
+// Complete a match (triggers rating prompt)
+router.post('/complete-match/:matchId', authMiddleware.authenticateToken, completeMatch);
 
 // Get ratings submitted by current user (senior)
 router.get('/my-ratings', authMiddleware.authenticateToken, getMyRatings);

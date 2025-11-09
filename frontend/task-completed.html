@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Completed - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .completion-card {
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+        }
+        .success-icon {
+            font-size: 4rem;
+            color: #28a745;
+        }
+        .rating-prompt {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        .star-rating-large {
+            font-size: 2.5rem;
+            gap: 10px;
+            justify-content: center;
+            display: flex;
+            margin: 1rem 0;
+        }
+        .star-large {
+            cursor: pointer;
+            color: #dee2e6;
+            transition: all 0.2s ease-in-out;
+            user-select: none;
+        }
+        .star-large.filled {
+            color: #ffc107;
+            transform: scale(1.1);
+        }
+        .star-large:hover {
+            transform: scale(1.2);
+            color: #ffc107;
+        }
+        .btn-rate-now {
+            background: #ffc107;
+            border: none;
+            color: #000;
+            font-weight: 600;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+        }
+        .btn-rate-now:hover {
+            background: #ffb300;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .helper-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard.html">
+                <i class="fas fa-home me-2"></i>KampungConnect
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
+                        role="button" data-bs-toggle="dropdown">
+                        <img id="userAvatar" class="user-avatar me-2" src="" alt="User Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+                        <span id="userName">Loading...</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/profile.html"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="window.AuthManager.logout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-5">
+        <div class="completion-card">
+            <!-- Success Message -->
+            <div class="card border-0">
+                <div class="card-body text-center py-5">
+                    <div class="success-icon mb-4">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 class="text-success mb-3">Task Completed Successfully!</h2>
+                    <p class="text-muted mb-4">Thank you for using KampungConnect. Your request has been marked as completed.</p>
+                    
+                    <!-- Request Details -->
+                    <div class="bg-light rounded p-3 mb-4">
+                        <h5 id="requestTitle" class="mb-2"></h5>
+                        <p class="text-muted small mb-0">Completed on <span id="completionDate"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rating Prompt -->
+            <div class="rating-prompt text-center" id="ratingPrompt" style="display: none;">
+                <h4 class="mb-3">
+                    <i class="fas fa-star me-2"></i>Rate Your Helper
+                </h4>
+                <p class="mb-3">How was your experience with <strong id="helperName">the helper</strong>?</p>
+                
+                <div class="helper-info">
+                    <img id="helperAvatar" src="" class="rounded-circle mb-2" width="60" height="60" alt="Helper">
+                    <div>
+                        <strong id="helperNameDisplay"></strong>
+                        <div class="small opacity-75" id="helperRole"></div>
+                    </div>
+                </div>
+
+                <!-- Quick Rating -->
+                <div class="star-rating-large" id="quickRating">
+                    <span class="star-large" data-value="1" onclick="setQuickRating(1)">★</span>
+                    <span class="star-large" data-value="2" onclick="setQuickRating(2)">★</span>
+                    <span class="star-large" data-value="3" onclick="setQuickRating(3)">★</span>
+                    <span class="star-large" data-value="4" onclick="setQuickRating(4)">★</span>
+                    <span class="star-large" data-value="5" onclick="setQuickRating(5)">★</span>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-rate-now me-3" onclick="submitQuickRating()">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Rating
+                    </button>
+                    <button class="btn btn-outline-light" onclick="openDetailedRating()">
+                        Add Comments
+                    </button>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="/dashboard.html" class="text-light text-decoration-none small">
+                        <i class="fas fa-arrow-left me-1"></i>Skip for now, go to dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card-footer bg-white border-0 text-center">
+                <div class="d-grid gap-2 d-md-flex justify-content-center">
+                    <a href="/my-requests.html" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>View My Requests
+                    </a>
+                    <a href="/dashboard.html" class="btn btn-primary">
+                        <i class="fas fa-home me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Rating Modal -->
+    <div class="modal fade" id="detailedRatingModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rate Your Helper</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <img id="modalHelperAvatar" src="" class="rounded-circle mb-2" width="80" height="80" alt="Helper">
+                        <h5 id="modalHelperName"></h5>
+                        <p class="text-muted" id="modalRequestTitle"></p>
+                    </div>
+
+                    <form id="detailedRatingForm">
+                        <input type="hidden" id="matchId">
+                        
+                        <div class="text-center mb-4">
+                            <div class="star-rating-large" id="detailedStarRating">
+                                <span class="star-large" data-value="1" onclick="setDetailedRating(1)">★</span>
+                                <span class="star-large" data-value="2" onclick="setDetailedRating(2)">★</span>
+                                <span class="star-large" data-value="3" onclick="setDetailedRating(3)">★</span>
+                                <span class="star-large" data-value="4" onclick="setDetailedRating(4)">★</span>
+                                <span class="star-large" data-value="5" onclick="setDetailedRating(5)">★</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="ratingComment" class="form-label">Share your experience (optional)</label>
+                            <textarea id="ratingComment" class="form-control" rows="4" 
+                                    placeholder="Tell us about your experience with this helper..."></textarea>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Rating
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="ratingToast" class="toast" role="alert">
+            <div class="toast-body bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                Rating submitted successfully!
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        let currentMatchId = null;
+        let helperInfo = null;
+        let quickRatingValue = 5;
+        let detailedRatingValue = 5;
+
+        // Initialize page
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await window.AuthManager.initialize();
+                const isAuthenticated = await window.AuthManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                // Update user info
+                const currentUser = window.AuthManager.getCurrentUser();
+                if (currentUser) {
+                    document.getElementById('userName').textContent = 
+                        currentUser.firstname && currentUser.lastname 
+                            ? `${currentUser.firstname} ${currentUser.lastname}`
+                            : currentUser.email;
+                    
+                    const avatar = document.getElementById('userAvatar');
+                    avatar.src = currentUser.picture || 
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.firstname + ' ' + currentUser.lastname)}&background=6c757d&color=fff`;
+                }
+
+                // Get completion details from URL params
+                const urlParams = new URLSearchParams(window.location.search);
+                currentMatchId = urlParams.get('matchId');
+                const requestTitle = urlParams.get('title');
+                const helperId = urlParams.get('helperId');
+                const shouldPromptRating = urlParams.get('promptRating') === 'true';
+
+                if (requestTitle) {
+                    document.getElementById('requestTitle').textContent = requestTitle;
+                }
+                
+                document.getElementById('completionDate').textContent = new Date().toLocaleDateString();
+
+                if (shouldPromptRating && helperId) {
+                    await loadHelperInfo(helperId);
+                    document.getElementById('ratingPrompt').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+            }
+        });
+
+        async function loadHelperInfo(helperId) {
+            try {
+                const response = await window.AuthManager.authenticatedFetch(
+                    `http://localhost:5006/api/ratings/helper-profile/${helperId}`
+                );
+                
+                if (response.ok) {
+                    helperInfo = await response.json();
+                    
+                    // Populate helper info
+                    document.getElementById('helperName').textContent = helperInfo.helper.name;
+                    document.getElementById('helperNameDisplay').textContent = helperInfo.helper.name;
+                    document.getElementById('helperRole').textContent = helperInfo.helper.role;
+                    
+                    const avatarUrl = helperInfo.helper.picture || 
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(helperInfo.helper.name)}&background=6c757d&color=fff`;
+                    
+                    document.getElementById('helperAvatar').src = avatarUrl;
+                    document.getElementById('modalHelperAvatar').src = avatarUrl;
+                    document.getElementById('modalHelperName').textContent = helperInfo.helper.name;
+                }
+            } catch (error) {
+                console.error('Failed to load helper info:', error);
+            }
+        }
+
+        function setQuickRating(rating) {
+            quickRatingValue = rating;
+            updateStarDisplay('quickRating', rating);
+        }
+
+        function setDetailedRating(rating) {
+            detailedRatingValue = rating;
+            updateStarDisplay('detailedStarRating', rating);
+        }
+
+        function updateStarDisplay(containerId, rating) {
+            const stars = document.querySelectorAll(`#${containerId} .star-large`);
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('filled');
+                } else {
+                    star.classList.remove('filled');
+                }
+            });
+        }
+
+        async function submitQuickRating() {
+            await submitRating(quickRatingValue, '');
+        }
+
+        async function submitRating(score, comment) {
+            try {
+                const response = await window.AuthManager.authenticatedFetch(
+                    'http://localhost:5006/api/ratings',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            matchId: parseInt(currentMatchId),
+                            score: score,
+                            comment: comment
+                        })
+                    }
+                );
+
+                if (response.ok) {
+                    // Show success toast
+                    const toast = new bootstrap.Toast(document.getElementById('ratingToast'));
+                    toast.show();
+                    
+                    // Hide rating prompt
+                    document.getElementById('ratingPrompt').style.display = 'none';
+                    
+                    // Close modal if open
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('detailedRatingModal'));
+                    if (modal) modal.hide();
+                    
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error: ${errorData.error}`);
+                }
+            } catch (error) {
+                console.error('Error submitting rating:', error);
+                alert('Failed to submit rating. Please try again.');
+            }
+        }
+
+        function openDetailedRating() {
+            document.getElementById('matchId').value = currentMatchId;
+            document.getElementById('modalRequestTitle').textContent = 
+                document.getElementById('requestTitle').textContent;
+            
+            // Set initial rating
+            setDetailedRating(quickRatingValue);
+            
+            const modal = new bootstrap.Modal(document.getElementById('detailedRatingModal'));
+            modal.show();
+        }
+
+        document.getElementById('detailedRatingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const comment = document.getElementById('ratingComment').value.trim();
+            await submitRating(detailedRatingValue, comment);
+        });
+
+        // Initialize star ratings
+        setQuickRating(5);
+        setDetailedRating(5);
+    </script>
+</body>
+</html>
