@@ -80,6 +80,12 @@
             align-items: center;
             z-index: 1050;
         }
+
+        /* Minimal volunteer rating styles */
+        #volunteerRating #starDisplay {
+            color: #ffc107;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
@@ -104,6 +110,17 @@
             <h1 class="mb-1" id="profileName">Loading...</h1>
             <p class="lead mb-0" id="profileEmail">email@example.com</p>
             <span id="profileRoleBadge" class="badge badge-role bg-primary mt-2">Loading...</span>
+            
+            <!-- Volunteer Rating Display -->
+            <div id="volunteerRating" class="mt-2" style="display: none;">
+                <div class="d-flex align-items-center justify-content-center">
+                    <div id="starDisplay" class="me-2"></div>
+                    <small class="text-light opacity-75">
+                        <span id="avgRating">0.0</span>/5 
+                        (<span id="totalRatings">0</span> reviews)
+                    </small>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -479,6 +496,69 @@
             if (user.provider === 'email') {
                 document.getElementById('securitySection').style.display = 'block';
             }
+
+            // Load volunteer ratings if user is a volunteer
+            if (user.role === 'volunteer' || user.role === 'helper') {
+                loadVolunteerRating();
+            }
+        }
+
+        // Load volunteer rating data
+        async function loadVolunteerRating() {
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch('http://localhost:5006/api/ratings/my-ratings');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const ratings = data.ratings || [];
+                    
+                    if (ratings.length > 0) {
+                        const avgRating = parseFloat(ratings[0].avg_rating || 0);
+                        const totalRatings = parseInt(ratings[0].total_ratings || 0);
+                        
+                        // Generate star display
+                        const starDisplay = generateStarDisplay(avgRating);
+                        
+                        // Update the display
+                        document.getElementById('starDisplay').innerHTML = starDisplay;
+                        document.getElementById('avgRating').textContent = avgRating.toFixed(1);
+                        document.getElementById('totalRatings').textContent = totalRatings;
+                        
+                        // Show the rating section
+                        document.getElementById('volunteerRating').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load volunteer rating:', error);
+                // Silently fail - don't show error to user for non-critical feature
+            }
+        }
+
+        // Generate star display HTML
+        function generateStarDisplay(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 !== 0;
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            
+            let starsHtml = '';
+            
+            // Full stars
+            for (let i = 0; i < fullStars; i++) {
+                starsHtml += '<i class="fas fa-star"></i>';
+            }
+            
+            // Half star
+            if (hasHalfStar) {
+                starsHtml += '<i class="fas fa-star-half-alt"></i>';
+            }
+            
+            // Empty stars
+            for (let i = 0; i < emptyStars; i++) {
+                starsHtml += '<i class="far fa-star"></i>';
+            }
+            
+            return starsHtml;
         }
 
         // Edit profile button handler
