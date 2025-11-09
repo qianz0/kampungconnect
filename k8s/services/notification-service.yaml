@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: kampungconnect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: kampungconnect-notification-service
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: JWT_SECRET
+              value: secret
+            - name: AUTH_SERVICE_URL
+              value: http://auth-service:5000
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: kampungconnect
+            - name: DB_USER
+              value: admin
+            - name: DB_PASSWORD
+              value: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: kampungconnect
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 5000
+      targetPort: 5000

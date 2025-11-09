@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="css/header.css" rel="stylesheet">
+    <script src="js/config.js"></script>
     <style>
         .welcome-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -520,7 +521,7 @@
                 // Helper function to fetch latest status
                 async function fetchLatestStatus(requestId) {
                     try {
-                        const resp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}`);
+                        const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}`);
                         if (resp && resp.ok) {
                             const json = await resp.json();
                             const req = json.request || json;
@@ -532,7 +533,7 @@
 
                 // Fetch requests based on role
                 if (role === 'helper' || role === 'volunteer' || role === 'caregiver') {
-                    const resp = await authManager.authenticatedFetch('http://localhost:5002/matches');
+                    const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/matches`);
                     if (resp && resp.ok) {
                         const json = await resp.json();
                         const matchedRequests = (json.matches || []).map(m => ({
@@ -552,7 +553,7 @@
                         }));
                     }
                 } else if (role === 'senior') {
-                    const resp = await authManager.authenticatedFetch('http://localhost:5002/requests');
+                    const resp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests`);
                     if (resp && resp.ok) {
                         const json = await resp.json();
                         requests = (json.requests || []).map(r => ({
@@ -575,7 +576,7 @@
                         const lastViewTime = lastViewStr ? new Date(lastViewStr).getTime() : 0;
 
                         // Fetch responses for this request
-                        const respResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/responses`);
+                        const respResp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${req.id}/responses`);
                         if (respResp && respResp.ok) {
                             const respData = await respResp.json();
                             const responses = respData.responses || [];
@@ -621,7 +622,7 @@
 
                         // Fetch offers for this request (only for seniors)
                         if (role === 'senior') {
-                            const offersResp = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/offers`);
+                            const offersResp = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${req.id}/offers`);
                             if (offersResp && offersResp.ok) {
                                 const offersData = await offersResp.json();
                                 const offers = offersData.offers || [];
@@ -701,7 +702,7 @@
                 const isAuthenticated = await authManager.checkAuthentication();
                 if (!isAuthenticated) return;
 
-                const response = await authManager.authenticatedFetch('http://localhost:5002/requests/latest3/all');
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/latest3/all`);
                 const data = await response.json();
 
                 const requestContainer = document.getElementById('recentRequests');

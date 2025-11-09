@@ -4,13 +4,16 @@ FROM node:18-slim
 WORKDIR /app
 
 # Copy only package files first (for better caching)
-COPY package*.json ./
+# COPY package*.json ./
+COPY backend/services/auth-service/package*.json ./
 
 # Install dependencies inside the container (Linux build)
 RUN npm install --omit=dev
 
+COPY backend/services/auth-service ./ 
+
 # Copy the rest of your application (node_modules excluded via .dockerignore)
-COPY . .
+# COPY . .
 
 # Make startup script executable and fix line endings
 RUN chmod +x start.sh && \

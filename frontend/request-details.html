@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/header.css">
+    <script src="js/config.js"></script>
     <style>
         .welcome-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -449,7 +450,7 @@
                 const requestId = params.get("id");
 
                 const response = await authManager.authenticatedFetch(
-                    `http://localhost:5002/requests/${requestId}/offer`,
+                    `${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}/offer`,
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -638,7 +639,7 @@
             // Load offers for timeline
             try {
                 const authManager = await waitForAuthManager();
-                const offersRes = await authManager.authenticatedFetch(`http://localhost:5002/requests/${req.id}/offers`);
+                const offersRes = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${req.id}/offers`);
                 const offersData = await offersRes.json();
 
                 if (offersRes.ok && offersData.offers) {
@@ -762,7 +763,7 @@
             try {
                 const authManager = await waitForAuthManager();
                 const response = await authManager.authenticatedFetch(
-                    `http://localhost:5002/requests/${requestId}/responses`
+                    `${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}/responses`
                 );
                 const data = await response.json();
 
@@ -787,7 +788,7 @@
         async function loadOffers(requestId, request, user) {
             try {
                 const authManager = await waitForAuthManager();
-                const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}/offers`);
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}/offers`);
                 const data = await response.json();
 
                 const offersCard = document.getElementById("offersCard");
@@ -861,7 +862,7 @@
 
             try {
                 const authManager = await waitForAuthManager();
-                const response = await authManager.authenticatedFetch(`http://localhost:5002/offers/${offerId}/accept`, {
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/offers/${offerId}/accept`, {
                     method: "POST",
                 });
 
@@ -907,7 +908,7 @@
                 const requestId = params.get("id");
 
                 const response = await authManager.authenticatedFetch(
-                    `http://localhost:5002/requests/${requestId}/respond`,
+                    `${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}/respond`,
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -1013,7 +1014,7 @@
             try {
                 const authManager = await waitForAuthManager();
                 const response = await authManager.authenticatedFetch(
-                    `http://localhost:5002/responses/${responseId}/reply`,
+                    `${window.API_BASE.REQUEST_SERVICE}/responses/${responseId}/reply`,
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -1064,7 +1065,7 @@
 
                 // Fetch helper stats
                 const authManager = await waitForAuthManager();
-                const response = await authManager.authenticatedFetch(`http://localhost:5009/stats/helper/${helperId}`);
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.STATS_SERVICE}/stats/helper/${helperId}`);
 
                 if (!response.ok) {
                     throw new Error('Failed to load helper stats');
@@ -1206,7 +1207,7 @@
 
                 // Fetch senior stats
                 const authManager = await waitForAuthManager();
-                const response = await authManager.authenticatedFetch(`http://localhost:5009/stats/senior/${seniorId}`);
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.STATS_SERVICE}/stats/senior/${seniorId}`);
 
                 if (!response.ok) {
                     throw new Error('Failed to load senior stats');
@@ -1344,7 +1345,7 @@
                 }
 
                 // Fetch request details
-                const response = await authManager.authenticatedFetch(`http://localhost:5002/requests/${requestId}`);
+                const response = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/requests/${requestId}`);
                 const data = await response.json();
 
                 if (!response.ok) {

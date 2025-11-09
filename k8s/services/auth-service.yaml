@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: kampungconnect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: kampungconnect-auth-service
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            # --- App port ---
+            - name: PORT
+              value: "5000"
+
+            # --- PostgreSQL (safe DB__* vars, no collision) ---
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: "kampungconnect"
+            - name: DB_USER
+              value: "admin"
+            - name: DB_PASSWORD
+              value: "password"
+
+            # --- JWT ---
+            - name: JWT_SECRET
+              value: "your-super-secret-jwt-key-change-this-in-production"
+            - name: JWT_EXPIRATION
+              value: "24h"
+
+            # --- Frontend URL ---
+            - name: FRONTEND_URL
+              value: "http://localhost:8080"
+
+            # --- Google OIDC ---
+            - name: GOOGLE_CLIENT_ID
+              value: "673264463439-lmc0o7af2eilsbidg396g2boc9eaeidt.apps.googleusercontent.com"
+            - name: GOOGLE_CLIENT_SECRET
+              value: "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"
+            - name: GOOGLE_REDIRECT_URI
+              value: "http://localhost:5001/auth/google/callback"
+
+            # --- Azure OIDC (optional) ---
+            - name: AZURE_CLIENT_ID
+              value: "ec2d0705-2236-4a91-bf5e-fea76db2b1cd"
+            - name: AZURE_CLIENT_SECRET
+              value: "hI18Q~VQtDSzqNw3rwofMY98G8Tjcy6~N-E.Mcld"
+            - name: AZURE_TENANT_ID
+              value: "common"
+            - name: AZURE_MULTITENANT
+              value: "true"
+            - name: AZURE_REDIRECT_URI
+              value: "http://localhost:5001/auth/azure/callback"
+
+          # Optional ConfigMap merge
+          envFrom:
+            - configMapRef:
+                name: auth-env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: kampungconnect
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 5000
+      targetPort: 5000

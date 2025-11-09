@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+  namespace: kampungconnect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-service
+  template:
+    metadata:
+      labels:
+        app: admin-service
+    spec:
+      containers:
+        - name: admin-service
+          image: kampungconnect-admin-service
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: JWT_SECRET
+              value: secret
+            - name: AUTH_SERVICE_URL
+              value: http://auth-service:5000
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: kampungconnect
+            - name: DB_USER
+              value: admin
+            - name: DB_PASSWORD
+              value: password
+            - name: FRONTEND_URL
+              value: http://localhost:8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: kampungconnect
+spec:
+  selector:
+    app: admin-service
+  ports:
+    - port: 5000
+      targetPort: 5000

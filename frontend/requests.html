@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="css/header.css" rel="stylesheet">
+    <script src="js/config.js"></script>
     <style>
         .form-card {
             border: none;
@@ -538,7 +539,7 @@
 
             try {
                 const authManager = await waitForAuthManager();
-                const result = await authManager.authenticatedFetch("http://localhost:5002/postRequest", {
+                const result = await authManager.authenticatedFetch(`${window.API_BASE.REQUEST_SERVICE}/postRequest`, {
                     method: "POST",
                     body: JSON.stringify({ title, description, category, urgency, instantMatch })
                 });
