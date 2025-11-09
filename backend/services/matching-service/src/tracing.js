@@ -12,11 +12,7 @@ const traceExporter = new OTLPTraceExporter({
 });
 
 // ---- Determine service name ----
-const serviceName =
-  process.env.SERVICE_NAME ||
-  process.env.REQUEST_SERVICE_NAME ||
-  process.env.MATCHING_SERVICE_NAME ||
-  'unknown-service';
+const serviceName = 'matching-service';
 
 // ---- Create Resource ----
 const resource = new Resource({
