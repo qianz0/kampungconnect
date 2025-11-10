@@ -1,0 +1,145 @@
+/* Helper Rating Component Styles - Inspired by Grab driver ratings */
+
+.helper-rating-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.rating-badge-small {
+    background: linear-gradient(135deg, #ffc107, #ff8f00);
+    color: #000;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    min-width: 35px;
+    text-align: center;
+}
+
+.rating-badge-small.excellent {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.rating-badge-small.good {
+    background: linear-gradient(135deg, #ffc107, #ff8f00);
+    color: #000;
+}
+
+.rating-badge-small.average {
+    background: linear-gradient(135deg, #fd7e14, #e96b56);
+    color: white;
+}
+
+.rating-badge-small.poor {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.rating-stars-small {
+    color: #ffc107;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.rating-count-small {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.helper-card-rating {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+}
+
+.rating-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rating-trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #28a745;
+}
+
+.rating-trend.down {
+    color: #dc3545;
+}
+
+.rating-trend.stable {
+    color: #6c757d;
+}
+
+/* New user badge */
+.new-helper-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Trust indicators */
+.trust-indicators {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.trust-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.trust-badge.verified {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.trust-badge.experienced {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+/* Hover effects for clickable ratings */
+.helper-rating-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.helper-rating-clickable:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+}
+
+/* Mobile responsive */
+@media (max-width: 576px) {
+    .helper-rating-inline {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .helper-card-rating {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}

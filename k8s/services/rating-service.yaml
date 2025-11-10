@@ -20,6 +20,8 @@ spec:
           ports:
             - containerPort: 5000
           env:
+            - name: PORT
+              value: "5000"
             - name: JWT_SECRET
               value: secret
             - name: AUTH_SERVICE_URL
@@ -34,6 +36,27 @@ spec:
               value: admin
             - name: DB_PASSWORD
               value: password
+            - name: FRONTEND_URL
+              value: http://frontend:80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
