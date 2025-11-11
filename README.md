@@ -14,10 +14,10 @@ KampungConnect is a microservices-based web application that facilitates communi
 - 🔔 **Real-time Notifications** - Keep users updated on request status
 - ⭐ **Rating System** - Community trust through user ratings
 - 🚨 **Priority Routing** - Urgent requests get priority handling
-- 🐳 **Containerized** - Easy deployment with Docker Compose
-- ☁️ **AWS RDS Integration** - Seamless synchronization with AWS RDS PostgreSQL
-- 🔍 **Database Management** - Secure web-based database viewers for local and cloud databases
-- 🔄 **Data Synchronization** - Automated sync tools between local and AWS RDS instances
+- 🐳 **Containerized** - Docker images with Kubernetes orchestration
+- ☸️ **Kubernetes Ready** - Production-ready K8s manifests with observability
+- � **Observability Stack** - Integrated Prometheus, Grafana, and Tempo for monitoring
+- � **Message Queue** - RabbitMQ for async processing and service communication
 
 ## 🏗️ Architecture
 
@@ -25,21 +25,31 @@ KampungConnect is a microservices-based web application that facilitates communi
 
 ```
 kampungconnect/
-├── frontend/                 # Static web application
+├── frontend/                 # Static web application (Nginx)
 │   ├── css/
 │   ├── js/
+│   ├── components/
 │   └── *.html
 ├── backend/
 │   ├── services/
-│   │   ├── auth-service/     # Authentication & user management
-│   │   ├── request-service/  # Help request management
-│   │   ├── matching-service/ # User matching logic
-│   │   ├── notification-service/ # Notifications
-│   │   ├── priority-router-service/ # Urgent request handling
-│   │   └── rating-service/   # User rating system
-│   ├── shared/              # Common middleware & utilities
-│   └── db/                  # Database initialization
-└── docker-compose.yml       # Container orchestration
+│   │   ├── auth-service/           # Authentication & user management
+│   │   ├── request-service/        # Help request management
+│   │   ├── matching-service/       # User matching logic
+│   │   ├── notification-service/   # Email notifications
+│   │   ├── rating-service/         # User rating system
+│   │   ├── admin-service/          # Admin operations
+│   │   └── stats-service/          # Statistics & analytics
+│   ├── shared/                     # Common middleware & utilities
+│   └── db/                         # Database initialization
+├── k8s/                      # Kubernetes manifests
+│   ├── base/                 # Namespace configuration
+│   ├── infra/                # Infrastructure (DB, RabbitMQ, monitoring)
+│   └── services/             # Application services
+├── build-all.bat             # Build all Docker images
+├── deploy-to-kuber.bat                # Deploy to Kubernetes
+├── deploy-all.bat            # Complete deployment workflow
+├── port-forward.ps1          # Start all port forwards (PowerShell)
+└── stop-port-forward.ps1     # Stop all port forwards
 ```
 
 ### Technology Stack
@@ -55,33 +65,36 @@ kampungconnect/
 **Backend:**
 
 - Node.js with Express.js framework
-- PostgreSQL database (local and AWS RDS)
+- PostgreSQL database
 - JWT for authentication tokens
 - Passport.js for OIDC integration
-- 6 specialized microservices
+- RabbitMQ for message queuing
+- 7 specialized microservices
 
 **Infrastructure:**
 
-- Docker & Docker Compose
-- AWS RDS PostgreSQL integration
-- CORS-enabled microservices
-- Secure database management tools
+- Kubernetes for container orchestration
+- Docker for containerization
+- PostgreSQL for data persistence
+- RabbitMQ for async messaging
+- OpenTelemetry for distributed tracing
 
-**Development & Database Tools:**
+**Observability:**
 
-- Local PostgreSQL database viewer
-- AWS RDS database viewer
-- Automated database synchronization
-- Connection testing utilities
-- Data comparison tools
+- Prometheus for metrics collection
+- Grafana for visualization dashboards
+- Tempo for distributed tracing
+- OpenTelemetry Collector for trace aggregation
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose installed
+- Kubernetes cluster (minikube, Docker Desktop, or cloud provider)
+- kubectl configured and connected to your cluster
+- Docker installed for building images
 - An OIDC provider account (Google/Azure AD)
-- Basic knowledge of environment variables
+- Basic knowledge of Kubernetes and environment variables
 
 ### 1. Clone the Repository
 
@@ -95,6 +108,19 @@ cd kampungconnect
 Create a `.env` file in the project root:
 
 ```env
+# Database Configuration
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=kampungconnect
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=your-secure-password
+
+# RabbitMQ Configuration
+RABBITMQ_HOST=rabbitmq
+RABBITMQ_PORT=5672
+RABBITMQ_USER=admin
+RABBITMQ_PASSWORD=your-rabbitmq-password
+
 # Choose your OIDC provider (google/azure)
 OIDC_PROVIDER=google
 
@@ -113,8 +139,17 @@ AZURE_REDIRECT_URI=http://localhost:5001/auth/azure/callback
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRATION=24h
 
+# SMTP Configuration (for email notifications)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+
 # Application URLs
 FRONTEND_URL=http://localhost:8080
+
+# OpenTelemetry Configuration
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 ```
 
 ### 3. Set Up OIDC Providers
@@ -137,27 +172,78 @@ Follow the set up instructions for each providers:
 4. Add redirect URI: `http://localhost:5001/auth/azure/callback`
 5. Create client secret
 
-### 4. Build and Run
+### 4. Build and Deploy
+
+**Option 1: Automated Deployment (Recommended)**
 
 ```bash
-# Remove old build
-docker-compose down
-
-# Build and start all services
-docker-compose --file docker-compose.yml up --build
-
-# Or run in background
-docker-compose --file docker-compose.yml up --build -d
+# Windows - Run complete deployment
+deploy-all.bat
 ```
 
-### 5. Access the Application
+This will:
+
+1. Build all 8 Docker images
+2. Create Kubernetes namespace
+3. Create secrets and configmaps
+4. Deploy infrastructure (PostgreSQL, RabbitMQ, monitoring stack)
+5. Deploy all microservices
+6. Wait for pods to be ready
+
+**Option 2: Manual Step-by-Step**
+
+```bash
+# Step 1: Build all Docker images
+build-all.bat
+
+# Step 2: Deploy to Kubernetes
+deploy-to-kuber.bat
+
+# Step 3: Wait for all pods to be running
+kubectl get pods -n kampungconnect -w
+# Press Ctrl+C when all pods show STATUS: Running
+```
+
+### 5. Start Port Forwarding
+
+**PowerShell (Recommended - runs in background):**
+
+```powershell
+# Start all port forwards in background
+.\port-forward.ps1
+
+# Check status
+Get-Job
+
+# Stop all port forwards
+.\stop-port-forward.ps1
+```
+
+**Batch File (opens separate windows):**
+
+```cmd
+port-forward.bat
+```
+
+### 6. Access the Application
+
+**Frontend & Monitoring:**
 
 - **Frontend**: http://localhost:8080
-- **Auth Service**: http://localhost:5001
-- **Other Services**: Ports 5002-5006 (Request, Matching, Notification, Priority Router, Rating)
-- **Database**: PostgreSQL on localhost:5432
-- **Database Viewer (Local)**: http://localhost:3001 (via `npm run db-viewer`)
-- **Database Viewer (AWS RDS)**: http://localhost:3002 (via `npm run db-viewer-aws`)
+- **RabbitMQ Management**: http://localhost:15672 (guest/guest)
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Tempo**: http://localhost:3200
+
+**Backend Services:**
+
+- **Auth Service**: http://localhost:5001 (internal: 5000)
+- **Request Service**: http://localhost:5002 (internal: 5000)
+- **Matching Service**: http://localhost:5003 (internal: 5000)
+- **Notification Service**: http://localhost:5004 (internal: 5000)
+- **Rating Service**: http://localhost:5006 (internal: 5000)
+- **Admin Service**: http://localhost:5007 (internal: 5000)
+- **Stats Service**: http://localhost:5009 (internal: 5000)
 
 ## 📝 API Documentation
 
@@ -183,50 +269,141 @@ docker-compose --file docker-compose.yml up --build -d
 | `/requests`     | GET    | Get user's requests   | Yes           |
 | `/requests/:id` | GET    | Get request details   | Yes           |
 
-### Other Services (Ports 5003-5006)
+### Matching Service (Port 5003)
 
-- **Matching Service** (5003): User matching logic between seniors and helpers
-- **Notification Service** (5004): Push notifications and messaging
-- **Priority Router** (5005): Urgent request routing and escalation
-- **Rating Service** (5006): User rating and feedback system
+| Endpoint                  | Method | Description                   | Auth Required |
+| ------------------------- | ------ | ----------------------------- | ------------- |
+| `/`                     | GET    | Service health check          | No            |
+| `/metrics`              | GET    | Prometheus metrics            | No            |
+| `/matches`              | GET    | Get all matches (admin/debug) | Yes           |
+| `/matches/senior`       | GET    | Get senior's matches          | Yes           |
+| `/matches/helper`       | GET    | Get helper's matches          | Yes           |
+| `/helpers/available`    | GET    | Get available helpers         | Yes           |
+| `/matches/assign`       | POST   | Manual match assignment       | Yes           |
+| `/matches/:id/complete` | POST   | Mark match as complete        | Yes           |
 
-## 🗄️ Database Management Tools
+### Notification Service (Port 5004)
 
-### Available Scripts
+| Endpoint                      | Method | Description                        | Auth Required |
+| ----------------------------- | ------ | ---------------------------------- | ------------- |
+| `/`                         | GET    | Service health check               | No            |
+| `/health`                   | GET    | Detailed health status             | No            |
+| `/notification-preferences` | GET    | Get user notification preferences  | Yes           |
+| `/notification-preferences` | POST   | Update notification preferences    | Yes           |
+| `/notify/offer`             | POST   | Send offer notification (internal) | No            |
+| `/notify/match`             | POST   | Send match notification (internal) | No            |
+| `/notify/instant-match`     | POST   | Send instant match notification    | No            |
+| `/notify/status-update`     | POST   | Send status update notification    | No            |
 
-| Command                     | Description                             | Port |
-| --------------------------- | --------------------------------------- | ---- |
-| `npm run db-viewer`       | Local PostgreSQL database viewer        | 3001 |
-| `npm run db-viewer-aws`   | AWS RDS database viewer                 | 3002 |
-| `npm run test-connection` | Test local database connection          | -    |
-| `npm run test-aws`        | Test both local and AWS RDS connections | -    |
-| `npm run sync-to-aws`     | Sync local data to AWS RDS              | -    |
-| `npm run compare-dbs`     | Compare record counts between databases | -    |
+### Rating Service (Port 5006)
 
-### Database Viewers
+| Endpoint                            | Method | Description                      | Auth Required |
+| ----------------------------------- | ------ | -------------------------------- | ------------- |
+| `/`                               | GET    | Service health check             | No            |
+| `/api/ratings`                    | POST   | Submit a new rating              | Yes           |
+| `/api/ratings/helper/:helperId`   | GET    | Get helper's ratings             | Yes           |
+| `/api/ratings/helper-profile/:id` | GET    | Get helper profile with ratings  | Yes           |
+| `/api/ratings/my-ratings`         | GET    | Get my submitted ratings         | Yes           |
+| `/api/ratings/:ratingId`          | PUT    | Update existing rating           | Yes           |
+| `/api/ratings/:ratingId`          | DELETE | Delete a rating                  | Yes           |
+| `/api/ratings/pending-ratings`    | GET    | Get pending ratings              | Yes           |
+| `/api/ratings/complete-match/:id` | POST   | Complete match (triggers rating) | Yes           |
 
-Both database viewers provide:
+### Admin Service (Port 5007)
 
-- **Secure Access**: Username/password authentication
-- **Table Browsing**: View all tables and their data
-- **SQL Execution**: Run custom queries safely
-- **Data Export**: Download query results
-- **Connection Status**: Real-time database connectivity monitoring
+| Endpoint                                   | Method | Description                     | Auth Required | Admin Only |
+| ------------------------------------------ | ------ | ------------------------------- | ------------- | ---------- |
+| `/`                                      | GET    | Service health check            | No            | No         |
+| `/api/admin/stats/overview`              | GET    | Dashboard overview statistics   | Yes           | Yes        |
+| `/api/admin/stats/urgency-distribution`  | GET    | Urgency distribution stats      | Yes           | Yes        |
+| `/api/admin/stats/category-distribution` | GET    | Category distribution stats     | Yes           | Yes        |
+| `/api/admin/stats/activity-timeline`     | GET    | Activity timeline (30 days)     | Yes           | Yes        |
+| `/api/admin/stats/role-distribution`     | GET    | Role distribution stats         | Yes           | Yes        |
+| `/api/admin/stats/status-distribution`   | GET    | Status distribution stats       | Yes           | Yes        |
+| `/api/admin/stats/rating-distribution`   | GET    | Rating distribution stats       | Yes           | Yes        |
+| `/api/admin/users`                       | GET    | Get all users (with filters)    | Yes           | Yes        |
+| `/api/admin/users/:id`                   | GET    | Get user details                | Yes           | Yes        |
+| `/api/admin/users/:id/status`            | PATCH  | Update user status              | Yes           | Yes        |
+| `/api/admin/users/:id/role`              | PATCH  | Update user role                | Yes           | Yes        |
+| `/api/admin/requests`                    | GET    | Get all requests (with filters) | Yes           | Yes        |
+| `/api/admin/requests/:id`                | GET    | Get request details             | Yes           | Yes        |
+| `/api/admin/requests/:id/status`         | PATCH  | Update request status           | Yes           | Yes        |
+| `/api/admin/matches`                     | GET    | Get all matches (with filters)  | Yes           | Yes        |
+| `/api/admin/ratings`                     | GET    | Get all ratings (with filters)  | Yes           | Yes        |
+| `/api/admin/export/users`                | GET    | Export users as CSV             | Yes           | Yes        |
+| `/api/admin/export/requests`             | GET    | Export requests as CSV          | Yes           | Yes        |
 
-**Default Credentials**:
+### Stats Service (Port 5009)
 
-- Username: `admin`
-- Password: `changeme123`
+| Endpoint                              | Method | Description                                              | Auth Required |
+| ------------------------------------- | ------ | -------------------------------------------------------- | ------------- |
+| `/`                                 | GET    | Service health check                                     | No            |
+| `/stats/helper`                     | GET    | Get current user's helper stats                          | Yes           |
+| `/stats/helper/:id`                 | GET    | Get specific helper's stats                              | Yes           |
+| `/stats/senior`                     | GET    | Get current user's senior stats                          | Yes           |
+| `/stats/senior/:id`                 | GET    | Get specific senior's stats                              | Yes           |
+| `/stats/leaderboard/:type`          | GET    | Get leaderboard (type: completed, rating, hours, streak) | Yes           |
+| `/stats/leaderboard/:type/position` | GET    | Get current user's leaderboard position                  | Yes           |
 
-### AWS RDS Integration
+## 📊 Monitoring & Observability
 
-The platform includes comprehensive AWS RDS PostgreSQL integration:
+### Prometheus Metrics
 
-- **Automated Sync**: One-command synchronization from local to AWS RDS
-- **Connection Testing**: Verify connectivity to both local and cloud databases
-- **Data Comparison**: Compare record counts and data integrity
-- **Security**: Encrypted connections with proper SSL handling
-- **Monitoring**: Real-time sync progress and error handling
+Access metrics at http://localhost:9090
+
+**Available Metrics:**
+
+- HTTP request counts and durations
+- Database connection pool status
+- RabbitMQ queue depths
+- Service health status
+- Error rates and latencies
+
+**Example Queries:**
+
+```promql
+# Request rate per service
+rate(http_requests_total[5m])
+
+# 95th percentile latency
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+
+# Error rate
+rate(http_requests_total{status=~"5.."}[5m])
+```
+
+### Grafana Dashboards
+
+Access dashboards at http://localhost:3000 (admin/admin)
+
+**Pre-configured Dashboards:**
+
+- Service Overview: Request rates, latencies, error rates
+- Database Metrics: Connection pools, query performance
+- RabbitMQ: Queue depths, message rates, consumer status
+- System Resources: CPU, memory, network usage
+
+### Distributed Tracing
+
+Access traces at http://localhost:3200
+
+**Features:**
+
+- End-to-end request tracing across all microservices
+- Visualize service dependencies
+- Identify performance bottlenecks
+- Debug distributed transactions
+
+### RabbitMQ Management
+
+Access management UI at http://localhost:15672 (guest/guest)
+
+**Monitoring:**
+
+- Queue depths and message rates
+- Consumer status and connections
+- Exchange configurations
+- Message routing visualization
 
 ## 🔧 Development
 
@@ -238,92 +415,193 @@ cd backend/services/auth-service && npm install
 cd ../request-service && npm install
 cd ../matching-service && npm install
 cd ../notification-service && npm install
-cd ../priority-router-service && npm install
 cd ../rating-service && npm install
-
-# Install root dependencies for database tools
-cd ../../.. && npm install
-
-# Run individual services in development mode
-npm run dev  # (if nodemon is configured)
-
-# Start all services with Docker
-npm run start-dev  # docker-compose up --build
+cd ../admin-service && npm install
+cd ../stats-service && npm install
 ```
 
-### Development Tools & Scripts
+### Development Workflow
 
 ```bash
-# Database Management
-npm run db-viewer          # Local PostgreSQL viewer (port 3001)
-npm run db-viewer-aws      # AWS RDS viewer (port 3002)
-npm run test-connection    # Test local database connection
-npm run test-aws          # Test both local and AWS RDS connections
+# 1. Make code changes to any service
+# 2. Rebuild Docker images
+build-all.bat
 
-# Data Synchronization  
-npm run sync-to-aws       # Sync local data to AWS RDS
-npm run compare-dbs       # Compare database contents
+# 3. Redeploy to Kubernetes
+kubectl rollout restart deployment -n kampungconnect
 
-# Docker Operations
-npm start                 # docker-compose up
-npm run start-dev         # docker-compose up --build
-npm stop                  # docker-compose down
+# 4. Watch pods restart
+kubectl get pods -n kampungconnect -w
+
+# 5. View logs of specific service
+kubectl logs -f deployment/auth-service -n kampungconnect
 ```
+
+### Kubernetes Commands
+
+```bash
+# View all pods
+kubectl get pods -n kampungconnect
+
+# View all services
+kubectl get svc -n kampungconnect
+
+# View pod logs
+kubectl logs -f <pod-name> -n kampungconnect
+
+# Describe pod (for troubleshooting)
+kubectl describe pod <pod-name> -n kampungconnect
+
+# Execute command in pod
+kubectl exec -it <pod-name> -n kampungconnect -- /bin/sh
+
+# Port forward to specific pod (alternative to scripts)
+kubectl port-forward -n kampungconnect svc/frontend 8080:80
+
+# View resource usage
+kubectl top pods -n kampungconnect
+
+# Delete and recreate everything
+kubectl delete namespace kampungconnect
+deploy-to-kuber.bat
+```
+
+### Available Scripts & Tools
+
+| Script/Command              | Description                                    |
+| --------------------------- | ---------------------------------------------- |
+| `build-all.bat`           | Build all Docker images                        |
+| `deploy-to-kuber.bat`     | Deploy to Kubernetes (creates secrets, deploys |
+| `deploy-all.bat`          | Full workflow: build + deploy                  |
+| `port-forward.ps1`        | Start all port forwards (PowerShell)           |
+| `stop-port-forward.ps1`   | Stop all port forwards (PowerShell)            |
+| `port-forward.bat`        | Start port forwards (opens separate windows)   |
+| `kubectl get pods -n ...` | View pod status                                |
+| `kubectl logs -f ...`     | View service logs                              |
+| `kubectl rollout restart` | Restart deployments after code changes         |
 
 ### Project Structure Details
 
 ```
 kampungconnect/
-├── README.md                    # Main documentation
-├── AWS_RDS_SYNC_GUIDE.md       # AWS RDS integration guide
-├── OIDC_SSO_GUIDE.md           # Authentication implementation guide
-├── package.json                # Root package with database tools
-├── docker-compose.yml          # Container orchestration
-├── .env                        # Environment variables (create from template)
+├── README.md                      # Main documentation
 ├── 
-├── setup-aurora-db.js          # AWS Aurora/RDS setup utility
-├── sync-to-aws-rds.js          # Database synchronization tool
-├── secure-database-viewer.js   # Local database viewer
-├── aws-rds-database-viewer.js  # AWS RDS database viewer
-├── test-connection.js          # Database connection tester
+├── .env                          # Environment variables (create from .env.example)
+├── .env.example                  # Environment template
 ├── 
-├── frontend/                   # Static web application
-│   ├── index.html             # Landing page
-│   ├── login.html             # Authentication page
-│   ├── dashboard.html         # User dashboard
-│   ├── requests.html          # Request management
-│   ├── role-selection.html    # Role selection page
-│   ├── Dockerfile             # Frontend container config
-│   ├── nginx.conf             # Nginx configuration
+├── build-all.bat                 # Build all Docker images
+├── deploy-to-kuber.bat           # Deploy to Kubernetes
+├── deploy-all.bat                # Complete deployment workflow
+├── port-forward.ps1              # Port forwarding (PowerShell)
+├── stop-port-forward.ps1         # Stop port forwards
+├── 
+├── frontend/                     # Static web application
+│   ├── index.html               # Landing page
+│   ├── login.html               # Authentication page
+│   ├── dashboard.html           # User dashboard
+│   ├── requests.html            # Request management
+│   ├── match.html               # Helper matching
+│   ├── notifications.html       # Notifications center
+│   ├── profile.html             # User profile
+│   ├── leaderboard.html         # Helper rankings
+│   ├── admin.html               # Admin panel
+│   ├── Dockerfile               # Frontend container config
+│   ├── nginx.conf               # Nginx configuration
 │   ├── css/
-│   │   └── style.css         # Custom styles
-│   └── js/
-│       ├── auth.js           # Authentication manager
-│       └── main.js           # Common utilities
+│   │   ├── header.css
+│   │   ├── helper-ratings.css
+│   │   └── rate-helper.css
+│   ├── js/
+│   │   ├── auth.js              # Authentication manager
+│   │   ├── config.js            # API configuration
+│   │   ├── main.js              # Common utilities
+│   │   ├── admin.js             # Admin functionality
+│   │   ├── notifications.js     # Notifications handler
+│   │   └── stats.js             # Statistics display
+│   └── components/
+│       └── header.html          # Reusable header component
 ├── 
 ├── backend/
-│   ├── services/              # Microservices
-│   │   ├── auth-service/      # Authentication & user management
+│   ├── services/                # Microservices
+│   │   ├── auth-service/        # Authentication & user management
 │   │   │   ├── src/
 │   │   │   │   ├── index.js
 │   │   │   │   ├── database-service.js
 │   │   │   │   ├── jwt-utils.js
 │   │   │   │   ├── oidc-providers.js
+│   │   │   │   ├── otp-service.js
 │   │   │   │   └── password-service.js
+│   │   │   ├── create-admin.js  # Admin creation utility
+│   │   │   ├── start.sh         # Service startup script
 │   │   │   ├── Dockerfile
 │   │   │   └── package.json
-│   │   ├── request-service/   # Help request management
-│   │   ├── matching-service/  # User matching logic
-│   │   ├── notification-service/  # Push notifications
-│   │   ├── priority-router-service/  # Urgent request handling
-│   │   └── rating-service/    # User rating system
-│   ├── shared/               # Common middleware & utilities
-│   │   └── auth-middleware.js
-│   └── db/                   # Database initialization
-│       └── init.sql          # Database schema
+│   │   ├── request-service/     # Help request management
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── db.js
+│   │   │   │   ├── queue.js     # RabbitMQ integration
+│   │   │   │   └── tracing.js   # OpenTelemetry tracing
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── matching-service/    # User matching logic
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── db.js
+│   │   │   │   ├── matcher.js   # Matching algorithm
+│   │   │   │   ├── postal-utils.js
+│   │   │   │   ├── queue.js
+│   │   │   │   └── tracing.js
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── notification-service/ # Email notifications
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   └── smtp-service.js
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── rating-service/      # User rating system
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── db.js
+│   │   │   │   ├── controllers/ # Rating operations
+│   │   │   │   └── routes/
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── admin-service/       # Admin operations
+│   │   │   ├── src/
+│   │   │   │   └── index.js
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   └── stats-service/       # Statistics & analytics
+│   │       ├── src/
+│   │       │   ├── index.js
+│   │       │   └── db.js
+│   │       ├── Dockerfile
+│   │       └── package.json
+│   ├── shared/                  # Common middleware
+│   │   └── auth-middleware.js   # JWT authentication
+│   └── db/                      # Database initialization
+│       └── init.sql             # Database schema
 └── 
-└── public/                   # Public utilities
-    └── secure-viewer.html    # Database viewer interface
+└── k8s/                         # Kubernetes manifests
+    ├── base/
+    │   └── namespace.yaml       # Namespace definition
+    ├── infra/                   # Infrastructure components
+    │   ├── db.yaml              # PostgreSQL deployment
+    │   ├── rabbitmq.yaml        # RabbitMQ deployment
+    │   ├── prometheus.yaml      # Prometheus monitoring
+    │   ├── grafana.yaml         # Grafana dashboards
+    │   ├── tempo.yaml           # Tempo tracing
+    │   └── otel-collector.yaml  # OpenTelemetry Collector
+    └── services/                # Application services
+        ├── auth-service.yaml
+        ├── request-service.yaml
+        ├── matching-service.yaml
+        ├── notification-service.yaml
+        ├── rating-service.yaml
+        ├── admin-service.yaml
+        ├── stats-service.yaml
+        └── frontend.yaml
 ```
 
 ### Database Schema
@@ -334,30 +612,41 @@ The application uses PostgreSQL with the following main tables:
 -- Users table: Supports both OAuth and email/password authentication
 users (
     id, provider_id, email, firstname, lastname, password_hash,
-    picture, provider, role, rating, location, email_verified,
-    is_active, created_at, updated_at
+    picture, provider, role, rating, location, postal_code,
+    email_verified, is_active, created_at, updated_at
 )
 
--- Help requests (normal or urgent)  
+-- Help requests
 requests (
-    id, user_id, category, type, description, status, created_at
+    id, user_id, helper_id, category, type, description, 
+    status, location, postal_code, created_at, updated_at
 )
 
--- Matches (which helper took which request)
+-- Matches between helpers and requests
 matches (
-    id, request_id, helper_id, matched_at, status
+    id, request_id, helper_id, matched_at, completed_at, status
 )
 
--- Ratings (seniors can rate helpers and vice versa)
+-- Ratings for completed matches
 ratings (
-    id, match_id, rater_id, ratee_id, score, comment, created_at
+    id, match_id, rater_id, ratee_id, score, comment, 
+    created_at, updated_at
+)
+
+-- OTP tokens for email verification
+otp_tokens (
+    id, user_id, token, expires_at, created_at, is_used
 )
 ```
 
 **Key Features:**
 
-- **Multi-Provider Auth**: Supports Google, Azure AD and email/password
-- **Role-Based Access**: Senior, volunteer, and caregiver roles
+- **Multi-Provider Auth**: Supports Google, Azure AD, and email/password
+- **Role-Based Access**: Senior, helper, and admin roles
+- **Request Types**: Normal and urgent requests with different priorities
+- **Postal Code Matching**: Intelligent matching based on geographic proximity
+- **Rating System**: Bidirectional 5-star rating system with comments
+- **Email Verification**: OTP-based email verification for password auth
 - **Request Types**: Normal and urgent requests with different priority handling
 - **Rating System**: 5-star rating system with comments for community trust
 - **Data Integrity**: Foreign key constraints and proper indexing for performance
@@ -373,199 +662,347 @@ ratings (
 
 ## 🧪 Testing
 
-### Manual Testing
+### Health Checks
 
-1. **Authentication Flow**:
+All services expose health check endpoints:
 
-   - Visit `/login.html`
-   - Test OIDC provider login
-   - Verify dashboard access
-2. **API Testing**:
+```bash
+# Check service health via port-forwards
+curl http://localhost:5001/  # Auth service (internal: 5000)
+curl http://localhost:5002/  # Request service (internal: 5002)
+curl http://localhost:5003/  # Matching service (internal: 5003)
+curl http://localhost:5004/  # Notification service (internal: 5000)
+curl http://localhost:5006/  # Rating service (internal: 5000)
+curl http://localhost:5007/  # Admin service (internal: 5000)
+curl http://localhost:5009/  # Stats service (internal: 5009)
+```
 
-   ```bash
-   # Test auth service health
-   curl http://localhost:5001/
+### API Testing
 
-   # Test authenticated endpoint
-   curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:5001/me
-   ```
-3. **Debug Tools**:
+```bash
+# Test authentication endpoint
+curl http://localhost:5001/auth-config
 
-   - Check browser console for detailed logs
-   - Monitor Docker logs: `docker-compose logs -f`
+# Test authenticated endpoint (requires JWT token)
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     http://localhost:5001/me
+
+# Test request creation
+curl -X POST http://localhost:5002/postRequest \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"category":"groceries","description":"Need help with shopping"}'
+```
+
+### Kubernetes Testing
+
+```bash
+# Check pod health
+kubectl get pods -n kampungconnect
+
+# Check pod logs for errors
+kubectl logs deployment/auth-service -n kampungconnect
+
+# Check service endpoints
+kubectl get svc -n kampungconnect
+
+# Test database connectivity
+kubectl exec -it deployment/auth-service -n kampungconnect -- \
+    psql -h postgres -U admin -d kampungconnect -c "SELECT 1;"
+
+# Test RabbitMQ connectivity
+kubectl exec -it deployment/rabbitmq -n kampungconnect -- \
+    rabbitmqctl status
+```
+
+### Monitoring & Debugging
+
+- **Prometheus Metrics**: http://localhost:9090 - Check service metrics
+- **Grafana Dashboards**: http://localhost:3000 - Visualize performance
+- **RabbitMQ Management**: http://localhost:15672 - Monitor queues
+- **Tempo Traces**: http://localhost:3200 - Distributed tracing
+- **Pod Logs**: `kubectl logs -f <pod-name> -n kampungconnect`
 
 ## 🚀 Deployment
 
-### Local Development Deployment
+### Quick Deployment Scripts
+
+| Script                  | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `deploy-all.bat`      | Complete workflow: build + deploy              |
+| `build-all.bat`       | Build all Docker images                        |
+| `deploy-to-kuber.bat` | Deploy to Kubernetes                           |
+| `port-forward.bat`    | Start port forwards (Batch - separate windows) |
+
+### Step-by-Step Deployment
+
+**1. Build Docker Images**
 
 ```bash
-# Quick start (build and run all services)
-npm run start-dev
-
-# Or manually with docker-compose
-docker-compose up --build
-
-# Run in background
-docker-compose up --build -d
-
-# Check service status
-docker-compose ps
-
-# View logs
-docker-compose logs -f
+build-all.bat
 ```
 
-### AWS RDS Setup & Deployment
+**2. Deploy to Kubernetes**
 
-1. **Configure AWS RDS Connection**:
+```bash
+# Create namespace and deploy everything
+deploy-to-kuber.bat
 
-   ```bash
-   # Copy environment template
-   cp .env.local.template .env.local
+# Or manually:
+kubectl apply -f k8s/base/namespace.yaml
+kubectl create secret generic auth-secrets --from-env-file=.env -n kampungconnect
+kubectl create configmap db-init-script --from-file=init.sql=backend/db/init.sql -n kampungconnect
+kubectl apply -f k8s/infra/
+kubectl apply -f k8s/services/
+```
 
-   # Update .env.local with your AWS RDS credentials
-   ```
-2. **Test AWS Connection**:
+**3. Verify Deployment**
 
-   ```bash
-   npm run test-aws
-   ```
-3. **Sync Local Data to AWS RDS**:
+```bash
+# Watch pods come up
+kubectl get pods -n kampungconnect -w
 
-   ```bash
-   npm run sync-to-aws
-   ```
-4. **Monitor AWS RDS Database**:
+# Check all services
+kubectl get svc -n kampungconnect
 
-   ```bash
-   npm run db-viewer-aws
-   # Access at http://localhost:3002
-   ```
+# View deployment status
+kubectl get deployments -n kampungconnect
+```
 
-### Production Considerations
+**4. Start Port Forwarding**
+
+```powershell
+# PowerShell (recommended - background)
+.\port-forward.ps1
+
+# Or Batch (opens 12 windows)
+port-forward.bat
+```
+
+### Production Deployment Considerations
 
 1. **Environment Variables**:
 
+   - Use Kubernetes Secrets for sensitive data
+   - Never commit `.env` files to version control
    - Use strong, unique JWT secrets (256+ bits)
-   - Configure HTTPS URLs for OIDC redirects
-   - Set secure cookie flags and HTTPS-only mode
-   - Use AWS Secrets Manager for sensitive credentials
-2. **Database Security**:
+   - Configure production OIDC redirect URIs (HTTPS)
+   - Set appropriate SMTP credentials for email notifications
+2. **Database**:
 
-   - Enable AWS RDS encryption at rest and in transit
-   - Configure VPC security groups to restrict access
-   - Use IAM database authentication where possible
-   - Regular automated backups and point-in-time recovery
-3. **Docker Production**:
+   - Use managed PostgreSQL (AWS RDS, Google Cloud SQL, Azure Database)
+   - Enable automated backups and point-in-time recovery
+   - Configure read replicas for high availability
+   - Enable SSL/TLS for database connections
+   - Set up proper database connection pooling
+3. **Kubernetes Production**:
 
    ```bash
-   # Production build with specific compose file
-   docker-compose -f docker-compose.prod.yml up --build
+   # Use production namespaces
+   kubectl create namespace kampungconnect-prod
 
-   # Scale services based on load
-   docker-compose up --scale request-service=3 --scale matching-service=2
+   # Configure resource limits and requests
+   # Edit k8s/services/*.yaml to add:
+   resources:
+     requests:
+       memory: "256Mi"
+       cpu: "250m"
+     limits:
+       memory: "512Mi"
+       cpu: "500m"
+
+   # Enable Horizontal Pod Autoscaling
+   kubectl autoscale deployment auth-service \
+     --cpu-percent=70 --min=2 --max=10 \
+     -n kampungconnect-prod
+
+   # Use Ingress for external access (instead of port-forward)
+   kubectl apply -f k8s/production/ingress.yaml
    ```
 4. **Security Hardening**:
 
-   - Enable HTTPS with valid SSL certificates
-   - Use a reverse proxy (nginx/ALB) with proper headers
-   - Implement rate limiting and DDoS protection
-   - Regular security updates and vulnerability scanning
-   - Monitor authentication logs and set up alerting
-5. **AWS Integration**:
+   - Enable HTTPS with valid SSL certificates (Let's Encrypt, cert-manager)
+   - Use Ingress Controller with TLS termination
+   - Implement network policies for pod-to-pod communication
+   - Enable RBAC (Role-Based Access Control)
+   - Regular security scanning of container images
+   - Set up Pod Security Policies/Standards
+   - Use secrets management (HashiCorp Vault, AWS Secrets Manager)
+5. **Observability**:
 
-   - Use Application Load Balancer for high availability
-   - Configure Auto Scaling Groups for services
-   - Set up CloudWatch monitoring and alarms
-   - Use AWS RDS Multi-AZ for database redundancy
+   - Configure Prometheus for long-term metrics storage
+   - Set up Grafana alerting rules
+   - Use persistent volumes for Grafana dashboards
+   - Configure log aggregation (ELK, Loki)
+   - Set up distributed tracing retention policies
+   - Configure alerting (PagerDuty, Slack, email)
+6. **High Availability**:
+
+   - Deploy across multiple availability zones
+   - Use LoadBalancer service type for external access
+   - Configure pod anti-affinity rules
+   - Set appropriate replica counts (min 2-3 per service)
+   - Use RabbitMQ clustering for message queue HA
+   - Configure database failover and replication
+7. **CI/CD Pipeline**:
+
+   ```yaml
+   # Example GitHub Actions workflow
+   - Build Docker images with version tags
+   - Push to container registry (Docker Hub, ECR, GCR)
+   - Run automated tests
+   - Update Kubernetes manifests
+   - Deploy with rolling updates
+   - Run smoke tests
+   - Rollback on failure
+   ```
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
-| Issue                                    | Solution                                              |
-| ---------------------------------------- | ----------------------------------------------------- |
-| **"OIDC provider not configured"** | Check `.env` file and provider credentials          |
-| **"Authentication failed"**        | Verify redirect URIs in provider settings             |
-| **"Token validation failed"**      | Ensure JWT_SECRET is consistent across services       |
-| **"CORS errors"**                  | Check FRONTEND_URL configuration                      |
-| **Infinite redirect loop**         | Clear browser cookies and tokens                      |
-| **Database connection failed**     | Verify PostgreSQL is running:`docker-compose ps db` |
-| **AWS RDS connection timeout**     | Check security groups and network connectivity        |
-| **Database viewer login failed**   | Use default credentials: admin/changeme123            |
+| Issue                                                                      | Solution                                                                                                  |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **"OIDC provider not configured"**                                   | Check `.env` file and provider credentials                                                              |
+| **"Authentication failed"**                                          | Verify redirect URIs in provider settings                                                                 |
+| **"Token validation failed"**                                        | Ensure JWT_SECRET is consistent in .env and Kubernetes secret                                             |
+| **"CORS errors"**                                                    | Check FRONTEND_URL configuration                                                                          |
+| **Infinite redirect loop**                                           | Clear browser cookies and localStorage                                                                    |
+| **Pods in CrashLoopBackOff**                                         | Check logs:`kubectl logs <pod-name> -n kampungconnect`                                                  |
+| **Port forward connection refused**                                  | Ensure pods are running:`kubectl get pods -n kampungconnect`                                            |
+| **Database connection failed**                                       | Verify PostgreSQL pod is running and secrets are correct                                                  |
+| **RabbitMQ connection timeout**                                      | Check RabbitMQ pod status and credentials                                                                 |
+| **Image pull errors**                                                | Verify Docker images are built:`docker images \| grep kampungconnect`                                    |
+| **Running scripts disabled on this system (on PowerShell terminal)** | Run `powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"` |
 
-### Debug Tools & Utilities
+### Kubernetes Debugging
 
-- **Local Database Viewer**: `npm run db-viewer` → http://localhost:3001
-- **AWS RDS Database Viewer**: `npm run db-viewer-aws` → http://localhost:3002
-- **Connection Testing**: `npm run test-connection` (local), `npm run test-aws` (both)
-- **Database Comparison**: `npm run compare-dbs`
-- **Browser Console**: Enable verbose logging for frontend debugging
-- **Docker Logs**: `docker-compose logs [service-name]`
+```bash
+# Check pod status
+kubectl get pods -n kampungconnect
+
+# View pod logs
+kubectl logs -f <pod-name> -n kampungconnect
+
+# View recent events
+kubectl get events -n kampungconnect --sort-by='.lastTimestamp'
+
+# Describe pod for detailed info
+kubectl describe pod <pod-name> -n kampungconnect
+
+# Check if services have endpoints
+kubectl get endpoints -n kampungconnect
+
+# Verify secrets exist
+kubectl get secrets -n kampungconnect
+
+# Verify configmaps exist
+kubectl get configmaps -n kampungconnect
+
+# Execute commands in pod
+kubectl exec -it <pod-name> -n kampungconnect -- /bin/sh
+
+# Test database connection from a pod
+kubectl exec -it deployment/auth-service -n kampungconnect -- \
+    psql -h postgres -U admin -d kampungconnect
+
+# Restart a deployment
+kubectl rollout restart deployment/<service-name> -n kampungconnect
+
+# Check resource usage
+kubectl top pods -n kampungconnect
+kubectl top nodes
+```
+
+### Service-Specific Issues
+
+**Auth Service:**
+
+```bash
+# Check if database is accessible
+kubectl logs deployment/auth-service -n kampungconnect | grep -i "database\|connection"
+
+# Verify OIDC configuration
+kubectl logs deployment/auth-service -n kampungconnect | grep -i "oidc\|oauth"
+
+# Test JWT generation
+kubectl exec -it deployment/auth-service -n kampungconnect -- \
+    node -e "console.log(process.env.JWT_SECRET)"
+```
+
+**Matching Service:**
+
+```bash
+# Check RabbitMQ connection
+kubectl logs deployment/matching-service -n kampungconnect | grep -i "rabbitmq\|amqp"
+
+# Verify matching algorithm
+kubectl logs deployment/matching-service -n kampungconnect | grep -i "match\|postal"
+```
+
+**Notification Service:**
+
+```bash
+# Check SMTP configuration
+kubectl logs deployment/notification-service -n kampungconnect | grep -i "smtp\|email"
+
+# Verify email sending
+kubectl logs deployment/notification-service -n kampungconnect --tail=50
+```
+
+### Port Forward Issues
+
+```powershell
+# Stop all existing port forwards
+.\stop-port-forward.ps1
+
+# Check if ports are already in use
+netstat -ano | findstr "8080\|5001\|5002"
+
+# Restart port forwards
+.\port-forward.ps1
+
+# Check PowerShell jobs
+Get-Job
+Get-Job | Receive-Job  # View output
+```
 
 ### Database Issues
 
 ```bash
-# Test local database connection
-npm run test-connection
+# Connect to database pod
+kubectl exec -it deployment/postgres -n kampungconnect -- psql -U admin -d kampungconnect
 
-# Test AWS RDS connection  
-npm run test-aws
+# Check database tables
+kubectl exec -it deployment/postgres -n kampungconnect -- \
+    psql -U admin -d kampungconnect -c "\dt"
 
-# Compare database contents
-npm run compare-dbs
+# Verify init script ran
+kubectl logs deployment/postgres -n kampungconnect | grep -i "init\|schema"
 
-# Reset local database
-docker-compose down -v  # Remove volumes
-docker-compose up --build  # Recreate with fresh data
+# Recreate database (WARNING: deletes all data)
+kubectl delete pod -l app=postgres -n kampungconnect
 ```
 
-### Service Health Monitoring
+### Complete Reset
 
 ```bash
-# View all service logs
-docker-compose logs -f
+# Nuclear option - delete everything and start fresh
+kubectl delete namespace kampungconnect
 
-# View specific service logs
-docker-compose logs -f auth-service
-docker-compose logs -f db
+# Wait for namespace to be fully deleted
+kubectl get namespace kampungconnect
 
-# Check service health
-docker-compose ps
-
-# Restart specific service
-docker-compose restart auth-service
-
-# Rebuild and restart all services
-docker-compose down && docker-compose up --build
+# Redeploy
+deploy-all.bat
 ```
-
-### AWS RDS Troubleshooting
-
-```bash
-# Verify AWS RDS connectivity
-npm run test-aws
-
-# Check sync status
-npm run sync-to-aws
-
-# Monitor AWS database
-npm run db-viewer-aws
-```
-
-**Common AWS RDS Issues:**
-
-- **Security Group**: Ensure inbound rule allows PostgreSQL (port 5432) from your IP
-- **VPC Settings**: Verify RDS instance is publicly accessible if connecting externally
-- **Credentials**: Double-check username/password in `.env.local`
-- **SSL**: Connection uses SSL by default; check certificate requirements
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
 3. Make your changes and test thoroughly
-4. Test authentication flows and database operations
+4. Build and test in Kubernetes: `build-all.bat && kubectl rollout restart deployment -n kampungconnect`
 5. Commit: `git commit -m "Add feature: description"`
 6. Push: `git push origin feature-name`
 7. Create a Pull Request with detailed description
@@ -574,30 +1011,38 @@ npm run db-viewer-aws
 
 - **Code Quality**: Follow RESTful API conventions and consistent code style
 - **Error Handling**: Add comprehensive error handling and logging
-- **Testing**: Test both local and AWS RDS database operations
+- **Testing**: Test all services in Kubernetes environment
 - **Authentication**: Verify OIDC integration works with all providers
-- **Documentation**: Update relevant guides (README, OIDC_SSO_GUIDE, AWS_RDS_SYNC_GUIDE)
-- **Database Changes**: Update schema in `backend/db/init.sql` and sync tools
+- **Documentation**: Update README and relevant guides
+- **Database Changes**: Update schema in `backend/db/init.sql`
 - **Security**: Follow security best practices for authentication and data handling
+- **Observability**: Add appropriate metrics, logs, and traces
 
 ### Before Submitting
 
 ```bash
-# Test local environment
-npm run start-dev
-npm run test-connection
+# Build all images
+build-all.bat
 
-# Test AWS integration (if configured)
-npm run test-aws
-npm run compare-dbs
+# Deploy to test environment
+kubectl create namespace kampungconnect-test
+# Update namespace in commands below
+deploy-to-kuber.bat
 
 # Verify all services are working
-docker-compose ps
-docker-compose logs --tail=50
+kubectl get pods -n kampungconnect
+kubectl logs deployment/<service-name> -n kampungconnect
 
-# Test database viewers
-npm run db-viewer      # Local PostgreSQL
-npm run db-viewer-aws  # AWS RDS (if configured)
+# Test endpoints
+curl http://localhost:5001/
+curl http://localhost:5002/
+
+# Check metrics and traces
+# Visit http://localhost:9090 (Prometheus)
+# Visit http://localhost:3000 (Grafana)
+
+# Clean up test environment
+kubectl delete namespace kampungconnect-test
 ```
 
 ## 📚 Additional Resources
@@ -605,21 +1050,35 @@ npm run db-viewer-aws  # AWS RDS (if configured)
 ### Project Documentation
 
 - **[OIDC Implementation Guide](./OIDC_SSO_GUIDE.md)** - Comprehensive authentication setup and troubleshooting
-- **[AWS RDS Sync Guide](./AWS_RDS_SYNC_GUIDE.md)** - Database synchronization and AWS integration
+- **[SMTP Email Setup Guide](./SMTP_EMAIL_SETUP_GUIDE.md)** - Email notification configuration
 
 ### External Documentation
 
 - [OpenID Connect Specification](https://openid.net/connect/) - OIDC standards and best practices
-- [Docker Compose Documentation](https://docs.docker.com/compose/) - Container orchestration
+- [Kubernetes Documentation](https://kubernetes.io/docs/) - Container orchestration
+- [Docker Documentation](https://docs.docker.com/) - Containerization
 - [Express.js Guide](https://expressjs.com/) - Backend framework documentation
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/) - Database management
-- [AWS RDS PostgreSQL](https://docs.aws.amazon.com/rds/latest/userguide/CHAP_PostgreSQL.html) - Cloud database setup
+- [RabbitMQ Tutorials](https://www.rabbitmq.com/getstarted.html) - Message queue patterns
+- [Prometheus Documentation](https://prometheus.io/docs/) - Monitoring and alerting
+- [Grafana Documentation](https://grafana.com/docs/) - Visualization and dashboards
+- [OpenTelemetry Documentation](https://opentelemetry.io/docs/) - Observability and tracing
 
 ### Development Tools
 
+- [kubectl](https://kubernetes.io/docs/reference/kubectl/) - Kubernetes CLI
+- [k9s](https://k9scli.io/) - Terminal UI for Kubernetes
+- [Lens](https://k8slens.dev/) - Kubernetes IDE
 - [JWT.io](https://jwt.io/) - Token decoder and validator
 - [OAuth 2.0 Playground](https://developers.google.com/oauthplayground) - Test OAuth flows
 - [Postman](https://www.postman.com/) - API testing and documentation
+
+### Monitoring & Observability
+
+- **Prometheus**: http://localhost:9090 - Metrics and alerting
+- **Grafana**: http://localhost:3000 - Dashboards and visualization
+- **Tempo**: http://localhost:3200 - Distributed tracing
+- **RabbitMQ Management**: http://localhost:15672 - Message queue monitoring
 
 ## 📄 License
 
@@ -630,9 +1089,15 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 For issues and questions:
 
 1. Check the troubleshooting section above
-2. Review Docker and service logs
-3. Test OIDC provider configuration
-4. Create an issue on GitHub
+2. Review Kubernetes pod logs: `kubectl logs <pod-name> -n kampungconnect`
+3. Check service health: `kubectl get pods -n kampungconnect`
+4. Verify OIDC provider configuration
+5. Review monitoring dashboards (Prometheus, Grafana)
+6. Create an issue on GitHub with:
+   - Pod logs
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Environment details (Kubernetes version, OS, etc.)
 
 ---
 
