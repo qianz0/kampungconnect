@@ -66,10 +66,10 @@ spec:
             - name: AZURE_REDIRECT_URI
               value: "http://localhost:5001/auth/azure/callback"
 
-          # Optional ConfigMap merge
-          envFrom:
-            - configMapRef:
-                name: auth-env
+          # Optional ConfigMap merge (commented out - not needed)
+          # envFrom:
+          #   - configMapRef:
+          #       name: auth-env
 ---
 apiVersion: v1
 kind: Service

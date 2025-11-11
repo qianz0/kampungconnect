@@ -10,10 +10,10 @@ COPY backend/services/auth-service/package*.json ./
 # Install dependencies inside the container (Linux build)
 RUN npm install --omit=dev
 
-COPY backend/services/auth-service ./ 
-
-# Copy the rest of your application (node_modules excluded via .dockerignore)
-# COPY . .
+# Copy source code (explicitly exclude node_modules by copying individual items)
+COPY backend/services/auth-service/src ./src
+COPY backend/services/auth-service/start.sh ./start.sh
+COPY backend/services/auth-service/create-admin.js ./create-admin.js
 
 # Make startup script executable and fix line endings
 RUN chmod +x start.sh && \
