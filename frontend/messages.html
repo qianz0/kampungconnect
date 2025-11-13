@@ -252,16 +252,22 @@
             document.getElementById('chatUserLocation').textContent = '';
 
             const container = document.getElementById('messagesContainer');
-            container.innerHTML = messages.map(msg => `
-                <div class="message ${msg.sender_id === currentUserId ? 'sent' : 'received'}">
-                    <div class="message-bubble">
-                        <div>${msg.content}</div>
-                        <small class="d-block mt-1" style="opacity: 0.7; font-size: 0.75rem;">
-                            ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
-                        </small>
+            container.innerHTML = messages.map(msg => {
+                // Convert URLs to clickable links
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const contentWithLinks = msg.content.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">$1</a>');
+                
+                return `
+                    <div class="message ${msg.sender_id === currentUserId ? 'sent' : 'received'}">
+                        <div class="message-bubble">
+                            <div>${contentWithLinks}</div>
+                            <small class="d-block mt-1" style="opacity: 0.7; font-size: 0.75rem;">
+                                ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                            </small>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             // Scroll to bottom
             container.scrollTop = container.scrollHeight;

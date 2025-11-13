@@ -435,6 +435,42 @@
         </div>
     </div>
 
+    <!-- Share Request Modal -->
+    <div class="modal fade" id="shareRequestModal" tabindex="-1" aria-labelledby="shareRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="shareRequestModalLabel">
+                        <i class="fas fa-share-alt me-2"></i>Share Request with Friends
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p class="text-muted">Select friends to share this request with through messages</p>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="friendSearchInput" placeholder="Search friends...">
+                        </div>
+                    </div>
+                    <div id="friendsListContainer" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading friends...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="shareWithSelectedBtn" onclick="shareWithSelected()">
+                        <i class="fas fa-paper-plane me-1"></i>Share with Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
@@ -728,7 +764,10 @@
                 ${respondBtn}
                 ${offerBtn}
                 <button class="btn btn-primary" onclick="shareRequest()">
-                    <i class="fas fa-share-alt me-2"></i>Share
+                    <i class="fas fa-share-alt me-2"></i>Share with Friends
+                </button>
+                <button class="btn btn-outline-primary" onclick="copyShareLink()">
+                    <i class="fas fa-link me-2"></i>Copy Link
                 </button>             
             `;
 
@@ -1007,18 +1046,187 @@
             }
         }
 
-        function shareRequest() {
-            if (navigator.share && currentRequest) {
-                navigator.share({
-                    title: currentRequest.title,
-                    text: currentRequest.description,
-                    url: window.location.href
-                }).catch(err => console.log('Error sharing:', err));
+        let selectedFriends = [];
+        let friendsList = [];
+
+        function copyShareLink() {
+            const requestUrl = window.location.href;
+            
+            // Try to use the Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(requestUrl)
+                    .then(() => {
+                        // Show success feedback
+                        const btn = event.target.closest('button');
+                        const originalHTML = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-check me-2"></i>Link Copied!';
+                        btn.classList.add('btn-success');
+                        btn.classList.remove('btn-outline-primary');
+                        
+                        setTimeout(() => {
+                            btn.innerHTML = originalHTML;
+                            btn.classList.remove('btn-success');
+                            btn.classList.add('btn-outline-primary');
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy link:', err);
+                        fallbackCopyLink(requestUrl);
+                    });
             } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(window.location.href).then(() => {
-                    alert('Link copied to clipboard!');
-                });
+                // Fallback for older browsers
+                fallbackCopyLink(requestUrl);
+            }
+        }
+
+        function fallbackCopyLink(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                alert('Link copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy link:', err);
+                alert('Failed to copy link. Please copy manually: ' + text);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        async function shareRequest() {
+            selectedFriends = [];
+            const modal = new bootstrap.Modal(document.getElementById('shareRequestModal'));
+            modal.show();
+            await loadFriendsForSharing();
+        }
+
+        async function loadFriendsForSharing() {
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch('http://localhost:5008/friends');
+                const data = await response.json();
+
+                if (response.ok) {
+                    friendsList = data.friends || [];
+                    displayFriendsForSharing(friendsList);
+                } else {
+                    document.getElementById('friendsListContainer').innerHTML = 
+                        '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Failed to load friends</div>';
+                }
+            } catch (error) {
+                console.error('Error loading friends:', error);
+                document.getElementById('friendsListContainer').innerHTML = 
+                    '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Error loading friends. Please try again.</div>';
+            }
+        }
+
+        function displayFriendsForSharing(friends) {
+            const container = document.getElementById('friendsListContainer');
+            
+            if (friends.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-user-friends fa-3x mb-3"></i>
+                        <p>You don't have any friends yet.</p>
+                        <a href="khakis.html" class="btn btn-primary">Find Friends</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = friends.map(friend => `
+                <div class="p-3 border-bottom friend-item d-flex align-items-center" data-friend-id="${friend.id}" data-friend-name="${friend.firstname} ${friend.lastname}">
+                    <input class="form-check-input friend-checkbox me-3" type="checkbox" value="${friend.id}" id="friend-${friend.id}" style="cursor: pointer; margin-top: 0;">
+                    <label class="d-flex align-items-center w-100" for="friend-${friend.id}" style="cursor: pointer; margin-bottom: 0;">
+                        <img src="${friend.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(friend.firstname + ' ' + friend.lastname)}" 
+                             class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;" alt="${friend.firstname}">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0">${friend.firstname} ${friend.lastname}</h6>
+                            <small class="text-muted">${friend.email}</small>
+                        </div>
+                    </label>
+                </div>
+            `).join('');
+
+            // Add search functionality
+            const searchInput = document.getElementById('friendSearchInput');
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredFriends = friends.filter(friend => 
+                    `${friend.firstname} ${friend.lastname}`.toLowerCase().includes(searchTerm) ||
+                    friend.email.toLowerCase().includes(searchTerm)
+                );
+                displayFriendsForSharing(filteredFriends);
+            });
+        }
+
+        async function shareWithSelected() {
+            const checkboxes = document.querySelectorAll('.friend-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                alert('Please select at least one friend to share with');
+                return;
+            }
+
+            const shareBtn = document.getElementById('shareWithSelectedBtn');
+            shareBtn.disabled = true;
+            shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sharing...';
+
+            try {
+                const authManager = await waitForAuthManager();
+                const requestUrl = window.location.href;
+                const message = `Check out this help request: "${currentRequest.title}"\n\n${currentRequest.description}\n\nView details: ${requestUrl}`;
+                
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const checkbox of checkboxes) {
+                    const friendId = parseInt(checkbox.value);
+                    
+                    try {
+                        const response = await authManager.authenticatedFetch(
+                            'http://localhost:5008/messages',
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    receiverId: friendId,
+                                    content: message
+                                })
+                            }
+                        );
+
+                        if (response.ok) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                        }
+                    } catch (error) {
+                        console.error(`Error sharing with friend ${friendId}:`, error);
+                        failCount++;
+                    }
+                }
+
+                // Close modal and show result
+                bootstrap.Modal.getInstance(document.getElementById('shareRequestModal')).hide();
+                
+                if (successCount > 0) {
+                    alert(`Request shared successfully with ${successCount} friend${successCount > 1 ? 's' : ''}!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
+                } else {
+                    alert('Failed to share the request. Please try again.');
+                }
+
+            } catch (error) {
+                console.error('Error sharing request:', error);
+                alert('An error occurred while sharing. Please try again.');
+            } finally {
+                shareBtn.disabled = false;
+                shareBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Share with Selected';
             }
         }
 

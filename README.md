@@ -49,7 +49,6 @@ kampungconnect/
 ├── deploy-to-kuber.bat                # Deploy to Kubernetes
 ├── deploy-all.bat            # Complete deployment workflow
 ├── port-forward.ps1          # Start all port forwards (PowerShell)
-└── stop-port-forward.ps1     # Stop all port forwards
 ```
 
 ### Technology Stack
@@ -209,14 +208,11 @@ kubectl get pods -n kampungconnect -w
 **PowerShell (Recommended - runs in background):**
 
 ```powershell
-# Start all port forwards in background
+# Start all port forwards in background, ctrl C to stop
 .\port-forward.ps1
 
 # Check status
 Get-Job
-
-# Stop all port forwards
-.\stop-port-forward.ps1
 ```
 
 **Batch File (opens separate windows):**
@@ -473,9 +469,7 @@ deploy-to-kuber.bat
 | `build-all.bat`           | Build all Docker images                        |
 | `deploy-to-kuber.bat`     | Deploy to Kubernetes (creates secrets, deploys |
 | `deploy-all.bat`          | Full workflow: build + deploy                  |
-| `port-forward.ps1`        | Start all port forwards (PowerShell)           |
-| `stop-port-forward.ps1`   | Stop all port forwards (PowerShell)            |
-| `port-forward.ps1`        | Start port forwards (opens separate windows)   |
+| `port-forward.ps1`        | Start/stop all port forwards (PowerShell)           |
 | `kubectl get pods -n ...` | View pod status                                |
 | `kubectl logs -f ...`     | View service logs                              |
 | `kubectl rollout restart` | Restart deployments after code changes         |
@@ -493,7 +487,6 @@ kampungconnect/
 ├── deploy-to-kuber.bat           # Deploy to Kubernetes
 ├── deploy-all.bat                # Complete deployment workflow
 ├── port-forward.ps1              # Port forwarding (PowerShell)
-├── stop-port-forward.ps1         # Stop port forwards
 ├── 
 ├── frontend/                     # Static web application
 │   ├── index.html               # Landing page
@@ -951,10 +944,6 @@ kubectl logs deployment/notification-service -n kampungconnect --tail=50
 ```
 
 ### Port Forward Issues
-
-```powershell
-# Stop all existing port forwards
-.\stop-port-forward.ps1
 
 # Check if ports are already in use
 netstat -ano | findstr "8080\|5001\|5002"
