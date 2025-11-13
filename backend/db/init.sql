@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS responses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE offers (
+CREATE TABLE IF NOT EXISTS offers (
   id SERIAL PRIMARY KEY,
   request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
   helper_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -111,7 +111,7 @@ INSERT INTO users (provider_id, email, firstname, lastname, address, password_ha
 (NULL, 'ng.geok.leng@gmail.com', 'Geok Leng', 'Ng', '8 Bukit Merah View, #12-654', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.7, '151008', TRUE, TRUE, NOW() - INTERVAL '14 days'),
 ('azure_aad_78902', 'tang.soon.huat@outlook.com', 'Soon Huat', 'Tang', '17 Serangoon Garden Way', NULL, 'https://graph.microsoft.com/sample11', 'azure', 'senior', 4.8, '555947', TRUE, TRUE, NOW() - INTERVAL '12 days'),
 (NULL, 'sandra.goh@gmail.com', 'Sandra', 'Goh', '12 Marine Parade Central, #06-321', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.9, '440012', TRUE, TRUE, NOW() - INTERVAL '9 days'),
-('google_888003', 'william.tan@gmail.com', 'William', 'Tan', '239 Bukit Batok East Ave 5, #04-210', NULL, 'https://lh3.googleusercontent.com/sample12', 'google', 'senior', 4.6, '650239', TRUE, TRUE, NOW() - INTERVAL '7 days');
+('google_888003', 'william.tan@gmail.com', 'William', 'Tan', '239 Bukit Batok East Ave 5, #04-210', NULL, 'https://lh3.googleusercontent.com/sample12', 'google', 'senior', 4.6, '650239', TRUE, TRUE, NOW() - INTERVAL '7 days'),
 
 -- Volunteer users
 (NULL, 'john.doe@gmail.com', 'John', 'Doe', '15 Orchard Road, #10-100', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.9, '238841', TRUE, TRUE, NOW() - INTERVAL '75 days'),

@@ -52,8 +52,14 @@
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button">
-                    <i class="fas fa-user-plus me-2"></i>Friend Requests
+                    <i class="fas fa-user-plus me-2"></i>Received Requests
                     <span class="badge bg-danger ms-2" id="requestsCount">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="sent-tab" data-bs-toggle="tab" data-bs-target="#sent" type="button">
+                    <i class="fas fa-paper-plane me-2"></i>Requests Sent
+                    <span class="badge bg-warning ms-2" id="sentCount">0</span>
                 </button>
             </li>
         </ul>
@@ -65,9 +71,14 @@
                 <div id="friendsContainer" class="row"></div>
             </div>
 
-            <!-- Requests Tab -->
+            <!-- Received Requests Tab -->
             <div class="tab-pane fade" id="requests" role="tabpanel">
                 <div id="requestsContainer"></div>
+            </div>
+
+            <!-- Sent Requests Tab -->
+            <div class="tab-pane fade" id="sent" role="tabpanel">
+                <div id="sentContainer"></div>
             </div>
         </div>
     </div>
@@ -127,6 +138,21 @@
                 }
             } catch (error) {
                 console.error('Error loading requests:', error);
+            }
+        }
+
+        async function loadSentRequests() {
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch('http://localhost:5008/friends/sent');
+                const data = await response.json();
+
+                if (response.ok) {
+                    displaySentRequests(data.requests || []);
+                    document.getElementById('sentCount').textContent = data.count || 0;
+                }
+            } catch (error) {
+                console.error('Error loading sent requests:', error);
             }
         }
 
@@ -197,6 +223,35 @@
             `).join('');
         }
 
+        function displaySentRequests(requests) {
+            const container = document.getElementById('sentContainer');
+            if (requests.length === 0) {
+                container.innerHTML = '<div class="text-center py-5"><i class="fas fa-paper-plane fa-3x text-muted mb-3"></i><p>No sent friend requests</p></div>';
+                return;
+            }
+
+            container.innerHTML = requests.map(req => `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <img src="${req.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(req.firstname + ' ' + req.lastname)}" 
+                                 class="friend-avatar me-3" alt="${req.firstname}">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">${req.firstname} ${req.lastname}</h5>
+                                <p class="text-muted mb-1">${req.email}</p>
+                                <small class="text-muted">Sent ${new Date(req.request_date).toLocaleDateString()}</small>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-danger" onclick="cancelRequest(${req.request_id})">
+                                    <i class="fas fa-times me-1"></i>Cancel Request
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         async function acceptRequest(requestId) {
             try {
                 const authManager = window.AuthManager;
@@ -232,6 +287,23 @@
             }
         }
 
+        async function cancelRequest(requestId) {
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch(
+                    `http://localhost:5008/friends/cancel/${requestId}`,
+                    { method: 'POST' }
+                );
+                
+                if (response.ok) {
+                    alert('Friend request cancelled');
+                    loadSentRequests();
+                }
+            } catch (error) {
+                console.error('Error cancelling request:', error);
+            }
+        }
+
         function removeFriend(friendId, friendName) {
             selectedFriendId = friendId;
             selectedFriendName = friendName;
@@ -262,6 +334,7 @@
             await window.AuthManager.waitForAuth();
             loadFriends();
             loadRequests();
+            loadSentRequests();
         });
     </script>
 </body>

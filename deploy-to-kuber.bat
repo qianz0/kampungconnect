@@ -7,6 +7,11 @@ echo ========================================
 echo.
 echo 🧹 Recreating namespace 'kampungconnect'...
 kubectl delete namespace kampungconnect --ignore-not-found
+
+:: Clean up PersistentVolumeClaims to force fresh database initialization
+echo 🗑️ Cleaning up old PersistentVolumeClaims...
+kubectl delete pvc --all -n kampungconnect --ignore-not-found 2>nul
+
 kubectl create namespace kampungconnect
 
 :: Optional: Wait a few seconds for namespace to be active

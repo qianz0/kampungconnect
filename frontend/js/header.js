@@ -125,9 +125,6 @@ class HeaderManager {
                 avatarUrl = user.picture;
             }
             
-            console.log('[Header] User picture value:', user.picture);
-            console.log('[Header] Using avatar URL:', avatarUrl);
-            
             avatarElement.alt = displayName;
             
             // Set fallback first to ensure something always displays

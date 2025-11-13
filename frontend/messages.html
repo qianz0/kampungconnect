@@ -8,14 +8,24 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="css/header.css" rel="stylesheet">
     <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .container-fluid {
+            padding: 0;
+            height: calc(100vh - 56px);
+        }
         .chat-container {
-            height: calc(100vh - 200px);
+            height: 100%;
             display: flex;
         }
         .conversations-list {
             width: 350px;
             border-right: 1px solid #dee2e6;
             overflow-y: auto;
+            flex-shrink: 0;
         }
         .conversation-item {
             padding: 1rem;
@@ -30,6 +40,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
         .messages-container {
             flex: 1;
@@ -59,21 +70,30 @@
             color: white;
         }
         .message-input-area {
-            padding: 1rem;
+            padding: 2rem;
             background: white;
             border-top: 1px solid #dee2e6;
+            flex-shrink: 0;
         }
         .user-avatar {
             width: 50px;
             height: 50px;
             border-radius: 50%;
+            object-fit: cover;
         }
         .no-chat-selected {
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100%;
+            width: 100%;
             color: #6c757d;
+        }
+        .chat-header {
+            flex-shrink: 0;
+        }
+        #messageInput {
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -105,9 +125,9 @@
                     </div>
                 </div>
 
-                <div id="chatArea" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                <div id="chatArea" style="display: none; flex-direction: column; height: 100%;">
                     <!-- Chat Header -->
-                    <div class="p-3 border-bottom bg-white">
+                    <div class="p-3 border-bottom bg-white chat-header">
                         <div class="d-flex align-items-center">
                             <img id="chatUserAvatar" src="" class="user-avatar me-3" alt="">
                             <div>
@@ -121,10 +141,10 @@
                     <div class="messages-container" id="messagesContainer"></div>
 
                     <!-- Message Input -->
-                    <div class="message-input-area">
+                    <div class="message-input-area" id="messageInputArea">
                         <div class="input-group">
                             <input type="text" class="form-control" id="messageInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendMessage()">
-                            <button class="btn btn-primary" onclick="sendMessage()">
+                            <button class="btn btn-primary" style="margin-bottom: 15px;" onclick="sendMessage()">
                                 <i class="fas fa-paper-plane me-1"></i>Send
                             </button>
                         </div>
@@ -182,10 +202,10 @@
                              class="user-avatar me-3" alt="">
                         <div class="flex-grow-1">
                             <h6 class="mb-0">${conv.other_user_firstname} ${conv.other_user_lastname}</h6>
-                            <p class="text-muted mb-0 small text-truncate">${conv.content}</p>
-                            <small class="text-muted">${new Date(conv.created_at).toLocaleDateString()}</small>
+                            <p class="text-muted mb-0 small text-truncate">${conv.last_message_content || 'No messages yet'}</p>
+                            <small class="text-muted">${conv.last_message_time ? new Date(conv.last_message_time).toLocaleDateString() : ''}</small>
                         </div>
-                        ${!conv.read && conv.receiver_id === currentUserId ? '<span class="badge bg-primary">New</span>' : ''}
+                        ${conv.has_unread ? '<span class="badge bg-primary">New</span>' : ''}
                     </div>
                 </div>
             `).join('');
@@ -216,6 +236,7 @@
                     displayChat(conv, data.messages || []);
                     document.getElementById('noChatSelected').style.display = 'none';
                     document.getElementById('chatArea').style.display = 'flex';
+                    document.getElementById('messageInputArea').style.display = 'block';
 
                     // Update conversations list to show active
                     displayConversations(conversations);

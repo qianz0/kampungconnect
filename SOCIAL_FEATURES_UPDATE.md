@@ -3,9 +3,11 @@
 ## Summary of Changes
 
 ### 1. Backend Social Service (NEW)
+
 Created a new microservice at `backend/services/social-service/` with the following capabilities:
 
 #### Friends Management
+
 - Send friend requests
 - Accept/reject friend requests
 - View friends list
@@ -13,6 +15,7 @@ Created a new microservice at `backend/services/social-service/` with the follow
 - View pending requests
 
 #### Messaging System
+
 - Send messages to other users
 - View conversation history
 - Mark messages as read
@@ -20,6 +23,7 @@ Created a new microservice at `backend/services/social-service/` with the follow
 - Conversation-based message organization
 
 #### Activity Planning
+
 - Create activities with invitations
 - Schedule activities with date/time/location
 - Accept/decline activity invitations
@@ -27,7 +31,9 @@ Created a new microservice at `backend/services/social-service/` with the follow
 - Track participant responses
 
 ### 2. Database Schema Updates
+
 Added three new tables to `backend/db/init.sql`:
+
 - `friendships` - Tracks friend relationships and requests
 - `messages` - Stores all messages between users
 - `activities` - Stores planned activities
@@ -36,6 +42,7 @@ Added three new tables to `backend/db/init.sql`:
 ### 3. Frontend Updates - khakis.html
 
 #### Senior-Friendly Design
+
 - **Larger buttons and text** (increased font sizes by 15-30%)
 - **Bigger touch targets** (45px circular add friend button)
 - **Increased spacing** between elements
@@ -43,12 +50,14 @@ Added three new tables to `backend/db/init.sql`:
 - **Enhanced visual hierarchy** with better contrast
 
 #### Add Friend Button
+
 - Positioned at **top-right corner** of each senior card
 - Prominent circular button with green color
 - Always visible and easy to tap
 - Icon-based for clarity
 
 #### Pagination System
+
 - **6 cards per page** for better readability
 - Large, easy-to-click pagination controls
 - Page numbers clearly displayed
@@ -57,20 +66,22 @@ Added three new tables to `backend/db/init.sql`:
 - Pagination maintained separately for each tab
 
 #### Working Features
+
 All three social features are now fully functional:
 
 1. **Chat/Messaging**
+
    - Click "Chat" button opens prompt to send message
    - Messages saved to database
    - Immediate feedback on success/failure
-
 2. **Add Friend**
+
    - Top-right button on each card
    - Also available as separate action button
    - Confirmation dialog before sending
    - Friend request stored in database
-
 3. **Plan Activity**
+
    - Opens multi-step prompts:
      - Activity title
      - Description (optional)
@@ -82,13 +93,16 @@ All three social features are now fully functional:
 ### 4. Frontend Updates - khaki-profile.html
 
 #### Enhanced Layout
+
 - Larger profile avatar (180px)
 - Bigger buttons (1.15rem font, 14px padding)
 - Better spacing in profile sections
 - Improved readability with larger fonts
 
 #### Working Social Features
+
 All three buttons in the profile now work:
+
 - **Send Message** - Opens prompt to compose message
 - **Add Friend** - Sends friend request with confirmation
 - **Schedule Activity** - Multi-step activity planning wizard
@@ -96,12 +110,15 @@ All three buttons in the profile now work:
 ### 5. Configuration Updates
 
 #### config.js
+
 Added social service endpoint:
+
 ```javascript
 SOCIAL_SERVICE: "http://localhost:5008"
 ```
 
 #### Kubernetes Deployment
+
 - Created `k8s/services/social-service.yaml`
 - Updated `build-all.bat` to build social service image
 - Updated `port-forward.ps1` to forward port 5008
@@ -109,6 +126,7 @@ SOCIAL_SERVICE: "http://localhost:5008"
 ### 6. API Endpoints Available
 
 #### Friends API (Port 5008)
+
 - `GET /friends` - Get user's friends list
 - `GET /friends/requests` - Get pending friend requests
 - `POST /friends/request` - Send friend request
@@ -117,12 +135,14 @@ SOCIAL_SERVICE: "http://localhost:5008"
 - `DELETE /friends/:friendId` - Remove friend
 
 #### Messages API (Port 5008)
+
 - `GET /messages/conversations` - Get all conversations
 - `GET /messages/:otherUserId` - Get messages with specific user
 - `POST /messages` - Send a message
 - `GET /messages/unread/count` - Get unread message count
 
 #### Activities API (Port 5008)
+
 - `GET /activities` - Get user's activities (with status filter)
 - `POST /activities` - Create new activity
 - `POST /activities/:activityId/respond` - Accept/decline activity
@@ -130,21 +150,25 @@ SOCIAL_SERVICE: "http://localhost:5008"
 ## How to Deploy
 
 ### 1. Build the new service:
+
 ```cmd
 docker build -t kampungconnect-social-service -f backend/services/social-service/Dockerfile .
 ```
 
 Or use the updated build-all script:
+
 ```cmd
 build-all.bat
 ```
 
 ### 2. Deploy to Kubernetes:
+
 ```cmd
 deploy-to-kuber.bat
 ```
 
 ### 3. Start port forwarding:
+
 ```powershell
 .\port-forward.ps1
 ```
@@ -158,6 +182,12 @@ The social service will be available at: http://localhost:5008
 3. **Send Message**: Click "Chat" button on any khaki card
 4. **Plan Activity**: Click "Plan" button and follow the prompts
 5. **View Profile**: Click "View Profile" for detailed view with all social features
+
+Services Testing Commands:
+
+- Get-Job
+- kubectl logs -n kampungconnect *deployment/request-service* --tail=50
+- netstat -an | findstr "LISTENING" | findstr ":50" (for port forwarding checks)
 
 ## Senior-Friendly Features
 
@@ -173,7 +203,6 @@ The social service will be available at: http://localhost:5008
 
 ## Future Enhancements
 
-Consider adding:
 - Real-time messaging with WebSockets
 - Push notifications for friend requests
 - Activity calendar view

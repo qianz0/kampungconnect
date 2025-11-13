@@ -1,6 +1,4 @@
 const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const router = express.Router();
 
 const AuthMiddleware = require('../../shared/auth-middleware');
