@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package messaging;
+
+// User information
+message User {
+  int32 id = 1;
+  string email = 2;
+  string firstname = 3;
+  string lastname = 4;
+  string picture = 5;
+}
+
+// Message object
+message Message {
+  int32 id = 1;
+  int32 sender_id = 2;
+  int32 receiver_id = 3;
+  string conversation_id = 4;
+  string content = 5;
+  bool read = 6;
+  string created_at = 7;
+  User sender = 8;
+}
+
+// Conversation summary
+message Conversation {
+  string conversation_id = 1;
+  int32 other_user_id = 2;
+  string other_user_email = 3;
+  string other_user_firstname = 4;
+  string other_user_lastname = 5;
+  string other_user_picture = 6;
+  string last_message_content = 7;
+  string last_message_time = 8;
+  bool has_unread = 9;
+  int32 unread_count = 10;
+}
+
+// Request/Response messages
+message GetConversationsRequest {
+  int32 user_id = 1;
+}
+
+message GetConversationsResponse {
+  repeated Conversation conversations = 1;
+}
+
+message GetMessagesRequest {
+  int32 user_id = 1;
+  int32 other_user_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message GetMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message SendMessageRequest {
+  int32 sender_id = 1;
+  int32 receiver_id = 2;
+  string content = 3;
+}
+
+message SendMessageResponse {
+  Message message = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+message GetUnreadCountRequest {
+  int32 user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  int32 unread_count = 1;
+}
+
+message MarkAsReadRequest {
+  int32 user_id = 1;
+  int32 other_user_id = 2;
+}
+
+message MarkAsReadResponse {
+  bool success = 1;
+}
+
+// Streaming message for real-time updates
+message MessageStreamRequest {
+  int32 user_id = 1;
+}
+
+message MessageStreamResponse {
+  Message message = 1;
+  string event_type = 2; // "new_message", "message_read", "typing"
+}
+
+message TypingIndicatorRequest {
+  int32 user_id = 1;
+  int32 other_user_id = 2;
+  bool is_typing = 3;
+}
+
+message TypingIndicatorResponse {
+  bool success = 1;
+}
+
+// gRPC Service Definition
+service MessagingService {
+  // Unary RPCs
+  rpc GetConversations(GetConversationsRequest) returns (GetConversationsResponse);
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+  rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
+  
+  // Server streaming RPC for real-time messages
+  rpc StreamMessages(MessageStreamRequest) returns (stream MessageStreamResponse);
+  
+  // Client streaming for typing indicators
+  rpc SendTypingIndicator(TypingIndicatorRequest) returns (TypingIndicatorResponse);
+}

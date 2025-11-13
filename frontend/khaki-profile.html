@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khaki Profile - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="css/header.css" rel="stylesheet">
+    <style>
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 6px solid #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.75rem;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 50px;
+            text-align: center;
+            color: #667eea;
+            font-size: 1.4rem;
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 1.05rem;
+        }
+
+        .info-value {
+            color: #6c757d;
+            margin-top: 0.25rem;
+            font-size: 1rem;
+        }
+
+        .rating-stars {
+            color: #ffc107;
+            font-size: 1.8rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            font-size: 1.15rem;
+            padding: 14px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+
+        .location-badge {
+            background-color: #e7f3ff;
+            color: #0066cc;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .badge-senior {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Common Header -->
+    <div id="commonHeader"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading profile...</p>
+        </div>
+    </div>
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="container text-center">
+            <img id="profileAvatar" class="profile-avatar mb-3" src="" alt="Profile Avatar">
+            <h1 class="mb-2" id="profileName">Loading...</h1>
+            <p class="lead mb-2" id="profileEmail">email@example.com</p>
+            <span class="badge badge-senior">Senior</span>
+            
+            <!-- Rating Display -->
+            <div class="mt-3">
+                <div class="rating-stars" id="ratingStars"></div>
+                <p class="mb-0 mt-1"><span id="ratingValue">0.0</span>/5.0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mb-5">
+        <!-- Back Button -->
+        <div class="mb-3">
+            <a href="khakis.html" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Khakis
+            </a>
+        </div>
+
+        <div class="row">
+            <!-- Profile Information -->
+            <div class="col-lg-8">
+                <div class="profile-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-user-circle me-2"></i>Profile Information
+                    </h3>
+                    
+                    <div class="info-row">
+                        <div class="info-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Location</div>
+                            <div class="info-value">
+                                <span class="location-badge" id="profileLocation">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Member Since</div>
+                            <div class="info-value" id="memberSince">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Last Active</div>
+                            <div class="info-value" id="lastActive">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- About Section -->
+                <div class="profile-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle me-2"></i>About
+                    </h3>
+                    <p class="text-muted" id="aboutText">
+                        This is a fellow senior member in your community. Connect with them to build friendships and support each other!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Actions Sidebar -->
+            <div class="col-lg-4">
+                <div class="profile-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-handshake me-2"></i>Connect
+                    </h3>
+                    <p class="text-muted small mb-3">
+                        Build companionship with <span id="firstName">this member</span>
+                    </p>
+                    
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="sendMessage()">
+                            <i class="fas fa-envelope me-2"></i>Send Message
+                        </button>
+                        <button class="btn btn-success" onclick="sendFriendRequest()">
+                            <i class="fas fa-user-plus me-2"></i>Add Friend
+                        </button>
+                        <button class="btn btn-info" onclick="scheduleActivity()">
+                            <i class="fas fa-calendar-plus me-2"></i>Plan Activity
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Community Tips -->
+                <div class="profile-section bg-light">
+                    <h3 class="section-title">
+                        <i class="fas fa-lightbulb me-2"></i>Companionship Tips
+                    </h3>
+                    <ul class="small text-muted mb-0">
+                        <li class="mb-2">Start with a friendly message</li>
+                        <li class="mb-2">Suggest activities you both enjoy</li>
+                        <li class="mb-2">Be respectful and patient</li>
+                        <li class="mb-2">Share experiences and stories</li>
+                        <li>Build trust gradually</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/postal-utils.js"></script>
+    <script>
+        let currentUser = null;
+        let profileUser = null;
+
+        // Wait for AuthManager
+        function waitForAuthManager() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 50;
+
+                function checkAuthManager() {
+                    attempts++;
+                    if (window.AuthManager && 
+                        typeof window.AuthManager.initialize === 'function' &&
+                        typeof window.AuthManager.checkAuthentication === 'function') {
+                        resolve(window.AuthManager);
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error('AuthManager not available after timeout'));
+                    } else {
+                        setTimeout(checkAuthManager, 100);
+                    }
+                }
+                checkAuthManager();
+            });
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const authManager = await waitForAuthManager();
+                await authManager.initialize();
+
+                const isAuthenticated = await authManager.checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
+                currentUser = authManager.getCurrentUser();
+                
+                // Check if user is a senior
+                if (currentUser.role !== 'senior') {
+                    showErrorMessage('Only seniors can view this page');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                    return;
+                }
+
+                // Get user ID from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const userId = urlParams.get('id');
+
+                if (!userId) {
+                    showErrorMessage('No user specified');
+                    setTimeout(() => {
+                        window.location.href = 'khakis.html';
+                    }, 2000);
+                    return;
+                }
+
+                // Load user profile
+                await loadUserProfile(userId);
+
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+            } catch (error) {
+                console.error('Page initialization error:', error);
+                showErrorMessage('Failed to load profile. Please try again.');
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        });
+
+        // Load user profile
+        async function loadUserProfile(userId) {
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    `http://localhost:5001/users/${userId}`
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to load user profile');
+                }
+
+                const data = await response.json();
+                profileUser = data.user;
+
+                displayProfile(profileUser);
+
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                showErrorMessage('Failed to load user profile');
+                setTimeout(() => {
+                    window.location.href = 'khakis.html';
+                }, 2000);
+            }
+        }
+
+        // Display profile
+        function displayProfile(user) {
+            const displayName = user.firstname && user.lastname 
+                ? `${user.firstname} ${user.lastname}`
+                : user.email;
+
+            // Header
+            document.getElementById('profileName').textContent = displayName;
+            document.getElementById('profileEmail').textContent = user.email;
+            document.getElementById('profileAvatar').src = user.picture;
+
+            // Rating
+            const rating = user.rating ? parseFloat(user.rating) : 5.0;
+            document.getElementById('ratingStars').innerHTML = generateRatingStars(rating);
+            document.getElementById('ratingValue').textContent = rating.toFixed(1);
+
+            // Location
+            const areaName = getAreaFromPostalCode(user.location) || 'Not specified';
+            document.getElementById('profileLocation').textContent = areaName;
+
+            // Member since
+            const memberSince = new Date(user.created_at).toLocaleDateString('en-SG', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            document.getElementById('memberSince').textContent = memberSince;
+
+            // Last active
+            const lastActive = user.last_login
+                ? new Date(user.last_login).toLocaleDateString('en-SG', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                })
+                : 'Recently';
+            document.getElementById('lastActive').textContent = lastActive;
+
+            // First name for personal touch
+            const firstName = user.firstname || user.email.split('@')[0];
+            document.getElementById('firstName').textContent = firstName;
+        }
+
+        // Generate rating stars
+        function generateRatingStars(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+            let stars = '';
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+            if (hasHalfStar) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+            return stars;
+        }
+
+        // Send message
+        async function sendMessage() {
+            if (!profileUser) return;
+            
+            const name = profileUser.firstname || 'this member';
+            const message = prompt(`Send a message to ${name}:`);
+            
+            if (!message || message.trim() === '') {
+                return;
+            }
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/messages',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            receiverId: profileUser.id,
+                            content: message.trim()
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showSuccessMessage(`Message sent to ${name}!`);
+                } else {
+                    showErrorMessage(data.error || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showErrorMessage('Failed to send message. Please try again.');
+            }
+        }
+
+        // Send friend request
+        async function sendFriendRequest() {
+            if (!profileUser) return;
+            
+            const name = profileUser.firstname || 'this member';
+            
+            if (!confirm(`Send friend request to ${name}?`)) {
+                return;
+            }
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/friends/request',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ friendId: profileUser.id })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showSuccessMessage(`Friend request sent to ${name}!`);
+                } else {
+                    showErrorMessage(data.error || 'Failed to send friend request');
+                }
+            } catch (error) {
+                console.error('Error sending friend request:', error);
+                showErrorMessage('Failed to send friend request. Please try again.');
+            }
+        }
+
+        // Schedule activity
+        async function scheduleActivity() {
+            if (!profileUser) return;
+            
+            const name = profileUser.firstname || 'this member';
+            const title = prompt(`Activity with ${name} - Enter title:`);
+            
+            if (!title || title.trim() === '') {
+                return;
+            }
+
+            const description = prompt('Activity description (optional):');
+            const dateInput = prompt('When? (YYYY-MM-DD HH:MM, e.g., 2025-11-20 14:00):');
+            
+            if (!dateInput) {
+                return;
+            }
+
+            const location = prompt('Where? (optional location):');
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/activities',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: title.trim(),
+                            description: description ? description.trim() : '',
+                            scheduled_at: dateInput.trim(),
+                            location: location ? location.trim() : '',
+                            invitees: [profileUser.id]
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showSuccessMessage(`Activity planned with ${name}!`);
+                } else {
+                    showErrorMessage(data.error || 'Failed to create activity');
+                }
+            } catch (error) {
+                console.error('Error creating activity:', error);
+                showErrorMessage('Failed to create activity. Please try again.');
+            }
+        }
+
+        // Utility functions
+        function showSuccessMessage(message) {
+            showMessage(message, 'success', 'fa-check-circle');
+        }
+
+        function showErrorMessage(message) {
+            showMessage(message, 'danger', 'fa-exclamation-triangle');
+        }
+
+        function showInfoMessage(message) {
+            showMessage(message, 'info', 'fa-info-circle');
+        }
+
+        function showMessage(message, type, icon) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alert.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 1055; min-width: 300px; max-width: 500px;';
+            alert.innerHTML = `
+                <i class="fas ${icon} me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alert);
+
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

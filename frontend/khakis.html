@@ -10,35 +10,36 @@
     <style>
         .khaki-card {
             transition: transform 0.2s, box-shadow 0.2s;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
+            position: relative;
         }
 
         .khaki-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
 
         .khaki-avatar {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #fff;
+            border: 4px solid #fff;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .khaki-avatar-placeholder {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            border: 3px solid #fff;
+            border: 4px solid #fff;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
+            font-size: 40px;
             font-weight: 600;
             color: white;
             text-transform: uppercase;
@@ -46,14 +47,24 @@
 
         .rating-stars {
             color: #ffc107;
+            font-size: 1.3rem;
         }
 
         .location-badge {
             background-color: #e7f3ff;
             color: #0066cc;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+        }
+
+        #locationBadge {
+            font-size: 1.15rem;
+            padding: 10px 18px;
+        }
+
+        #locationBadge i {
+            font-size: 1.2rem;
         }
 
         .tab-content {
@@ -65,6 +76,8 @@
             border: none;
             border-bottom: 3px solid transparent;
             font-weight: 500;
+            font-size: 1.1rem;
+            padding: 12px 20px;
         }
 
         .nav-tabs .nav-link.active {
@@ -105,12 +118,101 @@
         .khaki-card-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px;
+            padding: 20px;
         }
 
         .member-since {
-            font-size: 0.85rem;
+            font-size: 1rem;
             color: #6c757d;
+        }
+
+        .add-friend-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            font-size: 1.2rem;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-body {
+            font-size: 1.05rem;
+            padding: 1.5rem;
+        }
+
+        .btn {
+            font-size: 1.1rem;
+            padding: 10px 16px;
+        }
+
+        .btn-lg {
+            font-size: 1.2rem;
+            padding: 14px 24px;
+        }
+
+        /* Pagination styles */
+        .pagination {
+            margin-top: 2rem;
+            justify-content: center;
+        }
+
+        .pagination .page-link {
+            font-size: 1.1rem;
+            padding: 10px 18px;
+            margin: 0 4px;
+            border-radius: 8px;
+            color: #667eea;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: #667eea;
+            border-color: #667eea;
+            color: white !important;
+        }
+
+        .pagination .page-link:hover {
+            background-color: #e8eaf6;
+            color: #667eea;
+        }
+
+        /* Larger touch targets */
+        .form-control, .form-select {
+            font-size: 1.05rem;
+            padding: 12px;
+        }
+
+        .input-group-text {
+            font-size: 1.1rem;
+        }
+
+        /* Modal styles */
+        .modal-content {
+            border-radius: 12px;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #e9ecef;
+            padding: 1.25rem;
         }
     </style>
 </head>
@@ -129,23 +231,118 @@
         </div>
     </div>
 
+    <!-- Send Message Modal -->
+    <div class="modal fade" id="sendMessageModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Send Message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Send a message to <strong id="messageRecipientName"></strong>:</p>
+                    <textarea class="form-control" id="messageContent" rows="4" placeholder="Type your message here..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="sendMessageConfirm()">Send Message</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Friend Modal -->
+    <div class="modal fade" id="addFriendModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Send Friend Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Send a friend request to <strong id="friendRequestName"></strong>?</p>
+                    <p class="text-muted">They will be notified and can accept or decline your request.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addFriendConfirm()">Send Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan Activity Modal -->
+    <div class="modal fade" id="planActivityModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Plan Activity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Plan an activity with <strong id="activityPartnerName"></strong>:</p>
+                    <div class="mb-3">
+                        <label for="activityTitle" class="form-label">Activity Title *</label>
+                        <input type="text" class="form-control" id="activityTitle" placeholder="e.g., Coffee Chat, Morning Walk">
+                    </div>
+                    <div class="mb-3">
+                        <label for="activityDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="activityDescription" rows="3" placeholder="Optional details about the activity"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="activityDateTime" class="form-label">Date & Time *</label>
+                        <input type="datetime-local" class="form-control" id="activityDateTime">
+                    </div>
+                    <div class="mb-3">
+                        <label for="activityLocation" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="activityLocation" placeholder="Meeting place">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="planActivityConfirm()">Create Activity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div class="container mt-4">
         <!-- Page Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div>
                         <h2><i class="fas fa-users me-2"></i>View Khakis Near Me</h2>
-                        <p class="text-muted">Connect with fellow seniors in your community</p>
+                        <p class="text-muted mb-0">Connect with fellow seniors in your community</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2 align-items-center">
                         <span class="badge bg-primary" id="locationBadge">
                             <i class="fas fa-map-marker-alt me-1"></i>
                             <span id="currentLocation">Loading...</span>
                         </span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="row mb-3">
+            <div class="col-md-6 mb-2">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="Search by name or email...">
+                </div>
+            </div>
+            <div class="col-md-6 mb-2">
+                <select class="form-select" id="sortSelect">
+                    <option value="rating">Sort by Rating</option>
+                    <option value="name">Sort by Name</option>
+                    <option value="recent">Sort by Recently Joined</option>
+                </select>
             </div>
         </div>
 
@@ -194,10 +391,35 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/header.js"></script>
+    <script src="js/postal-utils.js"></script>
     <script>
         let currentUser = null;
         let nearbyKhakis = [];
         let allKhakis = [];
+        
+        // Pagination state
+        let ITEMS_PER_PAGE = getItemsPerPage();
+        let currentNearbyPage = 1;
+        let currentAllPage = 1;
+
+        // Get items per page based on screen size
+        function getItemsPerPage() {
+            return window.innerWidth >= 768 ? 6 : 5;
+        }
+
+        // Update items per page on window resize
+        window.addEventListener('resize', () => {
+            const newItemsPerPage = getItemsPerPage();
+            if (newItemsPerPage !== ITEMS_PER_PAGE) {
+                ITEMS_PER_PAGE = newItemsPerPage;
+                // Refresh current view
+                const searchInput = document.getElementById('searchInput');
+                const sortSelect = document.getElementById('sortSelect');
+                if (searchInput && sortSelect) {
+                    filterAndDisplayKhakis(searchInput.value.toLowerCase(), sortSelect.value);
+                }
+            }
+        });
 
         // Wait for AuthManager to be available
         function waitForAuthManager() {
@@ -245,11 +467,14 @@
                 }
 
                 // Display current location (convert postal code to area name)
-                const areaName = getAreaFromPostalCode(currentUser.location);
+                const areaName = getAreaFromPostalCode(currentUser.location) || 'Location not set';
                 document.getElementById('currentLocation').textContent = areaName;
 
                 // Load khakis data
                 await loadKhakis();
+
+                // Setup search and filter
+                setupSearchAndFilter();
 
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -300,72 +525,92 @@
             }
         }
 
-        // Convert Singapore postal code to area name
-        function getAreaFromPostalCode(postalCode) {
-            if (!postalCode) return 'Location not set';
-            
-            // Remove any non-digit characters
-            const postal = postalCode.toString().replace(/\D/g, '');
-            if (postal.length < 2) return 'Unknown Area';
-            
-            // Get the first 2 digits (sector code)
-            const sector = parseInt(postal.substring(0, 2));
-            
-            // Map Singapore postal sectors to area names
-            // Based on actual Singapore postal code ranges
-            const sectorMap = {
-                // Central (01-09)
-                1: 'Raffles Place', 2: 'Tanjong Pagar', 3: 'Tiong Bahru', 
-                4: 'Telok Blangah', 5: 'Pasir Panjang', 6: 'High Street', 
-                7: 'Beach Road', 8: 'Little India', 9: 'Orchard',
-                
-                // Central/South (10-16)
-                10: 'Tanglin', 11: 'Novena', 12: 'Toa Payoh', 
-                13: 'Macpherson', 14: 'Geylang', 15: 'Katong',
-                16: 'Bedok', 17: 'Changi',
-                
-                // East (18-23)
-                18: 'Pasir Ris', 19: 'Serangoon Garden', 20: 'Hougang',
-                21: 'Upper Serangoon', 22: 'Sengkang', 23: 'Punggol',
-                
-                // North (24-28)
-                24: 'Lim Chu Kang', 25: 'Kranji', 26: 'Upper Thomson',
-                27: 'Yishun', 28: 'Seletar',
-                
-                // Central/North (29-33)
-                29: 'Sembawang', 30: 'Mandai', 31: 'Toa Payoh',
-                32: 'Toa Payoh', 33: 'Toa Payoh',
-                
-                // North/West (34-42)
-                34: 'Springleaf', 35: 'Woodlands', 36: 'Woodlands',
-                37: 'Woodlands', 38: 'Woodlands', 39: 'Woodlands',
-                40: 'Choa Chu Kang', 41: 'Choa Chu Kang', 42: 'Bukit Batok',
-                
-                // West (43-52)
-                43: 'Bukit Batok', 44: 'Bukit Batok', 45: 'Bukit Batok',
-                46: 'Clementi', 47: 'Clementi', 48: 'Jurong East',
-                49: 'Jurong East', 50: 'Jurong West', 51: 'Jurong West',
-                52: 'Jurong West',
-                
-                // Central/West (53-61)
-                53: 'Bukit Merah', 54: 'Bukit Merah', 55: 'Queenstown',
-                56: 'Ang Mo Kio', 57: 'Ang Mo Kio', 58: 'Bishan',
-                59: 'Serangoon', 60: 'Bishan', 61: 'Upper Bukit Timah',
-                
-                // Central/South (62-68)
-                62: 'Alexandra', 63: 'Bukit Merah', 64: 'Harbourfront',
-                65: 'Buona Vista', 66: 'Pasir Panjang', 67: 'High Street',
-                68: 'Beach Road',
-                
-                // East (69-82)
-                69: 'Rochor', 70: 'Kallang', 71: 'Geylang',
-                72: 'Paya Lebar', 73: 'Marine Parade', 74: 'Bedok',
-                75: 'Simei', 76: 'Tampines', 77: 'Pasir Ris',
-                78: 'Pasir Ris', 79: 'Tampines', 80: 'Tampines',
-                81: 'Changi', 82: 'Changi'
-            };
-            
-            return sectorMap[sector] || 'Unknown Area';
+        // Setup search and filter functionality
+        function setupSearchAndFilter() {
+            const searchInput = document.getElementById('searchInput');
+            const sortSelect = document.getElementById('sortSelect');
+
+            // Search functionality
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                filterAndDisplayKhakis(searchTerm, sortSelect.value);
+            });
+
+            // Sort functionality
+            sortSelect.addEventListener('change', (e) => {
+                const searchTerm = searchInput.value.toLowerCase();
+                filterAndDisplayKhakis(searchTerm, e.target.value);
+            });
+
+            // Tab change handler
+            const nearbyTab = document.getElementById('nearby-tab');
+            const allTab = document.getElementById('all-tab');
+
+            nearbyTab.addEventListener('shown.bs.tab', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                filterAndDisplayKhakis(searchTerm, sortSelect.value);
+            });
+
+            allTab.addEventListener('shown.bs.tab', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                filterAndDisplayKhakis(searchTerm, sortSelect.value);
+            });
+        }
+
+        // Filter and display khakis based on search and sort
+        function filterAndDisplayKhakis(searchTerm, sortBy) {
+            // Determine which tab is active
+            const nearbyTab = document.getElementById('nearby-tab');
+            const isNearbyActive = nearbyTab.classList.contains('active');
+
+            let khakisToFilter = isNearbyActive ? [...nearbyKhakis] : [...allKhakis];
+
+            // Filter by search term
+            if (searchTerm) {
+                khakisToFilter = khakisToFilter.filter(khaki => {
+                    const name = khaki.firstname && khaki.lastname 
+                        ? `${khaki.firstname} ${khaki.lastname}`.toLowerCase()
+                        : '';
+                    const email = (khaki.email || '').toLowerCase();
+                    return name.includes(searchTerm) || email.includes(searchTerm);
+                });
+            }
+
+            // Sort
+            khakisToFilter.sort((a, b) => {
+                switch (sortBy) {
+                    case 'rating':
+                        return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
+                    case 'name':
+                        const nameA = a.firstname && a.lastname 
+                            ? `${a.firstname} ${a.lastname}`.toLowerCase()
+                            : a.email.toLowerCase();
+                        const nameB = b.firstname && b.lastname 
+                            ? `${b.firstname} ${b.lastname}`.toLowerCase()
+                            : b.email.toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    case 'recent':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    default:
+                        return 0;
+                }
+            });
+
+            // Reset to page 1 when filtering
+            if (isNearbyActive) {
+                currentNearbyPage = 1;
+            } else {
+                currentAllPage = 1;
+            }
+
+            // Display filtered and sorted results with pagination
+            const containerId = isNearbyActive ? 'nearbyKhakisContainer' : 'allKhakisContainer';
+            const currentPage = isNearbyActive ? currentNearbyPage : currentAllPage;
+            displayKhakis(khakisToFilter, containerId, currentPage);
+
+            // Update count
+            const countId = isNearbyActive ? 'nearbyCount' : 'allCount';
+            document.getElementById(countId).textContent = khakisToFilter.length;
         }
 
         // Get initials from name
@@ -380,9 +625,10 @@
             return initials || '?';
         }
 
-        // Display khakis
-        function displayKhakis(khakis, containerId) {
+        // Display khakis with pagination
+        function displayKhakis(khakis, containerId, page = 1) {
             const container = document.getElementById(containerId);
+            const isNearby = containerId === 'nearbyKhakisContainer';
 
             if (!khakis || khakis.length === 0) {
                 container.innerHTML = `
@@ -391,7 +637,7 @@
                             <i class="fas fa-users"></i>
                             <h4>No Khakis Found</h4>
                             <p class="text-muted">
-                                ${containerId === 'nearbyKhakisContainer' 
+                                ${isNearby
                                     ? 'There are no other seniors in your area yet.' 
                                     : 'No seniors are registered in the system yet.'}
                             </p>
@@ -401,7 +647,13 @@
                 return;
             }
 
-            container.innerHTML = khakis.map(khaki => {
+            // Calculate pagination
+            const totalPages = Math.ceil(khakis.length / ITEMS_PER_PAGE);
+            const startIndex = (page - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const paginatedKhakis = khakis.slice(startIndex, endIndex);
+
+            const cardsHtml = paginatedKhakis.map(khaki => {
                 const displayName = khaki.firstname && khaki.lastname 
                     ? `${khaki.firstname} ${khaki.lastname}`
                     : khaki.email;
@@ -411,47 +663,45 @@
                     month: 'short'
                 });
 
-                // Convert rating to number and ensure it's valid
                 const rating = khaki.rating ? parseFloat(khaki.rating) : 5.0;
                 const ratingStars = generateRatingStars(rating);
-
-                // Get area name from postal code
-                const areaName = getAreaFromPostalCode(khaki.location);
-                
-                // Show area only in "All Khakis" tab
-                const showArea = containerId === 'allKhakisContainer';
-
-                // Get initials for fallback
+                const areaName = getAreaFromPostalCode(khaki.location) || 'Unknown Area';
+                const showArea = !isNearby;
                 const initials = getInitials(khaki.firstname, khaki.lastname);
 
                 return `
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card khaki-card h-100">
+                            <button class="btn btn-success add-friend-btn" 
+                                    onclick="addFriend(${khaki.id}, '${escapeHtml(displayName)}')" 
+                                    title="Add ${escapeHtml(displayName)} as friend">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
                             <div class="khaki-card-header text-center">
                                 ${khaki.picture ? `
                                     <img src="${khaki.picture}" 
                                          alt="${displayName}" 
-                                         class="khaki-avatar mb-2"
+                                         class="khaki-avatar mb-3"
                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="khaki-avatar-placeholder mb-2" style="display: none; margin: 0 auto;">
+                                    <div class="khaki-avatar-placeholder mb-3" style="display: none; margin: 0 auto;">
                                         ${initials}
                                     </div>
                                 ` : `
-                                    <div class="khaki-avatar-placeholder mb-2" style="margin: 0 auto;">
+                                    <div class="khaki-avatar-placeholder mb-3" style="margin: 0 auto;">
                                         ${initials}
                                     </div>
                                 `}
                                 <h5 class="mb-0">${escapeHtml(displayName)}</h5>
                             </div>
                             <div class="card-body">
-                                <div class="mb-2">
+                                <div class="mb-3">
                                     <div class="rating-stars">
                                         ${ratingStars}
                                         <span class="text-dark ms-1">${rating.toFixed(1)}</span>
                                     </div>
                                 </div>
                                 ${showArea ? `
-                                <div class="mb-2">
+                                <div class="mb-3">
                                     <span class="location-badge">
                                         <i class="fas fa-map-marker-alt me-1"></i>
                                         ${escapeHtml(areaName)}
@@ -467,16 +717,281 @@
                                     Member since ${memberSince}
                                 </div>
                             </div>
-                            <div class="card-footer bg-white">
-                                <button class="btn btn-sm btn-primary w-100" 
-                                        onclick="viewProfile(${khaki.id})">
-                                    <i class="fas fa-user me-1"></i>View Profile
-                                </button>
+                            <div class="card-footer bg-white border-0 pt-0">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary btn-lg" onclick="viewProfile(${khaki.id})">
+                                        <i class="fas fa-user me-2"></i>View Profile
+                                    </button>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <button class="btn btn-outline-primary w-100" 
+                                                    onclick="quickConnect(${khaki.id}, '${escapeHtml(displayName)}')" 
+                                                    title="Send a message">
+                                                <i class="fas fa-comment me-1"></i>Chat
+                                            </button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button class="btn btn-outline-info w-100" 
+                                                    onclick="planActivity(${khaki.id}, '${escapeHtml(displayName)}')" 
+                                                    title="Plan activity">
+                                                <i class="fas fa-calendar-plus me-1"></i>Plan
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
+
+            // Generate pagination
+            const paginationHtml = totalPages > 1 ? `
+                <div class="col-12">
+                    <nav aria-label="Khakis pagination">
+                        <ul class="pagination">
+                            <li class="page-item ${page === 1 ? 'disabled' : ''}">
+                                <a class="page-link" href="#" onclick="changePage(${page - 1}, '${containerId}'); return false;">
+                                    <i class="fas fa-chevron-left"></i> Previous
+                                </a>
+                            </li>
+                            ${generatePageNumbers(page, totalPages, containerId)}
+                            <li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                                <a class="page-link" href="#" onclick="changePage(${page + 1}, '${containerId}'); return false;">
+                                    Next <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            ` : '';
+
+            container.innerHTML = cardsHtml + paginationHtml;
+        }
+
+        // Generate page numbers for pagination
+        function generatePageNumbers(currentPage, totalPages, containerId) {
+            let html = '';
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+            if (endPage - startPage + 1 < maxVisible) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${i}, '${containerId}'); return false;">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+            return html;
+        }
+
+        // Change page
+        function changePage(page, containerId) {
+            const isNearby = containerId === 'nearbyKhakisContainer';
+            const searchInput = document.getElementById('searchInput');
+            const sortSelect = document.getElementById('sortSelect');
+            
+            // Update current page
+            if (isNearby) {
+                currentNearbyPage = page;
+            } else {
+                currentAllPage = page;
+            }
+
+            // Get filtered khakis
+            const searchTerm = searchInput.value.toLowerCase();
+            const sortBy = sortSelect.value;
+            
+            let khakisToFilter = isNearby ? [...nearbyKhakis] : [...allKhakis];
+
+            // Apply search filter
+            if (searchTerm) {
+                khakisToFilter = khakisToFilter.filter(khaki => {
+                    const name = khaki.firstname && khaki.lastname 
+                        ? `${khaki.firstname} ${khaki.lastname}`.toLowerCase()
+                        : '';
+                    const email = (khaki.email || '').toLowerCase();
+                    return name.includes(searchTerm) || email.includes(searchTerm);
+                });
+            }
+
+            // Apply sort
+            khakisToFilter.sort((a, b) => {
+                switch (sortBy) {
+                    case 'rating':
+                        return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
+                    case 'name':
+                        const nameA = a.firstname && a.lastname 
+                            ? `${a.firstname} ${a.lastname}`.toLowerCase()
+                            : a.email.toLowerCase();
+                        const nameB = b.firstname && b.lastname 
+                            ? `${b.firstname} ${b.lastname}`.toLowerCase()
+                            : b.email.toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    case 'recent':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    default:
+                        return 0;
+                }
+            });
+
+            displayKhakis(khakisToFilter, containerId, page);
+            
+            // Scroll to top of results
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Quick connect action - Send message
+        let selectedKhakiId = null;
+        let selectedKhakiName = null;
+        let selectedActivityKhakiId = null;
+        let selectedActivityKhakiName = null;
+
+        async function quickConnect(khakiId, name) {
+            selectedKhakiId = khakiId;
+            selectedKhakiName = name;
+            document.getElementById('messageRecipientName').textContent = name;
+            document.getElementById('messageContent').value = '';
+            const modal = new bootstrap.Modal(document.getElementById('sendMessageModal'));
+            modal.show();
+        }
+
+        async function sendMessageConfirm() {
+            const message = document.getElementById('messageContent').value.trim();
+            
+            if (!message) {
+                showErrorMessage('Please enter a message');
+                return;
+            }
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/messages',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            receiverId: selectedKhakiId,
+                            content: message
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccessMessage(`Message sent to ${selectedKhakiName}!`);
+                    bootstrap.Modal.getInstance(document.getElementById('sendMessageModal')).hide();
+                } else {
+                    showErrorMessage(data.error || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showErrorMessage('Failed to send message. Please try again.');
+            }
+        }
+
+        // Add friend action
+        async function addFriend(khakiId, name) {
+            selectedKhakiId = khakiId;
+            selectedKhakiName = name;
+            document.getElementById('friendRequestName').textContent = name;
+            const modal = new bootstrap.Modal(document.getElementById('addFriendModal'));
+            modal.show();
+        }
+
+        async function addFriendConfirm() {
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/friends/request',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ friendId: selectedKhakiId })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccessMessage(`Friend request sent to ${selectedKhakiName}!`);
+                    bootstrap.Modal.getInstance(document.getElementById('addFriendModal')).hide();
+                } else {
+                    showErrorMessage(data.error || 'Failed to send friend request');
+                }
+            } catch (error) {
+                console.error('Error sending friend request:', error);
+                showErrorMessage('Failed to send friend request. Please try again.');
+            }
+        }
+
+        // Plan activity action
+        async function planActivity(khakiId, name) {
+            selectedActivityKhakiId = khakiId;
+            selectedActivityKhakiName = name;
+            document.getElementById('activityPartnerName').textContent = name;
+            document.getElementById('activityTitle').value = '';
+            document.getElementById('activityDescription').value = '';
+            document.getElementById('activityDateTime').value = '';
+            document.getElementById('activityLocation').value = '';
+            const modal = new bootstrap.Modal(document.getElementById('planActivityModal'));
+            modal.show();
+        }
+
+        async function planActivityConfirm() {
+            const title = document.getElementById('activityTitle').value.trim();
+            const description = document.getElementById('activityDescription').value.trim();
+            const dateTime = document.getElementById('activityDateTime').value;
+            const location = document.getElementById('activityLocation').value.trim();
+
+            if (!title) {
+                showErrorMessage('Please enter an activity title');
+                return;
+            }
+
+            if (!dateTime) {
+                showErrorMessage('Please select a date and time');
+                return;
+            }
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/activities',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: title,
+                            description: description,
+                            scheduled_at: dateTime,
+                            location: location,
+                            invitees: [selectedActivityKhakiId]
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccessMessage(`Activity "${title}" created with ${selectedActivityKhakiName}!`);
+                    bootstrap.Modal.getInstance(document.getElementById('planActivityModal')).hide();
+                } else {
+                    showErrorMessage(data.error || 'Failed to create activity');
+                }
+            } catch (error) {
+                console.error('Error creating activity:', error);
+                showErrorMessage('Failed to create activity. Please try again.');
+            }
         }
 
         // Generate rating stars
@@ -500,10 +1015,7 @@
 
         // View profile
         function viewProfile(khakiId) {
-            // For now, show an alert. You can implement a profile view page later
-            showInfoMessage('Profile view feature coming soon!');
-            // Future implementation:
-            // window.location.href = `profile-view.html?userId=${khakiId}`;
+            window.location.href = `khaki-profile.html?id=${khakiId}`;
         }
 
         // Utility functions

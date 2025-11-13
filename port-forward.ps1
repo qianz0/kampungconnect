@@ -20,6 +20,7 @@ Start-Job -Name "matching-service" -ScriptBlock { kubectl port-forward -n kampun
 Start-Job -Name "notification-service" -ScriptBlock { kubectl port-forward -n kampungconnect svc/notification-service 5004:5000 } | Out-Null
 Start-Job -Name "rating-service" -ScriptBlock { kubectl port-forward -n kampungconnect svc/rating-service 5006:5000 } | Out-Null
 Start-Job -Name "admin-service" -ScriptBlock { kubectl port-forward -n kampungconnect svc/admin-service 5007:5000 } | Out-Null
+Start-Job -Name "social-service" -ScriptBlock { kubectl port-forward -n kampungconnect svc/social-service 5008:5008 } | Out-Null
 Start-Job -Name "stats-service" -ScriptBlock { kubectl port-forward -n kampungconnect svc/stats-service 5009:5009 } | Out-Null
 
 Start-Sleep -Seconds 3
@@ -43,6 +44,7 @@ Write-Host "  Matching:        http://localhost:5003" -ForegroundColor White
 Write-Host "  Notification:    http://localhost:5004" -ForegroundColor White
 Write-Host "  Rating:          http://localhost:5006" -ForegroundColor White
 Write-Host "  Admin:           http://localhost:5007" -ForegroundColor White
+Write-Host "  Social:          http://localhost:5008" -ForegroundColor White
 Write-Host "  Stats:           http://localhost:5009" -ForegroundColor White
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Yellow

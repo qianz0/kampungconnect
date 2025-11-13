@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - KampungConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="css/header.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+            display: flex;
+        }
+        .conversations-list {
+            width: 350px;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+        }
+        .conversation-item {
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .conversation-item:hover, .conversation-item.active {
+            background: #f8f9fa;
+        }
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+        }
+        .message.sent {
+            justify-content: flex-end;
+        }
+        .message-bubble {
+            max-width: 60%;
+            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+        .message.received .message-bubble {
+            background: white;
+            border: 1px solid #dee2e6;
+        }
+        .message.sent .message-bubble {
+            background: #667eea;
+            color: white;
+        }
+        .message-input-area {
+            padding: 1rem;
+            background: white;
+            border-top: 1px solid #dee2e6;
+        }
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        .no-chat-selected {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div id="commonHeader"></div>
+
+    <div class="container-fluid">
+        <div class="chat-container">
+            <!-- Conversations List -->
+            <div class="conversations-list">
+                <div class="p-3 border-bottom">
+                    <h5><i class="fas fa-comments me-2"></i>Messages</h5>
+                </div>
+                <div id="conversationsContainer">
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <p>Loading conversations...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div id="noChatSelected" class="no-chat-selected">
+                    <div class="text-center">
+                        <i class="fas fa-comments fa-4x mb-3"></i>
+                        <h4>Select a conversation</h4>
+                        <p class="text-muted">Choose a conversation from the list to start messaging</p>
+                    </div>
+                </div>
+
+                <div id="chatArea" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                    <!-- Chat Header -->
+                    <div class="p-3 border-bottom bg-white">
+                        <div class="d-flex align-items-center">
+                            <img id="chatUserAvatar" src="" class="user-avatar me-3" alt="">
+                            <div>
+                                <h5 class="mb-0" id="chatUserName"></h5>
+                                <small class="text-muted" id="chatUserLocation"></small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages Container -->
+                    <div class="messages-container" id="messagesContainer"></div>
+
+                    <!-- Message Input -->
+                    <div class="message-input-area">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="messageInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendMessage()">
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane me-1"></i>Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/header.js"></script>
+    <script src="js/postal-utils.js"></script>
+    <script>
+        let currentUserId = null;
+        let selectedConversation = null;
+        let conversations = [];
+
+        async function loadConversations() {
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch('http://localhost:5008/messages/conversations');
+                const data = await response.json();
+
+                if (response.ok) {
+                    conversations = data.conversations || [];
+                    displayConversations(conversations);
+
+                    // Check if we should open a specific conversation from URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const userId = urlParams.get('userId');
+                    if (userId) {
+                        openConversation(parseInt(userId));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                document.getElementById('conversationsContainer').innerHTML = 
+                    '<div class="text-center py-5 text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><p>Failed to load conversations</p></div>';
+            }
+        }
+
+        function displayConversations(convs) {
+            const container = document.getElementById('conversationsContainer');
+            if (convs.length === 0) {
+                container.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-3"></i><p>No messages yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = convs.map(conv => `
+                <div class="conversation-item ${selectedConversation && selectedConversation.other_user_id === conv.other_user_id ? 'active' : ''}" 
+                     onclick="openConversation(${conv.other_user_id})">
+                    <div class="d-flex align-items-center">
+                        <img src="${conv.other_user_picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(conv.other_user_firstname + ' ' + conv.other_user_lastname)}" 
+                             class="user-avatar me-3" alt="">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0">${conv.other_user_firstname} ${conv.other_user_lastname}</h6>
+                            <p class="text-muted mb-0 small text-truncate">${conv.content}</p>
+                            <small class="text-muted">${new Date(conv.created_at).toLocaleDateString()}</small>
+                        </div>
+                        ${!conv.read && conv.receiver_id === currentUserId ? '<span class="badge bg-primary">New</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function openConversation(otherUserId) {
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch(`http://localhost:5008/messages/${otherUserId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Find conversation details
+                    let conv = conversations.find(c => c.other_user_id === otherUserId);
+                    if (!conv) {
+                        // Fetch user details if not in conversations
+                        const userResponse = await authManager.authenticatedFetch(`http://localhost:5001/users/${otherUserId}`);
+                        const userData = await userResponse.json();
+                        conv = {
+                            other_user_id: otherUserId,
+                            other_user_firstname: userData.firstname,
+                            other_user_lastname: userData.lastname,
+                            other_user_picture: userData.picture
+                        };
+                    }
+
+                    selectedConversation = conv;
+                    displayChat(conv, data.messages || []);
+                    document.getElementById('noChatSelected').style.display = 'none';
+                    document.getElementById('chatArea').style.display = 'flex';
+
+                    // Update conversations list to show active
+                    displayConversations(conversations);
+                }
+            } catch (error) {
+                console.error('Error opening conversation:', error);
+            }
+        }
+
+        function displayChat(conv, messages) {
+            document.getElementById('chatUserName').textContent = `${conv.other_user_firstname} ${conv.other_user_lastname}`;
+            document.getElementById('chatUserAvatar').src = conv.other_user_picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(conv.other_user_firstname + ' ' + conv.other_user_lastname);
+            document.getElementById('chatUserLocation').textContent = '';
+
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = messages.map(msg => `
+                <div class="message ${msg.sender_id === currentUserId ? 'sent' : 'received'}">
+                    <div class="message-bubble">
+                        <div>${msg.content}</div>
+                        <small class="d-block mt-1" style="opacity: 0.7; font-size: 0.75rem;">
+                            ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                        </small>
+                    </div>
+                </div>
+            `).join('');
+
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message || !selectedConversation) return;
+
+            try {
+                const authManager = window.AuthManager;
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/messages',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            receiverId: selectedConversation.other_user_id,
+                            content: message
+                        })
+                    }
+                );
+
+                if (response.ok) {
+                    input.value = '';
+                    openConversation(selectedConversation.other_user_id);
+                    loadConversations();
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await window.AuthManager.waitForAuth();
+            currentUserId = user.id;
+            loadConversations();
+
+            // Auto-refresh every 10 seconds
+            setInterval(() => {
+                loadConversations();
+                if (selectedConversation) {
+                    openConversation(selectedConversation.other_user_id);
+                }
+            }, 10000);
+        });
+    </script>
+</body>
+</html>

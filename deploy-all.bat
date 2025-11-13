@@ -14,7 +14,7 @@ if errorlevel 1 (
 
 echo.
 echo Step 2: Deploying to Kubernetes...
-echo Press Ctrl+C when all pods are running, then run port-forward.bat
+echo Press Ctrl+C when all pods are running, then run port-forward.ps1
 echo.
 call deploy-to-kuber.bat
 
@@ -23,7 +23,7 @@ echo ========================================
 echo Deployment process complete!
 echo ========================================
 echo.
-echo Next step: Run port-forward.bat to access services
+echo Next step: Run port-forward.ps1 to access services
 echo Then open http://localhost:8080 in your browser
 echo.
 pause

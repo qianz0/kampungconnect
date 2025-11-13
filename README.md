@@ -222,7 +222,7 @@ Get-Job
 **Batch File (opens separate windows):**
 
 ```cmd
-port-forward.bat
+port-forward.ps1
 ```
 
 ### 6. Access the Application
@@ -475,7 +475,7 @@ deploy-to-kuber.bat
 | `deploy-all.bat`          | Full workflow: build + deploy                  |
 | `port-forward.ps1`        | Start all port forwards (PowerShell)           |
 | `stop-port-forward.ps1`   | Stop all port forwards (PowerShell)            |
-| `port-forward.bat`        | Start port forwards (opens separate windows)   |
+| `port-forward.ps1`        | Start port forwards (opens separate windows)   |
 | `kubectl get pods -n ...` | View pod status                                |
 | `kubectl logs -f ...`     | View service logs                              |
 | `kubectl rollout restart` | Restart deployments after code changes         |
@@ -732,7 +732,7 @@ kubectl exec -it deployment/rabbitmq -n kampungconnect -- \
 | `deploy-all.bat`      | Complete workflow: build + deploy              |
 | `build-all.bat`       | Build all Docker images                        |
 | `deploy-to-kuber.bat` | Deploy to Kubernetes                           |
-| `port-forward.bat`    | Start port forwards (Batch - separate windows) |
+| `port-forward.ps1`    | Start port forwards (Batch - separate windows) |
 
 ### Step-by-Step Deployment
 
@@ -776,7 +776,7 @@ kubectl get deployments -n kampungconnect
 .\port-forward.ps1
 
 # Or Batch (opens 12 windows)
-port-forward.bat
+port-forward.ps1
 ```
 
 ### Production Deployment Considerations

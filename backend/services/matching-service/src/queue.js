@@ -1,4 +1,3 @@
-// src/queue.js
 const amqp = require("amqplib");
 
 let channel;
@@ -16,154 +15,154 @@ client.collectDefaultMetrics();
 
 // Custom message counters
 const messageProcessed = new client.Counter({
-  name: 'messages_processed_total',
-  help: 'Total number of messages successfully processed by matching-service',
+    name: 'messages_processed_total',
+    help: 'Total number of messages successfully processed by matching-service',
 });
 
 const messageFailed = new client.Counter({
-  name: 'messages_failed_total',
-  help: 'Total number of messages that failed processing (sent to DLQ)',
+    name: 'messages_failed_total',
+    help: 'Total number of messages that failed processing (sent to DLQ)',
 });
 
 /**
  * Connect to RabbitMQ (with automatic reconnects)
  */
 async function connectQueue() {
-  if (isConnecting || channel) return;
-  isConnecting = true;
+    if (isConnecting || channel) return;
+    isConnecting = true;
 
-  try {
-    connection = await amqp.connect(RABBITMQ_URL);
-    channel = await connection.createChannel();
+    try {
+        connection = await amqp.connect(RABBITMQ_URL);
+        channel = await connection.createChannel();
 
-    // Declare the main priority queue + DLQ once
-    await assertQueueWithDLQ(channel, "request_created", {
-      "x-max-priority": 10, // <-- Priority support
-    });
+        // Declare the main priority queue + DLQ once
+        await assertQueueWithDLQ(channel, "request_created", {
+            "x-max-priority": 10, // <-- Priority support
+        });
 
-    await setupRetryQueue(channel);
+        await setupRetryQueue(channel);
 
-    console.log("✅ [matching-service] Connected to RabbitMQ");
+        console.log("✅ [matching-service] Connected to RabbitMQ");
 
-    isConnecting = false;
+        isConnecting = false;
 
-    // re-register consumer if needed
-    if (onConnectedCallback) {
-      console.log("🔄 [matching-service] Re-registering consumer...");
-      await onConnectedCallback(channel);
+        // re-register consumer if needed
+        if (onConnectedCallback) {
+            console.log("🔄 [matching-service] Re-registering consumer...");
+            await onConnectedCallback(channel);
+        }
+
+        connection.on("close", () => {
+            console.warn("⚠️ [matching-service] RabbitMQ connection closed. Reconnecting...");
+            channel = null;
+            isConnecting = false;
+            setTimeout(connectQueue, 5000);
+        });
+
+        connection.on("error", (err) => {
+            console.error("❌ [matching-service] RabbitMQ error:", err.message);
+        });
+    } catch (err) {
+        console.error("❌ [matching-service] RabbitMQ connection failed:", err.message);
+        channel = null;
+        isConnecting = false;
+        setTimeout(connectQueue, 5000);
     }
-
-    connection.on("close", () => {
-      console.warn("⚠️ [matching-service] RabbitMQ connection closed. Reconnecting...");
-      channel = null;
-      isConnecting = false;
-      setTimeout(connectQueue, 5000);
-    });
-
-    connection.on("error", (err) => {
-      console.error("❌ [matching-service] RabbitMQ error:", err.message);
-    });
-  } catch (err) {
-    console.error("❌ [matching-service] RabbitMQ connection failed:", err.message);
-    channel = null;
-    isConnecting = false;
-    setTimeout(connectQueue, 5000);
-  }
 }
 
 // DLQ helper
 async function assertQueueWithDLQ(ch, queueName, extraArgs = {}) {
-  await ch.assertQueue(`${queueName}.dlq`, { durable: true });
-  await ch.assertQueue(queueName, {
-    durable: true,
-    arguments: {
-      "x-dead-letter-exchange": "",
-      "x-dead-letter-routing-key": `${queueName}.dlq`,
-      ...extraArgs, // <-- merge in custom arguments like x-max-priority
-    },
-  });
+    await ch.assertQueue(`${queueName}.dlq`, { durable: true });
+    await ch.assertQueue(queueName, {
+        durable: true,
+        arguments: {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": `${queueName}.dlq`,
+            ...extraArgs, // <-- merge in custom arguments like x-max-priority
+        },
+    });
 }
 
 async function setupRetryQueue(ch) {
-  await ch.assertQueue("request_retry", {
-    durable: true,
-    arguments: {
-      "x-dead-letter-exchange": "",
-      "x-dead-letter-routing-key": "request_created",
-      "x-message-ttl": 5000, // 5 seconds retry (for testing)
-    },
-  });
+    await ch.assertQueue("request_retry", {
+        durable: true,
+        arguments: {
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": "request_created",
+            "x-message-ttl": 5000, // 5 seconds retry (for testing)
+        },
+    });
 }
 
 /**
  * Publish message with optional priority
  */
 async function publishMessage(queueName, message, priority = 1) {
-  try {
-    if (!channel) await connectQueue();
+    try {
+        if (!channel) await connectQueue();
 
-    // Skip reasserting retry queue
-    if (queueName !== "request_retry") {
-      await assertQueueWithDLQ(channel, queueName, {
-        "x-max-priority": 10,
-      });
+        // Skip reasserting retry queue
+        if (queueName !== "request_retry") {
+            await assertQueueWithDLQ(channel, queueName, {
+                "x-max-priority": 10,
+            });
+        }
+
+        channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
+            persistent: true,
+            priority, // Priority support
+        });
+
+        console.log(`[matching-service] Sent message to queue: ${queueName} (priority=${priority})`);
+    } catch (err) {
+        console.error("❌ [matching-service] Failed to publish message:", err);
     }
-
-    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
-      persistent: true,
-      priority, // Priority support
-    });
-
-    console.log(`[matching-service] Sent message to queue: ${queueName} (priority=${priority})`);
-  } catch (err) {
-    console.error("❌ [matching-service] Failed to publish message:", err);
-  }
 }
 
 /**
  * Consume messages normally — RabbitMQ auto-prioritizes delivery
  */
 async function consumeQueue(queueName, callback) {
-  onConnectedCallback = async (ch) => {
-    await assertQueueWithDLQ(ch, queueName, { "x-max-priority": 10 });
-    console.log(`[matching-service] Listening on queue: ${queueName}`);
+    onConnectedCallback = async (ch) => {
+        await assertQueueWithDLQ(ch, queueName, { "x-max-priority": 10 });
+        console.log(`[matching-service] Listening on queue: ${queueName}`);
 
-    ch.consume(
-      queueName,
-      async (msg) => {
-        if (!msg) return;
+        ch.consume(
+            queueName,
+            async (msg) => {
+                if (!msg) return;
 
-        try {
-          const data = JSON.parse(msg.content.toString());
-          await callback(data);
-          messageProcessed.inc(); //count success
-          ch.ack(msg);
-        } catch (err) {
-          console.error("❌ Error handling message:", err);
-          messageFailed.inc(); // count failure
+                try {
+                    const data = JSON.parse(msg.content.toString());
+                    await callback(data);
+                    messageProcessed.inc(); //count success
+                    ch.ack(msg);
+                } catch (err) {
+                    console.error("❌ Error handling message:", err);
+                    messageFailed.inc(); // count failure
 
-          if (attempt >= MAX_RETRIES) {
-            console.warn(`Max retries reached (${attempt}). Sending to DLQ.`);
-            ch.sendToQueue(`${queueName}.dlq`, msg.content, { persistent: true });
-            ch.ack(msg);
-          } else {
-            ch.sendToQueue("request_retry", msg.content, {
-              headers: { "x-retry-count": attempt + 1 },
-            });
-            ch.ack(msg);
-          }
-          //ch.nack(msg, false, false);
-        }
-      },
-      { noAck: false }
-    );
-  };
+                    if (attempt >= MAX_RETRIES) {
+                        console.warn(`Max retries reached (${attempt}). Sending to DLQ.`);
+                        ch.sendToQueue(`${queueName}.dlq`, msg.content, { persistent: true });
+                        ch.ack(msg);
+                    } else {
+                        ch.sendToQueue("request_retry", msg.content, {
+                            headers: { "x-retry-count": attempt + 1 },
+                        });
+                        ch.ack(msg);
+                    }
+                    //ch.nack(msg, false, false);
+                }
+            },
+            { noAck: false }
+        );
+    };
 
-  if (channel) {
-    await onConnectedCallback(channel);
-  } else {
-    console.warn("⚠️ Channel not ready yet, will listen after connect.");
-  }
+    if (channel) {
+        await onConnectedCallback(channel);
+    } else {
+        console.warn("⚠️ Channel not ready yet, will listen after connect.");
+    }
 }
 
 module.exports = { connectQueue, publishMessage, consumeQueue };

@@ -154,6 +154,64 @@ class HeaderManager {
         if (adminItem && user.role === 'admin') {
             adminItem.style.display = 'block';
         }
+
+        // Show messages and friends links for seniors
+        if (user.role === 'senior') {
+            const messagesLink = document.getElementById('messagesLink');
+            const friendsLink = document.getElementById('friendsLink');
+            
+            if (messagesLink) messagesLink.style.display = 'block';
+            if (friendsLink) friendsLink.style.display = 'block';
+
+            // Load unread counts
+            this.loadUnreadCounts();
+        }
+    }
+
+    /**
+     * Load unread messages and friend requests counts
+     */
+    async loadUnreadCounts() {
+        try {
+            if (!this.authManager) return;
+
+            // Load unread messages count
+            try {
+                const messagesResponse = await this.authManager.authenticatedFetch('http://localhost:5008/messages/unread/count');
+                const messagesData = await messagesResponse.json();
+                
+                if (messagesResponse.ok && messagesData.unreadCount > 0) {
+                    const badge = document.getElementById('unreadMessagesCount');
+                    if (badge) {
+                        badge.textContent = messagesData.unreadCount;
+                        badge.style.display = 'inline';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading unread messages count:', error);
+            }
+
+            // Load friend requests count
+            try {
+                const requestsResponse = await this.authManager.authenticatedFetch('http://localhost:5008/friends/requests');
+                const requestsData = await requestsResponse.json();
+                
+                if (requestsResponse.ok && requestsData.count > 0) {
+                    const badge = document.getElementById('friendRequestsCount');
+                    if (badge) {
+                        badge.textContent = requestsData.count;
+                        badge.style.display = 'inline';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading friend requests count:', error);
+            }
+
+            // Refresh counts every 30 seconds
+            setTimeout(() => this.loadUnreadCounts(), 30000);
+        } catch (error) {
+            console.error('Error in loadUnreadCounts:', error);
+        }
     }
 
     /**

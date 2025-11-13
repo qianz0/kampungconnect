@@ -12,6 +12,24 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="navbar-nav ms-auto">
+                <!-- Messages Icon with Unread Badge -->
+                <a class="nav-link position-relative" href="/messages.html" id="messagesLink" style="display: none;">
+                    <i class="fas fa-envelope fa-lg"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
+                          id="unreadMessagesCount" style="display: none; font-size: 0.7rem;">
+                        0
+                    </span>
+                </a>
+                
+                <!-- Friends Icon with Requests Badge -->
+                <a class="nav-link position-relative me-2" href="/friends.html" id="friendsLink" style="display: none;">
+                    <i class="fas fa-user-friends fa-lg"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
+                          id="friendRequestsCount" style="display: none; font-size: 0.7rem;">
+                        0
+                    </span>
+                </a>
+
                 <div class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
                         role="button" data-bs-toggle="dropdown" aria-expanded="false">

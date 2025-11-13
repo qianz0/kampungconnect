@@ -24,6 +24,9 @@ docker build -t kampungconnect-admin-service -f backend/services/admin-service/D
 echo Building stats-service...
 docker build -t kampungconnect-stats-service -f backend/services/stats-service/Dockerfile .
 
+echo Building social-service...
+docker build -t kampungconnect-social-service -f backend/services/social-service/Dockerfile .
+
 echo Building frontend...
 docker build -t kampungconnect-frontend ./frontend
 

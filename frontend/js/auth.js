@@ -525,6 +525,22 @@ class AuthManager {
     }
 
     /**
+     * Wait for authentication and return user
+     * This is useful for pages that need to wait for auth to complete
+     */
+    async waitForAuth() {
+        console.log('[AuthManager] waitForAuth called');
+        const isAuthenticated = await this.checkAuthentication();
+        if (!isAuthenticated) {
+            console.log('[AuthManager] User not authenticated, redirecting to login');
+            window.location.href = '/login.html';
+            throw new Error('Not authenticated');
+        }
+        console.log('[AuthManager] User authenticated:', this.currentUser);
+        return this.currentUser;
+    }
+
+    /**
      * Get authentication token from cookie or localStorage
      */
     getToken() {

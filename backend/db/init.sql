@@ -98,24 +98,34 @@ CREATE INDEX IF NOT EXISTS idx_notification_prefs_user ON notification_preferenc
 -- Sample Users (mix of seniors, volunteers, caregivers, and admin)
 INSERT INTO users (provider_id, email, firstname, lastname, address, password_hash, picture, provider, role, rating, location, email_verified, is_active, created_at) VALUES
 -- Senior users
-(NULL, 'alice.tan@example.com', 'Alice', 'Tan', '10 Bedok North Ave 3, #05-123', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.8, '460010', TRUE, TRUE, NOW() - INTERVAL '60 days'),
+(NULL, 'alice.tan@gmail.com', 'Alice', 'Tan', '10 Bedok North Ave 3, #05-123', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.8, '460010', TRUE, TRUE, NOW() - INTERVAL '60 days'),
 ('google_102938475', 'robert.wong@gmail.com', 'Robert', 'Wong', '45 Jurong West Street 42, #12-456', NULL, 'https://lh3.googleusercontent.com/sample1', 'google', 'senior', 4.9, '640045', TRUE, TRUE, NOW() - INTERVAL '45 days'),
-(NULL, 'margaret.lim@example.com', 'Margaret', 'Lim', '88 Hougang Ave 8, #03-789', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 5.0, '530088', TRUE, TRUE, NOW() - INTERVAL '30 days'),
+(NULL, 'margaret.lim@gmail.com', 'Margaret', 'Lim', '88 Hougang Ave 8, #03-789', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 5.0, '530088', TRUE, TRUE, NOW() - INTERVAL '30 days'),
 ('azure_aad_12345', 'david.chen@outlook.com', 'David', 'Chen', '22 Woodlands Ring Road, #07-234', NULL, 'https://graph.microsoft.com/sample2', 'azure', 'senior', 4.7, '730022', TRUE, TRUE, NOW() - INTERVAL '20 days'),
+(NULL, 'ong.siew.lan@gmail.com', 'Siew Lan', 'Ong', '23 Clementi Ave 4, #07-234', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.9, '120023', TRUE, TRUE, NOW() - INTERVAL '55 days'),
+('google_888001', 'lee.kim.hock@gmail.com', 'Kim Hock', 'Lee', '77 Pasir Ris Drive 10, #09-654', NULL, 'https://lh3.googleusercontent.com/sample8', 'google', 'senior', 4.7, '510077', TRUE, TRUE, NOW() - INTERVAL '48 days'),
+(NULL, 'tan.bee.leng@gmail.com', 'Bee Leng', 'Tan', '14 Bukit Timah Road, #02-432', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.8, '259708', TRUE, TRUE, NOW() - INTERVAL '35 days'),
+('azure_aad_78901', 'koh.teck.soon@outlook.com', 'Teck Soon', 'Koh', '31 Choa Chu Kang North 6, #10-101', NULL, 'https://graph.microsoft.com/sample9', 'azure', 'senior', 4.6, '689580', TRUE, TRUE, NOW() - INTERVAL '28 days'),
+(NULL, 'linda.chua@gmail.com', 'Linda', 'Chua', '4 Yishun Street 81, #11-432', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 5.0, '760004', TRUE, TRUE, NOW() - INTERVAL '22 days'),
+('google_888002', 'richard.low@gmail.com', 'Richard', 'Low', '66 Bedok Reservoir View, #03-987', NULL, 'https://lh3.googleusercontent.com/sample10', 'google', 'senior', 4.9, '470066', TRUE, TRUE, NOW() - INTERVAL '18 days'),
+(NULL, 'ng.geok.leng@gmail.com', 'Geok Leng', 'Ng', '8 Bukit Merah View, #12-654', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.7, '151008', TRUE, TRUE, NOW() - INTERVAL '14 days'),
+('azure_aad_78902', 'tang.soon.huat@outlook.com', 'Soon Huat', 'Tang', '17 Serangoon Garden Way', NULL, 'https://graph.microsoft.com/sample11', 'azure', 'senior', 4.8, '555947', TRUE, TRUE, NOW() - INTERVAL '12 days'),
+(NULL, 'sandra.goh@gmail.com', 'Sandra', 'Goh', '12 Marine Parade Central, #06-321', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'senior', 4.9, '440012', TRUE, TRUE, NOW() - INTERVAL '9 days'),
+('google_888003', 'william.tan@gmail.com', 'William', 'Tan', '239 Bukit Batok East Ave 5, #04-210', NULL, 'https://lh3.googleusercontent.com/sample12', 'google', 'senior', 4.6, '650239', TRUE, TRUE, NOW() - INTERVAL '7 days');
 
 -- Volunteer users
-(NULL, 'john.doe@example.com', 'John', 'Doe', '15 Orchard Road, #10-100', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.9, '238841', TRUE, TRUE, NOW() - INTERVAL '75 days'),
+(NULL, 'john.doe@gmail.com', 'John', 'Doe', '15 Orchard Road, #10-100', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.9, '238841', TRUE, TRUE, NOW() - INTERVAL '75 days'),
 ('google_384756291', 'sarah.lee@gmail.com', 'Sarah', 'Lee', '33 Tampines Street 32, #08-567', NULL, 'https://lh3.googleusercontent.com/sample3', 'google', 'volunteer', 5.0, '529033', TRUE, TRUE, NOW() - INTERVAL '50 days'),
-(NULL, 'michael.ng@example.com', 'Michael', 'Ng', '77 Yishun Ave 5, #14-890', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.8, '760077', TRUE, TRUE, NOW() - INTERVAL '40 days'),
-(NULL, 'emily.tan@example.com', 'Emily', 'Tan', '99 Clementi Ave 2, #06-345', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.7, '129899', TRUE, TRUE, NOW() - INTERVAL '25 days'),
+(NULL, 'michael.ng@gmail.com', 'Michael', 'Ng', '77 Yishun Ave 5, #14-890', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.8, '760077', TRUE, TRUE, NOW() - INTERVAL '40 days'),
+(NULL, 'emily.tan@gmail.com', 'Emily', 'Tan', '99 Clementi Ave 2, #06-345', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'volunteer', 4.7, '129899', TRUE, TRUE, NOW() - INTERVAL '25 days'),
 
 -- Caregiver users
-(NULL, 'linda.koh@example.com', 'Linda', 'Koh', '55 Marine Parade Road, #11-222', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.9, '449055', TRUE, TRUE, NOW() - INTERVAL '65 days'),
+(NULL, 'linda.koh@gmail.com', 'Linda', 'Koh', '55 Marine Parade Road, #11-222', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.9, '449055', TRUE, TRUE, NOW() - INTERVAL '65 days'),
 ('azure_aad_67890', 'james.liu@outlook.com', 'James', 'Liu', '12 Bukit Batok Street 21, #09-678', NULL, 'https://graph.microsoft.com/sample4', 'azure', 'caregiver', 5.0, '651012', TRUE, TRUE, NOW() - INTERVAL '35 days'),
-(NULL, 'rachel.goh@example.com', 'Rachel', 'Goh', '66 Ang Mo Kio Ave 4, #13-444', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.8, '560066', TRUE, TRUE, NOW() - INTERVAL '15 days'),
+(NULL, 'rachel.goh@gmail.com', 'Rachel', 'Goh', '66 Ang Mo Kio Ave 4, #13-444', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.8, '560066', TRUE, TRUE, NOW() - INTERVAL '15 days'),
 
 -- New user without role (incomplete registration)
-(NULL, 'newbie@example.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days');
+(NULL, 'newbie@gmail.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days');
 
 -- Sample Requests from seniors
 INSERT INTO requests (user_id, title, category, description, urgency, status, created_at) VALUES
@@ -203,3 +213,70 @@ INSERT INTO offers (request_id, helper_id, status, created_at) VALUES
 (3, 10, 'accepted', NOW() - INTERVAL '4 days'),
 (5, 7, 'accepted', NOW() - INTERVAL '2 days'),
 (8, 9, 'accepted', NOW() - INTERVAL '9 days');
+
+-- ========================================
+-- SOCIAL FEATURES TABLES
+-- ========================================
+
+-- Friendships table
+CREATE TABLE IF NOT EXISTS friendships (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    friend_id INT REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, friend_id)
+);
+
+-- Create indexes for friendships
+CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
+
+-- Messages table
+CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INT REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id INT REFERENCES users(id) ON DELETE CASCADE,
+    conversation_id VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for messages
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
+
+-- Activities table
+CREATE TABLE IF NOT EXISTS activities (
+    id SERIAL PRIMARY KEY,
+    creator_id INT REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    scheduled_at TIMESTAMP NOT NULL,
+    location VARCHAR(500),
+    status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Activity participants table
+CREATE TABLE IF NOT EXISTS activity_participants (
+    id SERIAL PRIMARY KEY,
+    activity_id INT REFERENCES activities(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'invited' CHECK (status IN ('invited', 'accepted', 'declined', 'maybe')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(activity_id, user_id)
+);
+
+-- Create indexes for activities
+CREATE INDEX IF NOT EXISTS idx_activities_creator ON activities(creator_id);
+CREATE INDEX IF NOT EXISTS idx_activities_scheduled ON activities(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_activity_participants_activity ON activity_participants(activity_id);
+CREATE INDEX IF NOT EXISTS idx_activity_participants_user ON activity_participants(user_id);

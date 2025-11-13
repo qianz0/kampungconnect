@@ -1,3 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kampungconnect
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'kampungconnect-services'
+        static_configs:
+          - targets:
+            - 'auth-service:5000'
+            - 'request-service:5002'
+            - 'matching-service:5003'
+            - 'notification-service:5004'
+            - 'rating-service:5005'
+            - 'admin-service:5006'
+            - 'stats-service:5007'
+            - 'social-service:5008'
+        metrics_path: '/metrics'
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

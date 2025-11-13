@@ -2,54 +2,54 @@ const db = require("./db");
 const { getAreaFromPostalCode } = require("./postal-utils");
 
 async function findBestHelper(request) {
-  if (!request || !request.user_id) {
-    console.error("❌ findBestHelper: request.user_id missing");
-    return null;
-  }
+    if (!request || !request.user_id) {
+        console.error("❌ findBestHelper: request.user_id missing");
+        return null;
+    }
 
-  // 1️⃣ Get the senior’s location
-  const senior = await db.query(
-    `SELECT location FROM users WHERE id = $1 LIMIT 1`,
-    [request.user_id]
-  );
+    // 1️⃣ Get the senior’s location
+    const senior = await db.query(
+        `SELECT location FROM users WHERE id = $1 LIMIT 1`,
+        [request.user_id]
+    );
 
-  if (senior.rowCount === 0 || !senior.rows[0].location) {
-    console.warn("⚠️ Senior has no location set, using fallback search");
-    return await findFallbackHelper(request);
-  }
+    if (senior.rowCount === 0 || !senior.rows[0].location) {
+        console.warn("⚠️ Senior has no location set, using fallback search");
+        return await findFallbackHelper(request);
+    }
 
-  const seniorLocation = senior.rows[0].location;
-  const seniorArea = getAreaFromPostalCode(seniorLocation);
+    const seniorLocation = senior.rows[0].location;
+    const seniorArea = getAreaFromPostalCode(seniorLocation);
 
-  if (!seniorArea) {
-    console.warn(`⚠️ Could not map postal code ${seniorLocation} to an area`);
-    return await findFallbackHelper(request);
-  }
+    if (!seniorArea) {
+        console.warn(`⚠️ Could not map postal code ${seniorLocation} to an area`);
+        return await findFallbackHelper(request);
+    }
 
-   const helpers = await db.query(`
+    const helpers = await db.query(`
     SELECT location FROM users
     WHERE role IN ('volunteer', 'caregiver')
       AND is_active = TRUE
       AND location IS NOT NULL
   `);
 
-  const areaPostalCodes = helpers.rows
-    .map(h => h.location)
-    .filter(p => getAreaFromPostalCode(p) === seniorArea);
+    const areaPostalCodes = helpers.rows
+        .map(h => h.location)
+        .filter(p => getAreaFromPostalCode(p) === seniorArea);
 
 
     console.log(
-    `Helpers in area '${seniorArea}': ${areaPostalCodes.length > 0 ? areaPostalCodes.join(", ") : "none"}`
-  );
+        `Helpers in area '${seniorArea}': ${areaPostalCodes.length > 0 ? areaPostalCodes.join(", ") : "none"}`
+    );
 
-  if (areaPostalCodes.length === 0) {
-    console.warn(`⚠️ No helpers found in area '${seniorArea}', using fallback`);
-    return await findFallbackHelper(request);
-  }
+    if (areaPostalCodes.length === 0) {
+        console.warn(`⚠️ No helpers found in area '${seniorArea}', using fallback`);
+        return await findFallbackHelper(request);
+    }
 
-  // 2️⃣ Find best helper in same location that satisfies limits
-  const result = await db.query(
-    `
+    // 2️⃣ Find best helper in same location that satisfies limits
+    const result = await db.query(
+        `
     SELECT u.id,
            CONCAT(u.firstname, ' ', u.lastname) AS name,
            u.role,
@@ -80,24 +80,24 @@ async function findBestHelper(request) {
     ORDER BY u.rating DESC, RANDOM()
     LIMIT 1
     `,
-    [areaPostalCodes, request.urgency]
-  );
-
-  // 3️⃣ Fallback if none in location
-  if (result.rowCount === 0) {
-    console.warn(
-      `⚠️ No eligible helpers found in '${seniorArea}', using fallback`
+        [areaPostalCodes, request.urgency]
     );
-    return await findFallbackHelper(request);
-  }
 
-  return result.rows[0];
+    // 3️⃣ Fallback if none in location
+    if (result.rowCount === 0) {
+        console.warn(
+            `⚠️ No eligible helpers found in '${seniorArea}', using fallback`
+        );
+        return await findFallbackHelper(request);
+    }
+
+    return result.rows[0];
 }
 
 // 🧩 Fallback search (any location)
 async function findFallbackHelper(request) {
-  const result = await db.query(
-    `
+    const result = await db.query(
+        `
     SELECT u.id,
            CONCAT(u.firstname, ' ', u.lastname) AS name,
            u.role,
@@ -126,15 +126,10 @@ async function findFallbackHelper(request) {
     ORDER BY u.rating DESC, RANDOM()
     LIMIT 1
     `,
-    [request.urgency]
-  );
+        [request.urgency]
+    );
 
-  return result.rows[0] || null;
+    return result.rows[0] || null;
 }
 
 module.exports = { findBestHelper };
-
-
-
-
-

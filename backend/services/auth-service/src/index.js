@@ -812,7 +812,8 @@ app.get('/khakis', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) =
         let params;
 
         if (nearby === 'true') {
-            // Get seniors in the same location (excluding current user)
+            // Get seniors in the same postal code area/sector (first 2 digits)
+            // This allows matching within the same neighborhood/estate
             query = `
                 SELECT 
                     id, email, firstname, lastname, picture, 
@@ -822,7 +823,7 @@ app.get('/khakis', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) =
                     AND id != $1 
                     AND is_active = true
                     AND location IS NOT NULL
-                    AND location = $2
+                    AND SUBSTRING(location FROM 1 FOR 2) = SUBSTRING($2::text FROM 1 FOR 2)
                 ORDER BY rating DESC, created_at DESC
             `;
             params = [currentUser.id, currentUser.location];
@@ -869,6 +870,47 @@ app.get('/khakis', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) =
     } catch (error) {
         console.error('Get khakis error:', error);
         res.status(500).json({ error: 'Failed to fetch khakis' });
+    }
+});
+
+// Get specific user profile (for viewing other seniors)
+app.get('/users/:userId', jwtUtils.authenticateToken.bind(jwtUtils), async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        // Only seniors can view other user profiles
+        if (req.user.role !== 'senior') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const user = await dbService.pool.query(
+            `SELECT 
+                id, email, firstname, lastname, picture, 
+                location, rating, role, created_at, last_login
+            FROM users 
+            WHERE id = $1 AND is_active = true`,
+            [userId]
+        );
+
+        if (user.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let userProfile = user.rows[0];
+
+        // Add fallback profile picture
+        if (!userProfile.picture || userProfile.picture === 'null' || userProfile.picture.trim() === '') {
+            const displayName = userProfile.firstname && userProfile.lastname 
+                ? `${userProfile.firstname} ${userProfile.lastname}`.trim()
+                : userProfile.email || 'User';
+            userProfile.picture = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff&size=200`;
+        }
+
+        res.json({ user: userProfile });
+
+    } catch (error) {
+        console.error('Get user profile error:', error);
+        res.status(500).json({ error: 'Failed to fetch user profile' });
     }
 });
 

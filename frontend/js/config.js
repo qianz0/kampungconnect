@@ -6,6 +6,6 @@ window.API_BASE = {
       NOTIFICATION_SERVICE: "http://localhost:5004",
       RATING_SERVICE: "http://localhost:5006",
       ADMIN_SERVICE: "http://localhost:5007",
+      SOCIAL_SERVICE: "http://localhost:5008",
       STATS_SERVICE: "http://localhost:5009",
-  
 };
