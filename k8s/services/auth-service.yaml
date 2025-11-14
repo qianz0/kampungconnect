@@ -29,7 +29,7 @@ spec:
               value: postgres
             - name: DB_PORT
               value: "5432"
-            - name: DB_DATABASE
+            - name: DB_NAME
               value: "kampungconnect"
             - name: DB_USER
               value: "admin"
