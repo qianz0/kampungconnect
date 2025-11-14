@@ -231,9 +231,9 @@
                         <button class="btn btn-success" onclick="sendFriendRequest()">
                             <i class="fas fa-user-plus me-2"></i>Add Friend
                         </button>
-                        <button class="btn btn-info" onclick="scheduleActivity()">
+                        <!-- <button class="btn btn-info" onclick="scheduleActivity()">
                             <i class="fas fa-calendar-plus me-2"></i>Plan Activity
-                        </button>
+                        </button> -->
                     </div>
                 </div>
 
@@ -243,12 +243,33 @@
                         <i class="fas fa-lightbulb me-2"></i>Companionship Tips
                     </h3>
                     <ul class="small text-muted mb-0">
-                        <li class="mb-2">Start with a friendly message</li>
+                        <li class="mb-2">Send a friend request first</li>
+                        <li class="mb-2">Wait for them to accept before messaging</li>
+                        <li class="mb-2">Start with a friendly greeting</li>
                         <li class="mb-2">Suggest activities you both enjoy</li>
                         <li class="mb-2">Be respectful and patient</li>
-                        <li class="mb-2">Share experiences and stories</li>
                         <li>Build trust gradually</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Message Modal -->
+        <div class="modal fade" id="sendMessageModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Send Message</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Send a message to <strong id="messageRecipientName"></strong>:</p>
+                        <textarea class="form-control" id="messageContent" rows="4" placeholder="Type your message here..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="sendMessageConfirm()">Send Message</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -261,6 +282,7 @@
     <script>
         let currentUser = null;
         let profileUser = null;
+        let friendshipStatus = null; // Track friendship status
 
         // Wait for AuthManager
         function waitForAuthManager() {
@@ -322,6 +344,9 @@
                 // Load user profile
                 await loadUserProfile(userId);
 
+                // Load friendship status
+                await loadFriendshipStatus(userId);
+
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
 
@@ -331,6 +356,134 @@
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
         });
+
+        // Send message confirm - Handle modal submission
+        async function sendMessageConfirm() {
+            if (!profileUser) return;
+            
+            const message = document.getElementById('messageContent').value.trim();
+            
+            if (!message) {
+                showErrorMessage('Please enter a message');
+                return;
+            }
+
+            const name = profileUser.firstname || 'this member';
+
+            try {
+                const authManager = await waitForAuthManager();
+                const response = await authManager.authenticatedFetch(
+                    'http://localhost:5008/messages',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            receiverId: profileUser.id,
+                            content: message
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccessMessage(`Message sent to ${name}!`);
+                    const modalElement = document.getElementById('sendMessageModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                } else {
+                    showErrorMessage(data.error || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showErrorMessage('Failed to send message. Please try again.');
+            }
+        }
+
+        // Load friendship status
+        async function loadFriendshipStatus(userId) {
+            try {
+                const authManager = await waitForAuthManager();
+                
+                // Check if already friends
+                const friendsResponse = await authManager.authenticatedFetch(
+                    'http://localhost:5008/friends'
+                );
+                const friendsData = await friendsResponse.json();
+                
+                if (friendsResponse.ok && friendsData.friends) {
+                    const isFriend = friendsData.friends.some(friend => friend.id === parseInt(userId));
+                    if (isFriend) {
+                        friendshipStatus = 'friends';
+                        updateActionButtons();
+                        return;
+                    }
+                }
+                
+                // Check if friend request is pending
+                const sentRequestsResponse = await authManager.authenticatedFetch(
+                    'http://localhost:5008/friends/sent-requests'
+                );
+                const sentRequestsData = await sentRequestsResponse.json();
+                
+                if (sentRequestsResponse.ok && sentRequestsData.requests) {
+                    const hasPendingRequest = sentRequestsData.requests.some(
+                        request => request.id === parseInt(userId)
+                    );
+                    if (hasPendingRequest) {
+                        friendshipStatus = 'pending';
+                        updateActionButtons();
+                        return;
+                    }
+                }
+                
+                // No friendship
+                friendshipStatus = 'none';
+                updateActionButtons();
+                
+            } catch (error) {
+                console.error('Error loading friendship status:', error);
+                friendshipStatus = 'none';
+                updateActionButtons();
+            }
+        }
+
+        // Update action buttons based on friendship status
+        function updateActionButtons() {
+            const actionButtons = document.querySelector('.action-buttons');
+            
+            if (!actionButtons) return;
+            
+            const firstName = profileUser?.firstname || 'this member';
+            
+            if (friendshipStatus === 'friends') {
+                // Show message button and hide/disable add friend
+                actionButtons.innerHTML = `
+                    <button class="btn btn-primary" onclick="sendMessage()">
+                        <i class="fas fa-envelope me-2"></i>Send Message
+                    </button>
+                    <button class="btn btn-success" disabled>
+                        <i class="fas fa-check me-2"></i>Already Friends
+                    </button>
+                `;
+            } else if (friendshipStatus === 'pending') {
+                // Hide message button, show pending status
+                actionButtons.innerHTML = `
+                    <button class="btn btn-warning" disabled>
+                        <i class="fas fa-clock me-2"></i>Friend Request Pending
+                    </button>
+                `;
+            } else {
+                // Hide message button, show add friend
+                actionButtons.innerHTML = `
+                    <button class="btn btn-success" onclick="sendFriendRequest()">
+                        <i class="fas fa-user-plus me-2"></i>Add Friend
+                    </button>
+                `;
+            }
+        }
 
         // Load user profile
         async function loadUserProfile(userId) {
@@ -420,42 +573,19 @@
             return stars;
         }
 
-        // Send message
-        async function sendMessage() {
+        // Send message - Open modal
+        function sendMessage() {
             if (!profileUser) return;
             
-            const name = profileUser.firstname || 'this member';
-            const message = prompt(`Send a message to ${name}:`);
+            const name = profileUser.firstname && profileUser.lastname
+                ? `${profileUser.firstname} ${profileUser.lastname}`
+                : profileUser.firstname || 'this member';
             
-            if (!message || message.trim() === '') {
-                return;
-            }
-
-            try {
-                const authManager = await waitForAuthManager();
-                const response = await authManager.authenticatedFetch(
-                    'http://localhost:5008/messages',
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            receiverId: profileUser.id,
-                            content: message.trim()
-                        })
-                    }
-                );
-
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    showSuccessMessage(`Message sent to ${name}!`);
-                } else {
-                    showErrorMessage(data.error || 'Failed to send message');
-                }
-            } catch (error) {
-                console.error('Error sending message:', error);
-                showErrorMessage('Failed to send message. Please try again.');
-            }
+            document.getElementById('messageRecipientName').textContent = name;
+            document.getElementById('messageContent').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('sendMessageModal'));
+            modal.show();
         }
 
         // Send friend request
@@ -493,54 +623,54 @@
         }
 
         // Schedule activity
-        async function scheduleActivity() {
-            if (!profileUser) return;
+        // async function scheduleActivity() {
+        //     if (!profileUser) return;
             
-            const name = profileUser.firstname || 'this member';
-            const title = prompt(`Activity with ${name} - Enter title:`);
+        //     const name = profileUser.firstname || 'this member';
+        //     const title = prompt(`Activity with ${name} - Enter title:`);
             
-            if (!title || title.trim() === '') {
-                return;
-            }
+        //     if (!title || title.trim() === '') {
+        //         return;
+        //     }
 
-            const description = prompt('Activity description (optional):');
-            const dateInput = prompt('When? (YYYY-MM-DD HH:MM, e.g., 2025-11-20 14:00):');
+        //     const description = prompt('Activity description (optional):');
+        //     const dateInput = prompt('When? (YYYY-MM-DD HH:MM, e.g., 2025-11-20 14:00):');
             
-            if (!dateInput) {
-                return;
-            }
+        //     if (!dateInput) {
+        //         return;
+        //     }
 
-            const location = prompt('Where? (optional location):');
+        //     const location = prompt('Where? (optional location):');
 
-            try {
-                const authManager = await waitForAuthManager();
-                const response = await authManager.authenticatedFetch(
-                    'http://localhost:5008/activities',
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            title: title.trim(),
-                            description: description ? description.trim() : '',
-                            scheduled_at: dateInput.trim(),
-                            location: location ? location.trim() : '',
-                            invitees: [profileUser.id]
-                        })
-                    }
-                );
+        //     try {
+        //         const authManager = await waitForAuthManager();
+        //         const response = await authManager.authenticatedFetch(
+        //             'http://localhost:5008/activities',
+        //             {
+        //                 method: 'POST',
+        //                 headers: { 'Content-Type': 'application/json' },
+        //                 body: JSON.stringify({
+        //                     title: title.trim(),
+        //                     description: description ? description.trim() : '',
+        //                     scheduled_at: dateInput.trim(),
+        //                     location: location ? location.trim() : '',
+        //                     invitees: [profileUser.id]
+        //                 })
+        //             }
+        //         );
 
-                const data = await response.json();
+        //         const data = await response.json();
 
-                if (response.ok && data.success) {
-                    showSuccessMessage(`Activity planned with ${name}!`);
-                } else {
-                    showErrorMessage(data.error || 'Failed to create activity');
-                }
-            } catch (error) {
-                console.error('Error creating activity:', error);
-                showErrorMessage('Failed to create activity. Please try again.');
-            }
-        }
+        //         if (response.ok && data.success) {
+        //             showSuccessMessage(`Activity planned with ${name}!`);
+        //         } else {
+        //             showErrorMessage(data.error || 'Failed to create activity');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error creating activity:', error);
+        //         showErrorMessage('Failed to create activity. Please try again.');
+        //     }
+        // }
 
         // Utility functions
         function showSuccessMessage(message) {

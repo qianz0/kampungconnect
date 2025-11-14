@@ -141,6 +141,24 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
+        .add-friend-btn.friend-request-sent {
+            background-color: #ffc107 !important;
+            border-color: #ffc107 !important;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        .add-friend-btn.friends {
+            background-color: #198754 !important;
+            border-color: #198754 !important;
+            cursor: default;
+        }
+
+        .add-friend-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
         .card-body {
             font-size: 1.05rem;
             padding: 1.5rem;
@@ -149,11 +167,6 @@
         .btn {
             font-size: 1.1rem;
             padding: 10px 16px;
-        }
-
-        .btn-lg {
-            font-size: 1.2rem;
-            padding: 14px 24px;
         }
 
         /* Pagination styles */
@@ -272,7 +285,7 @@
     </div>
 
     <!-- Plan Activity Modal -->
-    <div class="modal fade" id="planActivityModal" tabindex="-1">
+    <!-- <div class="modal fade" id="planActivityModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -304,7 +317,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Main Content -->
     <div class="container mt-4">
@@ -396,6 +409,7 @@
         let currentUser = null;
         let nearbyKhakis = [];
         let allKhakis = [];
+        let friendshipStatuses = {}; // Store friendship status for each user
         
         // Pagination state
         let ITEMS_PER_PAGE = getItemsPerPage();
@@ -486,10 +500,47 @@
             }
         });
 
+        // Fetch friendship statuses for all khakis
+        async function fetchFriendshipStatuses() {
+            try {
+                const authManager = await waitForAuthManager();
+                
+                // Get all friends (accepted)
+                const friendsResponse = await authManager.authenticatedFetch(
+                    'http://localhost:5008/friends'
+                );
+                const friendsData = await friendsResponse.json();
+                
+                if (friendsResponse.ok && friendsData.friends) {
+                    friendsData.friends.forEach(friend => {
+                        friendshipStatuses[friend.id] = 'friends';
+                    });
+                }
+                
+                // Get pending friend requests sent by current user
+                const sentRequestsResponse = await authManager.authenticatedFetch(
+                    'http://localhost:5008/friends/sent-requests'
+                );
+                const sentRequestsData = await sentRequestsResponse.json();
+                
+                if (sentRequestsResponse.ok && sentRequestsData.requests) {
+                    sentRequestsData.requests.forEach(request => {
+                        friendshipStatuses[request.id] = 'pending';
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error fetching friendship statuses:', error);
+            }
+        }
+
         // Load khakis data
         async function loadKhakis() {
             try {
                 const authManager = await waitForAuthManager();
+
+                // Fetch friendship statuses first
+                await fetchFriendshipStatuses();
 
                 // Load nearby khakis
                 const nearbyResponse = await authManager.authenticatedFetch(
@@ -669,14 +720,40 @@
                 const showArea = !isNearby;
                 const initials = getInitials(khaki.firstname, khaki.lastname);
 
+                // Determine friendship status and button rendering
+                const friendStatus = friendshipStatuses[khaki.id];
+                let friendButton = '';
+                
+                if (friendStatus === 'friends') {
+                    friendButton = `
+                        <button class="btn btn-success add-friend-btn friends" 
+                                disabled
+                                title="You are friends with ${escapeHtml(displayName)}">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    `;
+                } else if (friendStatus === 'pending') {
+                    friendButton = `
+                        <button class="btn btn-warning add-friend-btn friend-request-sent" 
+                                disabled
+                                title="Friend request sent to ${escapeHtml(displayName)}">
+                            <i class="fas fa-clock"></i>
+                        </button>
+                    `;
+                } else {
+                    friendButton = `
+                        <button class="btn btn-success add-friend-btn" 
+                                onclick="addFriend(${khaki.id}, '${escapeHtml(displayName)}')" 
+                                title="Add ${escapeHtml(displayName)} as friend">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    `;
+                }
+
                 return `
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card khaki-card h-100">
-                            <button class="btn btn-success add-friend-btn" 
-                                    onclick="addFriend(${khaki.id}, '${escapeHtml(displayName)}')" 
-                                    title="Add ${escapeHtml(displayName)} as friend">
-                                <i class="fas fa-user-plus"></i>
-                            </button>
+                            ${friendButton}
                             <div class="khaki-card-header text-center">
                                 ${khaki.picture ? `
                                     <img src="${khaki.picture}" 
@@ -719,25 +796,26 @@
                             </div>
                             <div class="card-footer bg-white border-0 pt-0">
                                 <div class="d-grid gap-2">
-                                    <button class="btn btn-primary btn-lg" onclick="viewProfile(${khaki.id})">
-                                        <i class="fas fa-user me-2"></i>View Profile
-                                    </button>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <button class="btn btn-outline-primary w-100" 
-                                                    onclick="quickConnect(${khaki.id}, '${escapeHtml(displayName)}')" 
-                                                    title="Send a message">
-                                                <i class="fas fa-comment me-1"></i>Chat
-                                            </button>
+                                    ${friendStatus === 'friends' ? `
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <button class="btn btn-primary w-100" onclick="viewProfile(${khaki.id})">
+                                                    <i class="fas fa-user me-2"></i>View Profile
+                                                </button>
+                                            </div>
+                                            <div class="col-6">
+                                                <button class="btn btn-outline-primary w-100" 
+                                                        onclick="quickConnect(${khaki.id}, '${escapeHtml(displayName)}')" 
+                                                        title="Send a message">
+                                                    <i class="fas fa-comment me-1"></i>Chat
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <button class="btn btn-outline-info w-100" 
-                                                    onclick="planActivity(${khaki.id}, '${escapeHtml(displayName)}')" 
-                                                    title="Plan activity">
-                                                <i class="fas fa-calendar-plus me-1"></i>Plan
-                                            </button>
-                                        </div>
-                                    </div>
+                                    ` : `
+                                        <button class="btn btn-primary w-100" onclick="viewProfile(${khaki.id})">
+                                            <i class="fas fa-user me-2"></i>View Profile
+                                        </button>
+                                    `}
                                 </div>
                             </div>
                         </div>
@@ -925,6 +1003,12 @@
                 if (response.ok) {
                     showSuccessMessage(`Friend request sent to ${selectedKhakiName}!`);
                     bootstrap.Modal.getInstance(document.getElementById('addFriendModal')).hide();
+                    
+                    // Update friendship status locally
+                    friendshipStatuses[selectedKhakiId] = 'pending';
+                    
+                    // Reload khakis to update the UI
+                    await loadKhakis();
                 } else {
                     showErrorMessage(data.error || 'Failed to send friend request');
                 }

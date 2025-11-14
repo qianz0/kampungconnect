@@ -89,15 +89,24 @@
 
         <!-- Features Section -->
         <div class="row">
-            <div class="col-md-4 mb-3">
+            <div class="col-md-4 mb-3" id="makeRequestsCard" style="display: none;">
                 <div class="card feature-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-hands-helping fa-3x text-primary mb-3"></i>
                         <h5 class="card-title">Make Requests</h5>
                         <p class="card-text">Request help from your community members for various needs.</p>
-
                         <div id="newRequestBtnContainer"></div>
+                    </div>
+                </div>
+            </div>
 
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">My Matches</h5>
+                        <p class="card-text">View your connected helpers or assigned seniors.</p>
+                        <div id="matchButtonContainer"></div>
                     </div>
                 </div>
             </div>
@@ -122,32 +131,6 @@
                 </div>
             </div>
 
-            <div class="col-md-4 mb-3">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-star fa-3x text-success mb-3"></i>
-                        <h5 class="card-title">Community Rating</h5>
-                        <p class="card-text">Rate and review community interactions and services.</p>
-                        <button class="btn btn-success" onclick="showRatings()">
-                            <i class="fas fa-chart-line me-1"></i>View Ratings
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-user-friends fa-3x text-info mb-3"></i>
-                        <h5 class="card-title">My Matches</h5>
-                        <p class="card-text">View your connected helpers or assigned seniors.</p>
-                        <div id="matchButtonContainer"></div>
-                    </div>
-                </div>
-            </div>
-
             <div class="col-md-4 mb-3" id="khakisCard" style="display: none;">
                 <div class="card feature-card h-100">
                     <div class="card-body text-center">
@@ -164,16 +147,31 @@
             <div class="col-md-4 mb-3">
                 <div class="card feature-card h-100">
                     <div class="card-body text-center">
+                        <i class="fas fa-star fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">Community Rating</h5>
+                        <p class="card-text">Rate and review community interactions and services.</p>
+                        <button class="btn btn-success" onclick="showRatings()">
+                            <i class="fas fa-chart-line me-1"></i>View Ratings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        <!-- </div>
+        
+        <div class="row"> -->
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
                         <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
                         <h5 class="card-title">Leaderboard</h5>
-                        <p class="card-text">See top helpers and compare your performance.</p>
+                        <p class="card-text">See who's the top helpers and cheer them on for their great work!</p>
                         <a href="leaderboard.html" class="btn btn-warning">
                             <i class="fas fa-medal me-1"></i>View Rankings
                         </a>
                     </div>
                 </div>
             </div>
-        </div>
+        <!-- </div> -->
 
         <!-- Recent Requests Section -->
         <div class="row mt-4">
@@ -465,27 +463,19 @@
 
         function showNewRequestButton(user) {
             const container = document.getElementById("newRequestBtnContainer");
+            const makeRequestsCard = document.getElementById("makeRequestsCard");
 
             if (user.role === "senior") {
-                // Seniors can create requests
+                // Show the card and add the button for seniors
+                makeRequestsCard.style.display = "block";
                 container.innerHTML = `
                     <a href="/requests.html" class="btn btn-primary">
                         <i class="fas fa-plus me-1"></i>New Request
                     </a>
                 `;
             } else {
-                // Helpers see disabled button with tooltip
-                container.innerHTML = `
-                    <span data-bs-toggle="tooltip" title="Only seniors can post requests">
-                        <button class="btn btn-primary" disabled>
-                            <i class="fas fa-plus me-1"></i>New Request
-                        </button>
-                    </span>
-                `;
-
-                // Activate Bootstrap tooltips
-                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-                tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+                // Hide the entire card for non-seniors
+                makeRequestsCard.style.display = "none";
             }
         }
         function showMatchButton(user) {

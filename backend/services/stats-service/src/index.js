@@ -6,8 +6,26 @@ const AuthMiddleware = require('/app/shared/auth-middleware');
 const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 
+// Allow multiple origins for local development and production
+const allowedOrigins = [
+    'http://localhost:8080',
+    'http://frontend:80',
+    'http://localhost:80',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, postman)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log(`CORS: Blocked origin ${origin}`);
+            callback(null, true); // Allow for now, but log it
+        }
+    },
     credentials: true
 }));
 app.use(express.json());

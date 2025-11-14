@@ -12,8 +12,26 @@ const PORT = process.env.PORT || 5008;
 const GRPC_PORT = process.env.GRPC_PORT || 50051;
 
 // Middleware
+// Allow multiple origins for local development and production
+const allowedOrigins = [
+    'http://localhost:8080',
+    'http://frontend:80',
+    'http://localhost:80',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, postman)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log(`CORS: Blocked origin ${origin}`);
+            callback(null, true); // Allow for now, but log it
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -207,6 +225,21 @@ const grpcService = {
                 return callback({
                     code: grpc.status.INVALID_ARGUMENT,
                     message: 'Cannot send message to yourself'
+                });
+            }
+
+            // Check if users are friends (required for messaging)
+            const friendshipCheck = await db.query(`
+                SELECT * FROM friendships 
+                WHERE ((user_id = $1 AND friend_id = $2) 
+                   OR (user_id = $2 AND friend_id = $1))
+                AND status = 'accepted'
+            `, [sender_id, receiver_id]);
+
+            if (friendshipCheck.rows.length === 0) {
+                return callback({
+                    code: grpc.status.PERMISSION_DENIED,
+                    message: 'You can only send messages to your friends'
                 });
             }
 
@@ -465,8 +498,41 @@ app.get('/friends/requests', authMiddleware, async (req, res) => {
     }
 });
 
+// Get sent friend requests (pending requests sent by current user)
+app.get('/friends/sent-requests', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await db.query(`
+            SELECT 
+                f.id as request_id,
+                u.id, u.email, u.firstname, u.lastname, u.picture, 
+                u.location, u.role,
+                f.created_at as request_date,
+                f.status
+            FROM friendships f
+            JOIN users u ON u.id = f.friend_id
+            WHERE f.user_id = $1 AND f.status = 'pending'
+            ORDER BY f.created_at DESC
+        `, [userId]);
+
+        res.json({
+            success: true,
+            requests: result.rows,
+            count: result.rows.length
+        });
+    } catch (error) {
+        console.error('Error fetching sent friend requests:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch sent friend requests'
+        });
+    }
+});
+
 // Send friend request
 app.post('/friends/request', authMiddleware, async (req, res) => {
+    const client = await db.pool.connect();
     try {
         const userId = req.user.id;
         const { friendId } = req.body;
@@ -485,14 +551,18 @@ app.post('/friends/request', authMiddleware, async (req, res) => {
             });
         }
 
-        // Check if friendship already exists
-        const existing = await db.query(`
+        await client.query('BEGIN');
+
+        // Check if friendship already exists with row lock
+        const existing = await client.query(`
             SELECT * FROM friendships 
-            WHERE (user_id = $1 AND friend_id = $2) 
-               OR (user_id = $2 AND friend_id = $1)
+            WHERE ((user_id = $1 AND friend_id = $2) 
+               OR (user_id = $2 AND friend_id = $1))
+            FOR UPDATE
         `, [userId, friendId]);
 
         if (existing.rows.length > 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Friend request already exists'
@@ -500,37 +570,47 @@ app.post('/friends/request', authMiddleware, async (req, res) => {
         }
 
         // Create friend request
-        await db.query(`
+        await client.query(`
             INSERT INTO friendships (user_id, friend_id, status)
             VALUES ($1, $2, 'pending')
         `, [userId, friendId]);
+
+        await client.query('COMMIT');
 
         res.json({
             success: true,
             message: 'Friend request sent successfully'
         });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error sending friend request:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to send friend request'
         });
+    } finally {
+        client.release();
     }
 });
 
 // Accept friend request
 app.post('/friends/accept/:requestId', authMiddleware, async (req, res) => {
+    const client = await db.pool.connect();
     try {
         const userId = req.user.id;
         const { requestId } = req.params;
 
-        // Verify the request is for this user
-        const request = await db.query(`
+        await client.query('BEGIN');
+
+        // Verify the request is for this user with row lock
+        const request = await client.query(`
             SELECT * FROM friendships 
             WHERE id = $1 AND friend_id = $2 AND status = 'pending'
+            FOR UPDATE
         `, [requestId, userId]);
 
         if (request.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'Friend request not found'
@@ -538,22 +618,27 @@ app.post('/friends/accept/:requestId', authMiddleware, async (req, res) => {
         }
 
         // Accept the request
-        await db.query(`
+        await client.query(`
             UPDATE friendships 
             SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
         `, [requestId]);
+
+        await client.query('COMMIT');
 
         res.json({
             success: true,
             message: 'Friend request accepted'
         });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error accepting friend request:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to accept friend request'
         });
+    } finally {
+        client.release();
     }
 });
 
@@ -774,6 +859,21 @@ app.post('/messages', authMiddleware, async (req, res) => {
             });
         }
 
+        // Check if users are friends (required for messaging)
+        const friendshipCheck = await db.query(`
+            SELECT * FROM friendships 
+            WHERE ((user_id = $1 AND friend_id = $2) 
+               OR (user_id = $2 AND friend_id = $1))
+            AND status = 'accepted'
+        `, [userId, parseInt(receiverId)]);
+
+        if (friendshipCheck.rows.length === 0) {
+            return res.status(403).json({
+                success: false,
+                error: 'You can only send messages to your friends. Send them a friend request first!'
+            });
+        }
+
         // Call gRPC service
         await grpcService.SendMessage({
             request: {
@@ -838,6 +938,57 @@ app.get('/messages/unread/count', authMiddleware, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch unread count'
+        });
+    }
+});
+
+// Get user details (for friends/messaging) - bypasses role restrictions
+app.get('/users/:userId', authMiddleware, async (req, res) => {
+    try {
+        const requestingUserId = req.user.id;
+        const { userId } = req.params;
+        const targetUserId = parseInt(userId);
+
+        // Get user details
+        const result = await db.query(`
+            SELECT 
+                u.id, 
+                u.email, 
+                u.firstname, 
+                u.lastname, 
+                u.picture,
+                u.location,
+                u.rating
+            FROM users u
+            WHERE u.id = $1 AND u.is_active = true
+        `, [targetUserId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        const user = result.rows[0];
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                picture: user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent((user.firstname || '') + ' ' + (user.lastname || ''))}`,
+                location: user.location,
+                rating: user.rating
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching user details:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch user details'
         });
     }
 });
@@ -955,6 +1106,7 @@ app.post('/activities', authMiddleware, async (req, res) => {
 
 // Update activity response
 app.post('/activities/:activityId/respond', authMiddleware, async (req, res) => {
+    const client = await db.pool.connect();
     try {
         const userId = req.user.id;
         const { activityId } = req.params;
@@ -967,22 +1119,44 @@ app.post('/activities/:activityId/respond', authMiddleware, async (req, res) => 
             });
         }
 
-        await db.query(`
+        await client.query('BEGIN');
+
+        // Lock the participant row to prevent concurrent updates
+        const check = await client.query(`
+            SELECT id FROM activity_participants
+            WHERE activity_id = $1 AND user_id = $2
+            FOR UPDATE
+        `, [activityId, userId]);
+
+        if (check.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                error: 'You are not invited to this activity'
+            });
+        }
+
+        await client.query(`
             UPDATE activity_participants 
             SET status = $1, updated_at = CURRENT_TIMESTAMP
             WHERE activity_id = $2 AND user_id = $3
         `, [status, activityId, userId]);
+
+        await client.query('COMMIT');
 
         res.json({
             success: true,
             message: 'Response updated successfully'
         });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error updating activity response:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to update response'
         });
+    } finally {
+        client.release();
     }
 });
 

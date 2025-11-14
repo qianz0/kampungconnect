@@ -236,6 +236,7 @@
             </div>
         </div>
         <br>
+
         <!-- Request Overview Card -->
         <div class="card detail-card">
             <div class="card-header">
@@ -718,7 +719,6 @@
             });
         }
 
-
         function showActionButtons(user) {
             const actions = document.querySelector('.action-buttons');
             actions.innerHTML = ''; // clear
@@ -759,14 +759,22 @@
     `;
             }
 
+            // Share with Friends button (seniors only)
+            let shareBtn = '';
+            if (user.role === "senior") {
+                shareBtn = `
+                <button class="btn btn-primary" onclick="shareRequest()">
+                    <i class="fas fa-share-alt me-2"></i>Share with Friends
+                </button>
+                `;
+            }
+
             // Other action buttons
             actions.innerHTML = `
                 ${respondBtn}
                 ${offerBtn}
-                <button class="btn btn-primary" onclick="shareRequest()">
-                    <i class="fas fa-share-alt me-2"></i>Share with Friends
-                </button>
-                <button class="btn btn-outline-primary" onclick="copyShareLink()">
+                ${shareBtn}
+                <button class="btn btn-outline-primary" onclick="copyShareLink()" id="copyLinkBtn">
                     <i class="fas fa-link me-2"></i>Copy Link
                 </button>             
             `;
@@ -1051,35 +1059,60 @@
 
         function copyShareLink() {
             const requestUrl = window.location.href;
+            const btn = document.getElementById('copyLinkBtn');
             
             // Try to use the Clipboard API
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(requestUrl)
                     .then(() => {
-                        // Show success feedback
-                        const btn = event.target.closest('button');
-                        const originalHTML = btn.innerHTML;
-                        btn.innerHTML = '<i class="fas fa-check me-2"></i>Link Copied!';
-                        btn.classList.add('btn-success');
-                        btn.classList.remove('btn-outline-primary');
-                        
-                        setTimeout(() => {
-                            btn.innerHTML = originalHTML;
-                            btn.classList.remove('btn-success');
-                            btn.classList.add('btn-outline-primary');
-                        }, 2000);
+                        showCopySuccess(btn);
                     })
                     .catch(err => {
                         console.error('Failed to copy link:', err);
-                        fallbackCopyLink(requestUrl);
+                        fallbackCopyLink(requestUrl, btn);
                     });
             } else {
                 // Fallback for older browsers
-                fallbackCopyLink(requestUrl);
+                fallbackCopyLink(requestUrl, btn);
             }
         }
 
-        function fallbackCopyLink(text) {
+        function showCopySuccess(btn) {
+            // Remove any existing tooltip
+            const existingTooltip = document.getElementById('copySuccessTooltip');
+            if (existingTooltip) existingTooltip.remove();
+
+            // Create tooltip element
+            const tooltip = document.createElement('div');
+            tooltip.id = 'copySuccessTooltip';
+            tooltip.className = 'alert alert-success alert-dismissible fade show';
+            tooltip.style.cssText = 'position: absolute; top: -50px; left: 50%; transform: translateX(-50%); z-index: 1060; min-width: 200px; padding: 0.5rem 1rem; font-size: 0.9rem; white-space: nowrap;';
+            tooltip.innerHTML = '<i class="fas fa-check-circle me-1"></i>Copied to clipboard!';
+            
+            // Position relative to button
+            const btnRect = btn.getBoundingClientRect();
+            tooltip.style.position = 'fixed';
+            tooltip.style.top = (btnRect.top - 50) + 'px';
+            tooltip.style.left = (btnRect.left + btnRect.width / 2) + 'px';
+            
+            document.body.appendChild(tooltip);
+
+            // Change button appearance temporarily
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-outline-primary');
+
+            // Reset after 2 seconds
+            setTimeout(() => {
+                tooltip.remove();
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-primary');
+            }, 2000);
+        }
+
+        function fallbackCopyLink(text, btn) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
             textArea.style.position = 'fixed';
@@ -1089,10 +1122,16 @@
             
             try {
                 document.execCommand('copy');
-                alert('Link copied to clipboard!');
+                showCopySuccess(btn);
             } catch (err) {
                 console.error('Failed to copy link:', err);
-                alert('Failed to copy link. Please copy manually: ' + text);
+                // Show error tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'alert alert-danger';
+                tooltip.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1060; min-width: 300px;';
+                tooltip.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Failed to copy link. Please copy manually.';
+                document.body.appendChild(tooltip);
+                setTimeout(() => tooltip.remove(), 3000);
             }
             
             document.body.removeChild(textArea);

@@ -26,17 +26,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Get user info and update UI
         const currentUser = window.AuthManager.getCurrentUser();
         if (currentUser) {
-            // Update user info in navbar
-            document.getElementById('userName').textContent = 
-                currentUser.firstname && currentUser.lastname 
-                    ? `${currentUser.firstname} ${currentUser.lastname}`
-                    : currentUser.email;
-            
-            const avatar = document.getElementById('userAvatar');
-            avatar.src = currentUser.picture || 
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.firstname + ' ' + currentUser.lastname)}&background=6c757d&color=fff`;
-            avatar.alt = currentUser.firstname + ' ' + currentUser.lastname;
-            
             // Update UI based on user role
             updateUIForRole(currentUser.role);
         }

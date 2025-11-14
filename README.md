@@ -1,23 +1,41 @@
 # KampungConnect 🏘️
 
-A comprehensive community-driven platform that connects seniors with local helpers for daily assistance, built with modern web technologies, secure authentication, and advanced database management capabilities.
+A comprehensive community-driven platform that connects seniors with local helpers for daily assistance, built with modern web technologies, secure authentication, social networking features, and enterprise-grade observability.
 
 ## 📋 Overview
 
-KampungConnect is a microservices-based web application that facilitates community support by allowing seniors to request help and connecting them with willing community helpers. The platform emphasizes security, scalability, user-friendly design, and provides comprehensive database management tools for both local development and cloud deployment.
+KampungConnect is a microservices-based web application that facilitates community support by allowing seniors ("Khakis") to request help and connecting them with willing community helpers. The platform emphasizes security, scalability, social connectivity, and user-friendly design with full monitoring capabilities.
 
 ### Key Features
 
-- 🔐 **Secure Authentication** - OIDC/SSO integration with Google and Azure AD
-- 🤝 **Community Matching** - Intelligent matching system between seniors and helpers
-- 📱 **Responsive Design** - Mobile-friendly interface built with Bootstrap 5
-- 🔔 **Real-time Notifications** - Keep users updated on request status
-- ⭐ **Rating System** - Community trust through user ratings
-- 🚨 **Priority Routing** - Urgent requests get priority handling
+- 🔐 **Secure Authentication** - Multiple authentication methods:
+  - OIDC/SSO integration with Google and Azure AD
+  - Email/Password authentication with OTP verification
+  - JWT-based session management
+- 👥 **Social Networking** - Built-in social features:
+  - Friend requests and friend management
+  - Real-time messaging system (gRPC-powered)
+  - User profiles with ratings and statistics
+  - Activity planning and social events
+  - Leaderboards for top helpers
+- 🤝 **Intelligent Matching** - Smart matching system between seniors and helpers based on:
+  - Geographic proximity (postal code-based)
+  - Request categories and helper expertise
+  - Availability and ratings
+  - Urgency levels
+- 📱 **Responsive Design** - Mobile-first interface built with Bootstrap 5
+- 🔔 **Real-time Notifications** - Email notifications for:
+  - Friend requests and acceptances
+  - New messages and match updates
+  - Request status changes
+  - Rating submissions
+- ⭐ **Rating System** - Community trust through comprehensive ratings and reviews
+- 🚨 **Priority Routing** - Urgent/panic requests get immediate attention
 - 🐳 **Containerized** - Docker images with Kubernetes orchestration
-- ☸️ **Kubernetes Ready** - Production-ready K8s manifests with observability
-- � **Observability Stack** - Integrated Prometheus, Grafana, and Tempo for monitoring
-- � **Message Queue** - RabbitMQ for async processing and service communication
+- ☸️ **Production-Ready** - Full Kubernetes deployment with secrets management
+- 📊 **Observability Stack** - Integrated monitoring with Prometheus, Grafana, and Tempo
+- 📨 **Message Queue** - RabbitMQ for async processing and service communication
+- 🔍 **Admin Dashboard** - Comprehensive admin panel for user and request management
 
 ## 🏗️ Architecture
 
@@ -26,29 +44,146 @@ KampungConnect is a microservices-based web application that facilitates communi
 ```
 kampungconnect/
 ├── frontend/                 # Static web application (Nginx)
-│   ├── css/
-│   ├── js/
+│   ├── css/                 # Stylesheets
+│   │   ├── header.css
+│   │   ├── helper-ratings.css
+│   │   └── rate-helper.css
+│   ├── js/                  # JavaScript modules
+│   │   ├── auth.js          # Authentication manager with JWT handling
+│   │   ├── config.js        # API endpoints configuration
+│   │   ├── header.js        # Reusable header component
+│   │   ├── main.js          # Common utilities
+│   │   ├── admin.js         # Admin dashboard functionality
+│   │   ├── notifications.js # Notification handling
+│   │   ├── postal-utils.js  # Singapore postal code utilities
+│   │   ├── rate-helper.js   # Rating interface
+│   │   └── stats.js         # Statistics display
 │   ├── components/
-│   └── *.html
+│   │   └── header.html      # Reusable navigation header
+│   ├── index.html           # Landing page
+│   ├── login.html           # Authentication page
+│   ├── role-selection.html  # Role selection for new users
+│   ├── verify-email.html    # Email verification with OTP
+│   ├── reset-password.html  # Password reset
+│   ├── dashboard.html       # User dashboard
+│   ├── profile.html         # User profile management
+│   ├── requests.html        # Browse help requests
+│   ├── all-requests.html    # All requests (admin view)
+│   ├── my-requests.html     # My posted requests
+│   ├── request-details.html # Single request view
+│   ├── match.html           # Senior matching interface
+│   ├── match-helper.html    # Helper matching interface
+│   ├── task-completed.html  # Task completion confirmation
+│   ├── rate-helper.html     # Rate helper after task
+│   ├── helper-profile.html  # Helper profile with ratings
+│   ├── khakis.html          # Browse khakis (seniors) near me
+│   ├── khaki-profile.html   # Khaki profile view
+│   ├── friends.html         # Friend management & requests
+│   ├── messages.html        # Real-time messaging interface
+│   ├── my-stats.html        # Personal statistics
+│   ├── leaderboard.html     # Helper leaderboard
+│   ├── notifications.html   # Notifications center
+│   ├── admin.html           # Admin dashboard
+│   ├── Dockerfile           # Frontend container config
+│   └── nginx.conf           # Nginx configuration
 ├── backend/
 │   ├── services/
-│   │   ├── auth-service/           # Authentication & user management
-│   │   ├── request-service/        # Help request management
-│   │   ├── matching-service/       # User matching logic
-│   │   ├── notification-service/   # Email notifications
-│   │   ├── rating-service/         # User rating system
-│   │   ├── admin-service/          # Admin operations
-│   │   └── stats-service/          # Statistics & analytics
-│   ├── shared/                     # Common middleware & utilities
-│   └── db/                         # Database initialization
+│   │   ├── auth-service/           # Port 5000 (5001 external)
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── database-service.js
+│   │   │   │   ├── jwt-utils.js
+│   │   │   │   ├── oidc-providers.js  # Google & Azure AD
+│   │   │   │   ├── otp-service.js     # Email OTP verification
+│   │   │   │   └── password-service.js # Password hashing
+│   │   │   ├── create-admin.js         # Admin creation utility
+│   │   │   ├── start.sh                # Service startup script
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── request-service/         # Port 5000 (5002 external)
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── db.js
+│   │   │   │   ├── queue.js            # RabbitMQ integration
+│   │   │   │   └── tracing.js          # OpenTelemetry tracing
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── matching-service/        # Port 5000 (5003 external)
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── db.js
+│   │   │   │   ├── matcher.js          # Matching algorithm
+│   │   │   │   ├── postal-utils.js     # Postal code distance
+│   │   │   │   ├── queue.js
+│   │   │   │   └── tracing.js
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── notification-service/    # Port 5000 (5004 external)
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   └── smtp-service.js     # Email via Gmail SMTP
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── rating-service/          # Port 5000 (5006 external)
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   ├── db.js
+│   │   │   │   ├── controllers/        # Rating CRUD operations
+│   │   │   │   └── routes/
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── admin-service/           # Port 5000 (5007 external)
+│   │   │   ├── src/
+│   │   │   │   └── index.js
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   ├── social-service/          # Port 5008 REST, 50051 gRPC
+│   │   │   ├── src/
+│   │   │   │   ├── index.js
+│   │   │   │   └── db.js
+│   │   │   ├── proto/
+│   │   │   │   └── messaging.proto     # gRPC messaging protocol
+│   │   │   ├── Dockerfile
+│   │   │   └── package.json
+│   │   └── stats-service/           # Port 5000 (5009 external)
+│   │       ├── src/
+│   │       │   ├── index.js
+│   │       │   └── db.js
+│   │       ├── Dockerfile
+│   │       └── package.json
+│   ├── shared/                      # Common middleware
+│   │   └── auth-middleware.js       # JWT authentication
+│   └── db/                          # Database initialization
+│       └── init.sql                 # Database schema & seed data
 ├── k8s/                      # Kubernetes manifests
-│   ├── base/                 # Namespace configuration
-│   ├── infra/                # Infrastructure (DB, RabbitMQ, monitoring)
-│   └── services/             # Application services
+│   ├── base/
+│   │   └── namespace.yaml           # kampungconnect namespace
+│   ├── infra/                       # Infrastructure services
+│   │   ├── db.yaml                  # PostgreSQL StatefulSet
+│   │   ├── rabbitmq.yaml            # RabbitMQ StatefulSet
+│   │   ├── prometheus.yaml          # Metrics collection
+│   │   ├── grafana.yaml             # Dashboards & visualization
+│   │   ├── tempo.yaml               # Distributed tracing
+│   │   └── otel-collector.yaml      # OpenTelemetry collector
+│   ├── secrets/                     # Kubernetes secrets
+│   │   └── smtp-secret.yaml         # SMTP credentials (gitignored)
+|   |   └── smtp-secret-example.yaml # SMTP credentials example
+│   └── services/                    # Application deployments
+│       ├── auth-service.yaml
+│       ├── request-service.yaml
+│       ├── matching-service.yaml
+│       ├── notification-service.yaml
+│       ├── rating-service.yaml
+│       ├── admin-service.yaml
+│       ├── social-service.yaml
+│       ├── stats-service.yaml
+│       └── frontend.yaml
 ├── build-all.bat             # Build all Docker images
-├── deploy-to-kuber.bat                # Deploy to Kubernetes
-├── deploy-all.bat            # Complete deployment workflow
+├── deploy-to-kuber.bat       # Deploy to Kubernetes cluster
+├── deploy-all.bat            # Complete build + deploy workflow
 ├── port-forward.ps1          # Start all port forwards (PowerShell)
+├── reset-database.bat        # Reset and reinitialize database
+└── .gitignore                # Git ignore file (includes k8s/secrets/)
 ```
 
 ### Technology Stack
@@ -64,11 +199,21 @@ kampungconnect/
 **Backend:**
 
 - Node.js with Express.js framework
-- PostgreSQL database
+- PostgreSQL database with connection pooling
 - JWT for authentication tokens
-- Passport.js for OIDC integration
-- RabbitMQ for message queuing
-- 7 specialized microservices
+- Passport.js for OIDC integration (Google, Azure AD)
+- NodeMailer for email notifications via Gmail SMTP
+- RabbitMQ for message queuing and async processing
+- gRPC for real-time messaging service communication
+- 8 specialized microservices:
+  - **auth-service**: User authentication, registration, OIDC, OTP verification
+  - **request-service**: Help request CRUD and management
+  - **matching-service**: Intelligent helper-senior matching algorithm
+  - **notification-service**: Email notifications for all events
+  - **rating-service**: User ratings and reviews management
+  - **admin-service**: Admin dashboard with statistics and management
+  - **social-service**: Friend requests, messaging (REST + gRPC)
+  - **stats-service**: User statistics, leaderboards, achievements
 
 **Infrastructure:**
 
@@ -104,11 +249,11 @@ cd kampungconnect
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root or configure as Kubernetes secrets:
 
 ```env
 # Database Configuration
-POSTGRES_HOST=postgres
+POSTGRES_HOST=db
 POSTGRES_PORT=5432
 POSTGRES_DB=kampungconnect
 POSTGRES_USER=admin
@@ -138,18 +283,30 @@ AZURE_REDIRECT_URI=http://localhost:5001/auth/azure/callback
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRATION=24h
 
-# SMTP Configuration (for email notifications)
+# SMTP Configuration (for email notifications and OTP)
+# Stored as Kubernetes secret: k8s/secrets/smtp-secret.yaml
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
+SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
+SMTP_PASSWORD=your-gmail-app-password
+SMTP_FROM_EMAIL=your-email@gmail.com
+SMTP_FROM_NAME=KampungConnect
 
 # Application URLs
 FRONTEND_URL=http://localhost:8080
+AUTH_SERVICE_URL=http://auth-service:5000
 
 # OpenTelemetry Configuration
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+OTEL_SERVICE_NAME=kampungconnect
 ```
+
+**Important Security Notes:**
+
+- SMTP credentials should be stored in `k8s/secrets/smtp-secret.yaml` (not committed to git)
+- The `k8s/secrets/` directory is gitignored for security
+- Create secrets with: `kubectl apply -f k8s/secrets/smtp-secret.yaml`
 
 ### 3. Set Up OIDC Providers
 
@@ -182,12 +339,20 @@ deploy-all.bat
 
 This will:
 
-1. Build all 8 Docker images
-2. Create Kubernetes namespace
-3. Create secrets and configmaps
+1. Build all 8 Docker images for each microservice
+2. Create Kubernetes namespace (`kampungconnect`)
+3. Create SMTP secrets (requires `k8s/secrets/smtp-secret.yaml`)
 4. Deploy infrastructure (PostgreSQL, RabbitMQ, monitoring stack)
-5. Deploy all microservices
+5. Deploy all 8 microservices + frontend
 6. Wait for pods to be ready
+7. Run database initialization job
+
+**Note:** Create SMTP secrets first:
+
+```bash
+# Create k8s/secrets/smtp-secret.yaml with your credentials
+kubectl apply -f k8s/secrets/smtp-secret.yaml
+```
 
 **Option 2: Manual Step-by-Step**
 
@@ -233,13 +398,14 @@ port-forward.ps1
 
 **Backend Services:**
 
-- **Auth Service**: http://localhost:5001 (internal: 5000)
-- **Request Service**: http://localhost:5002 (internal: 5000)
-- **Matching Service**: http://localhost:5003 (internal: 5000)
-- **Notification Service**: http://localhost:5004 (internal: 5000)
-- **Rating Service**: http://localhost:5006 (internal: 5000)
-- **Admin Service**: http://localhost:5007 (internal: 5000)
-- **Stats Service**: http://localhost:5009 (internal: 5000)
+- **Auth Service**: http://localhost:5001 (OIDC, registration, OTP verification)
+- **Request Service**: http://localhost:5002 (help requests)
+- **Matching Service**: http://localhost:5003 (matching algorithm)
+- **Notification Service**: http://localhost:5004 (email notifications)
+- **Rating Service**: http://localhost:5006 (ratings & reviews)
+- **Admin Service**: http://localhost:5007 (admin dashboard)
+- **Social Service**: http://localhost:5008 (friends, messaging, activities)
+- **Stats Service**: http://localhost:5009 (statistics & leaderboards)
 
 ## 📝 API Documentation
 
@@ -340,6 +506,94 @@ port-forward.ps1
 | `/stats/senior/:id`                 | GET    | Get specific senior's stats                              | Yes           |
 | `/stats/leaderboard/:type`          | GET    | Get leaderboard (type: completed, rating, hours, streak) | Yes           |
 | `/stats/leaderboard/:type/position` | GET    | Get current user's leaderboard position                  | Yes           |
+
+### Social Service (Port 5008)
+
+**Friend Management Endpoints:**
+
+| Endpoint                    | Method | Description                     | Auth Required |
+| --------------------------- | ------ | ------------------------------- | ------------- |
+| `/`                       | GET    | Service health check            | No            |
+| `/friends`                | GET    | Get user's friends list         | Yes           |
+| `/friends/requests`       | GET    | Get received friend requests    | Yes           |
+| `/friends/sent`           | GET    | Get sent friend requests        | Yes           |
+| `/friends/request`        | POST   | Send friend request             | Yes           |
+| `/friends/accept/:id`     | POST   | Accept friend request           | Yes           |
+| `/friends/reject/:id`     | POST   | Reject friend request           | Yes           |
+| `/friends/cancel/:id`     | POST   | Cancel sent friend request      | Yes           |
+| `/friends/:id`            | DELETE | Remove friend                   | Yes           |
+| `/friends/status/:userId` | GET    | Get friendship status with user | Yes           |
+
+**Messaging Endpoints (REST API):**
+
+| Endpoint                    | Method | Description                     | Auth Required |
+| --------------------------- | ------ | ------------------------------- | ------------- |
+| `/messages/conversations` | GET    | Get all conversations           | Yes           |
+| `/messages/:userId`       | GET    | Get messages with specific user | Yes           |
+| `/messages`               | POST   | Send a message                  | Yes           |
+| `/messages/unread/count`  | GET    | Get unread message count        | Yes           |
+| `/users/:userId`          | GET    | Get user details (for friends)  | Yes           |
+
+**Activity Planning Endpoints:**
+
+| Endpoint                    | Method | Description                | Auth Required |
+| --------------------------- | ------ | -------------------------- | ------------- |
+| `/activities`             | GET    | Get user's activities      | Yes           |
+| `/activities/:id`         | GET    | Get activity details       | Yes           |
+| `/activities`             | POST   | Create new activity        | Yes           |
+| `/activities/:id`         | PUT    | Update activity            | Yes           |
+| `/activities/:id`         | DELETE | Cancel activity            | Yes           |
+| `/activities/:id/join`    | POST   | Join an activity           | Yes           |
+| `/activities/:id/leave`   | POST   | Leave an activity          | Yes           |
+| `/activities/:id/respond` | POST   | Respond to activity invite | Yes           |
+
+**gRPC Endpoints (Port 50051):**
+
+- Real-time messaging streams
+- Message delivery notifications
+- Typing indicators
+- Presence updates
+
+## 🌐 Social Features
+
+KampungConnect includes comprehensive social networking features to build community connections:
+
+### Friend System
+
+- **Friend Requests**: Send and receive friend requests
+- **Friend Management**: Accept, reject, or remove friends
+- **Friendship Status**: Check friendship status with any user
+- **Friend List**: View all your connections with profile information
+
+### Real-Time Messaging
+
+- **Direct Messages**: One-on-one messaging with friends
+- **Conversation History**: Access full message history
+- **Unread Indicators**: Track unread messages
+- **Message Notifications**: Email alerts for new messages
+- **REST + gRPC**: REST API for CRUD, gRPC for real-time features
+
+### Activity Planning
+
+- **Create Activities**: Plan social events and gatherings
+- **Invite Friends**: Send activity invitations
+- **RSVP System**: Accept or decline invitations
+- **Activity Feed**: View upcoming and past activities
+- **Participant Management**: Track who's joining
+
+### User Profiles
+
+- **Profile Viewing**: View khaki (senior) profiles
+- **Browse Khakis**: Find seniors near you by postal code
+- **Helper Profiles**: View helper ratings and statistics
+- **Profile Pictures**: Avatar support with fallback initials
+
+### Social Discovery
+
+- **Nearby Khakis**: Location-based user discovery
+- **Search & Filter**: Find users by name, location, or rating
+- **Leaderboards**: View top-rated helpers in the community
+- **Statistics**: Track your social impact and engagement
 
 ## 📊 Monitoring & Observability
 
@@ -469,7 +723,7 @@ deploy-to-kuber.bat
 | `build-all.bat`           | Build all Docker images                        |
 | `deploy-to-kuber.bat`     | Deploy to Kubernetes (creates secrets, deploys |
 | `deploy-all.bat`          | Full workflow: build + deploy                  |
-| `port-forward.ps1`        | Start/stop all port forwards (PowerShell)           |
+| `port-forward.ps1`        | Start/stop all port forwards (PowerShell)      |
 | `kubectl get pods -n ...` | View pod status                                |
 | `kubectl logs -f ...`     | View service logs                              |
 | `kubectl rollout restart` | Restart deployments after code changes         |
@@ -606,43 +860,78 @@ The application uses PostgreSQL with the following main tables:
 users (
     id, provider_id, email, firstname, lastname, password_hash,
     picture, provider, role, rating, location, postal_code,
-    email_verified, is_active, created_at, updated_at
+    email_verified, is_active, created_at, updated_at, last_login
 )
 
 -- Help requests
 requests (
     id, user_id, helper_id, category, type, description, 
-    status, location, postal_code, created_at, updated_at
+    status, location, postal_code, urgency_level,
+    created_at, updated_at, completed_at
 )
 
 -- Matches between helpers and requests
 matches (
-    id, request_id, helper_id, matched_at, completed_at, status
+    id, request_id, helper_id, senior_id, matched_at, 
+    completed_at, status, match_type
 )
 
 -- Ratings for completed matches
 ratings (
     id, match_id, rater_id, ratee_id, score, comment, 
-    created_at, updated_at
+    helpful_count, created_at, updated_at
 )
 
 -- OTP tokens for email verification
 otp_tokens (
-    id, user_id, token, expires_at, created_at, is_used
+    id, user_id, email, token, expires_at, attempts,
+    created_at, is_used
+)
+
+-- Friend relationships
+friendships (
+    id, user_id, friend_id, status, created_at, 
+    accepted_at, updated_at
+)
+
+-- Friend requests
+friend_requests (
+    id, sender_id, receiver_id, status, message,
+    created_at, responded_at
+)
+
+-- Messages (for direct messaging)
+messages (
+    id, conversation_id, sender_id, receiver_id, 
+    content, read, created_at, updated_at
+)
+
+-- Activities (social events)
+activities (
+    id, creator_id, title, description, location,
+    scheduled_at, status, max_participants,
+    created_at, updated_at
+)
+
+-- Activity participants
+activity_participants (
+    id, activity_id, user_id, status, 
+    joined_at, response
 )
 ```
 
 **Key Features:**
 
-- **Multi-Provider Auth**: Supports Google, Azure AD, and email/password
-- **Role-Based Access**: Senior, helper, and admin roles
-- **Request Types**: Normal and urgent requests with different priorities
-- **Postal Code Matching**: Intelligent matching based on geographic proximity
-- **Rating System**: Bidirectional 5-star rating system with comments
-- **Email Verification**: OTP-based email verification for password auth
-- **Request Types**: Normal and urgent requests with different priority handling
-- **Rating System**: 5-star rating system with comments for community trust
-- **Data Integrity**: Foreign key constraints and proper indexing for performance
+- **Multi-Provider Auth**: Supports Google, Azure AD, and email/password with OTP verification
+- **Role-Based Access**: Senior (Khaki), helper, and admin roles with different permissions
+- **Social Networking**: Friends and messaging fully integrated
+- **Geographic Matching**: Postal code-based proximity matching for Singapore addresses
+- **Urgency Levels**: Normal and panic requests with different priority handling
+- **Rating System**: Bidirectional 5-star rating system with comments and helpful votes
+- **Real-Time Messaging**: gRPC-powered messaging with conversation tracking
+- **Activity Management**: Social events with RSVP and participant limits
+- **Email Verification**: OTP-based email verification with attempt limits (3 max)
+- **Data Integrity**: Foreign key constraints, proper indexing, and transaction support
 
 ## 🔒 Security Features
 
@@ -661,13 +950,14 @@ All services expose health check endpoints:
 
 ```bash
 # Check service health via port-forwards
-curl http://localhost:5001/  # Auth service (internal: 5000)
-curl http://localhost:5002/  # Request service (internal: 5002)
-curl http://localhost:5003/  # Matching service (internal: 5003)
-curl http://localhost:5004/  # Notification service (internal: 5000)
-curl http://localhost:5006/  # Rating service (internal: 5000)
-curl http://localhost:5007/  # Admin service (internal: 5000)
-curl http://localhost:5009/  # Stats service (internal: 5009)
+curl http://localhost:5001/  # Auth service
+curl http://localhost:5002/  # Request service
+curl http://localhost:5003/  # Matching service
+curl http://localhost:5004/  # Notification service
+curl http://localhost:5006/  # Rating service
+curl http://localhost:5007/  # Admin service
+curl http://localhost:5008/  # Social service
+curl http://localhost:5009/  # Stats service
 ```
 
 ### API Testing
@@ -685,6 +975,19 @@ curl -X POST http://localhost:5002/postRequest \
      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"category":"groceries","description":"Need help with shopping"}'
+
+# Test friend requests
+curl http://localhost:5008/friends \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Test messaging
+curl http://localhost:5008/messages/conversations \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+    -H "Content-Type: application/json"
+    -d '{"category":"groceries","description":"Need help with shopping"}'
+
 ```
 
 ### Kubernetes Testing
@@ -945,15 +1248,27 @@ kubectl logs deployment/notification-service -n kampungconnect --tail=50
 
 ### Port Forward Issues
 
-# Check if ports are already in use
+#### Check if ports are already in use
+
+```
 netstat -ano | findstr "8080\|5001\|5002"
+```
 
-# Restart port forwards
+**Restart port forwards**
+
+```
 .\port-forward.ps1
+```
 
-# Check PowerShell jobs
+#### Check PowerShell jobs
+
+```
 Get-Job
-Get-Job | Receive-Job  # View output
+Get-Job | Receive-Job
+```
+
+# View output
+
 ```
 
 ### Database Issues
@@ -1035,11 +1350,6 @@ kubectl delete namespace kampungconnect-test
 ```
 
 ## 📚 Additional Resources
-
-### Project Documentation
-
-- **[OIDC Implementation Guide](./OIDC_SSO_GUIDE.md)** - Comprehensive authentication setup and troubleshooting
-- **[SMTP Email Setup Guide](./SMTP_EMAIL_SETUP_GUIDE.md)** - Email notification configuration
 
 ### External Documentation
 

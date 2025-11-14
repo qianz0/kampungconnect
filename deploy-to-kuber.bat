@@ -45,6 +45,11 @@ echo.
 echo 🌐 Applying services...
 kubectl apply -f k8s/services/ -n kampungconnect
 
+:: Step 6.1 — Deploy SMTP Secret
+echo.
+echo 🔐 Applying SMTP secret...
+kubectl apply -f k8s/secrets/smtp-secret.yaml
+
 :: Step 7 — Restart Deployments
 echo.
 echo 🔄 Restarting all deployments...

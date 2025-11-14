@@ -163,17 +163,6 @@ h4, h5 {
     cursor: pointer;
 }
 
-.navbar-brand {
-    font-weight: bold;
-}
-
-.user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
 .loading-overlay {
     position: fixed;
     top: 0;

@@ -16,9 +16,27 @@ const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 // ==================
 // Middleware setup
 // ==================
+// Allow multiple origins for local development and production
+const allowedOrigins = [
+    'http://localhost:8080',
+    'http://frontend:80',
+    'http://localhost:80',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:8080",
+        origin: function (origin, callback) {
+            // Allow requests with no origin (like mobile apps, curl, postman)
+            if (!origin) return callback(null, true);
+            
+            if (allowedOrigins.indexOf(origin) !== -1) {
+                callback(null, true);
+            } else {
+                console.log(`CORS: Blocked origin ${origin}`);
+                callback(null, true); // Allow for now, but log it
+            }
+        },
         credentials: true,
     })
 );
@@ -119,8 +137,6 @@ JOIN requests r ON m.request_id = r.id
 JOIN users s ON r.user_id = s.id
 WHERE m.helper_id = $1
 ORDER BY m.matched_at DESC;
-
-
     `,
             [userId]
         );
@@ -159,6 +175,7 @@ app.get("/helpers/available", authMiddleware.authenticateToken, async (req, res)
 // Manual match assignment
 // ==================
 app.post("/matches/assign", authMiddleware.authenticateToken, async (req, res) => {
+    const client = await db.connect();
     try {
         const { request_id, helper_id } = req.body;
 
@@ -166,19 +183,42 @@ app.post("/matches/assign", authMiddleware.authenticateToken, async (req, res) =
             return res.status(400).json({ error: "request_id and helper_id are required" });
         }
 
-        const result = await db.query(
+        await client.query('BEGIN');
+
+        // Lock the request row to prevent concurrent matches
+        const requestCheck = await client.query(
+            `SELECT status FROM requests WHERE id = $1 FOR UPDATE`,
+            [request_id]
+        );
+
+        if (requestCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "Request not found" });
+        }
+
+        if (requestCheck.rows[0].status !== 'pending') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Request is not available for matching" });
+        }
+
+        const result = await client.query(
             `INSERT INTO matches (request_id, helper_id, status)
        VALUES ($1, $2, 'active')
        RETURNING *`,
             [request_id, helper_id]
         );
 
-        await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);
+        await client.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);
+
+        await client.query('COMMIT');
 
         res.json({ message: "Match created successfully", match: result.rows[0] });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("Error assigning match:", err);
         res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
     }
 });
 
@@ -186,34 +226,47 @@ app.post("/matches/assign", authMiddleware.authenticateToken, async (req, res) =
 // Mark match complete
 // ==================
 app.post("/matches/:id/complete", authMiddleware.authenticateToken, async (req, res) => {
+    const client = await db.connect();
     try {
         const matchId = req.params.id;
         const helperId = req.user.id;
 
-        // Validate match ownership
-        const match = await db.query(
-            `SELECT * FROM matches WHERE id = $1 AND helper_id = $2`,
+        await client.query('BEGIN');
+
+        // Validate match ownership with row lock
+        const match = await client.query(
+            `SELECT * FROM matches WHERE id = $1 AND helper_id = $2 FOR UPDATE`,
             [matchId, helperId]
         );
 
         if (match.rowCount === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: "Match not found or not assigned to you." });
+        }
+
+        if (match.rows[0].status === 'completed') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "Match already completed" });
         }
 
         const requestId = match.rows[0].request_id;
 
         // Update match and request status
-        await db.query(`UPDATE matches SET status = 'completed' WHERE id = $1`, [matchId]);
-        await db.query(`UPDATE requests SET status = 'fulfilled' WHERE id = $1`, [requestId]);
-        await db.query(`UPDATE matches SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = $1`, [matchId]);
+        await client.query(`UPDATE matches SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = $1`, [matchId]);
+        await client.query(`UPDATE requests SET status = 'fulfilled' WHERE id = $1`, [requestId]);
 
         // Update helper active to true
-        await db.query(`UPDATE users SET is_active = TRUE WHERE id = $1`, [helperId]);
+        await client.query(`UPDATE users SET is_active = TRUE WHERE id = $1`, [helperId]);
+
+        await client.query('COMMIT');
 
         res.json({ message: "Request marked as completed successfully." });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("Error completing match:", err);
         res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
     }
 });
 
@@ -231,18 +284,41 @@ app.use((err, req, res, next) => {
 async function handleNewRequest(request) {
     console.log("New request received:", request);
 
+    const client = await db.connect();
     try {
+        await client.query('BEGIN');
+
+        // Lock the request row to prevent concurrent matches
+        const requestCheck = await client.query(
+            `SELECT status FROM requests WHERE id = $1 FOR UPDATE`,
+            [request.id]
+        );
+
+        if (requestCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            console.log(`Request ${request.id} not found`);
+            return;
+        }
+
+        // Check if already matched
+        if (requestCheck.rows[0].status !== 'pending' && requestCheck.rows[0].status !== 'matching') {
+            await client.query('ROLLBACK');
+            console.log(`Request ${request.id} already matched or not available`);
+            return;
+        }
+
         // Find a helper
         const helper = await findBestHelper(request);
 
         if (!helper) {
+            await client.query('ROLLBACK');
             // console.log(`No helper found for request ${request.id}. Retrying in 30s...`);
             await publishMessage("request_retry", request);
             return;
         }
 
         // Insert match into DB
-        const result = await db.query(
+        const result = await client.query(
             `INSERT INTO matches (request_id, helper_id, status)
        VALUES ($1, $2, 'active')
        RETURNING *`,
@@ -250,7 +326,9 @@ async function handleNewRequest(request) {
         );
 
         // Update the request to 'matched'
-        await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
+        await client.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request.id]);
+
+        await client.query('COMMIT');
 
         // console.log(" Match created:", result.rows[0]);
 
@@ -299,7 +377,10 @@ async function handleNewRequest(request) {
         }
 
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("Error handling new request:", err);
+    } finally {
+        client.release();
     }
 }
 

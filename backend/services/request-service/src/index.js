@@ -16,8 +16,26 @@ const app = express();
 const authMiddleware = new AuthMiddleware(process.env.AUTH_SERVICE_URL);
 
 // Middleware setup
+// Allow multiple origins for local development and production
+const allowedOrigins = [
+    'http://localhost:8080',
+    'http://frontend:80',
+    'http://localhost:80',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, postman)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log(`CORS: Blocked origin ${origin}`);
+            callback(null, true); // Allow for now, but log it
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -34,24 +52,24 @@ app.get('/', (req, res) => {
 
 // Count every created request (for Prometheus)
 const messagesPublished = new client.Counter({
-  name: 'messages_published_total',
-  help: 'Total number of messages published to RabbitMQ by request-service',
+    name: 'messages_published_total',
+    help: 'Total number of messages published to RabbitMQ by request-service',
 });
 
 // count every created matched (for Prometheus)
 const messageProcessedNonInstant = new client.Counter({
-  name: 'messages_processed_non_instant_total',
-  help: 'Total number of messages successfully processed by matching-service',
+    name: 'messages_processed_non_instant_total',
+    help: 'Total number of messages successfully processed by matching-service',
 });
 
 // ====== Prometheus Metrics Endpoint ======
 app.get('/metrics', async (req, res) => {
-  try {
-    res.set('Content-Type', client.register.contentType);
-    res.end(await client.register.metrics());
-  } catch (err) {
-    res.status(500).end(err.message);
-  }
+    try {
+        res.set('Content-Type', client.register.contentType);
+        res.end(await client.register.metrics());
+    } catch (err) {
+        res.status(500).end(err.message);
+    }
 });
 
 // Public endpoint to get service info
@@ -357,6 +375,7 @@ app.post('/requests/:id/respond', authMiddleware.authenticateToken, async (req, 
 
 // Offer to help with a request
 app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, res) => {
+    const client = await db.connect();
     try {
         const requestId = req.params.id;
         const helperId = req.user.id;
@@ -367,27 +386,44 @@ app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, re
             return res.status(403).json({ error: "Only helpers can offer to help." });
         }
 
-        // Check request validity
-        const reqCheck = await db.query("SELECT status FROM requests WHERE id = $1", [requestId]);
-        if (reqCheck.rowCount === 0) return res.status(404).json({ error: "Request not found." });
+        await client.query('BEGIN');
+
+        // Check request validity with row lock
+        const reqCheck = await client.query(
+            "SELECT status FROM requests WHERE id = $1 FOR UPDATE",
+            [requestId]
+        );
+
+        if (reqCheck.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "Request not found." });
+        }
+
         if (reqCheck.rows[0].status !== "pending") {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: "This request is not open for help." });
         }
 
         // Prevent duplicate offers
-        const exists = await db.query(
+        const exists = await client.query(
             "SELECT id FROM offers WHERE request_id = $1 AND helper_id = $2",
             [requestId, helperId]
         );
-        if (exists.rowCount > 0) return res.status(400).json({ error: "You already offered to help." });
+
+        if (exists.rowCount > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "You already offered to help." });
+        }
 
         // Save offer
-        const insert = await db.query(
+        const insert = await client.query(
             `INSERT INTO offers (request_id, helper_id, status, created_at)
        VALUES ($1, $2, 'pending', NOW())
        RETURNING id, request_id, helper_id, status, created_at`,
             [requestId, helperId]
         );
+
+        await client.query('COMMIT');
 
         // Send email notification to senior, if someone offer a match
         try {
@@ -398,16 +434,16 @@ app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, re
                  WHERE r.id = $1`,
                 [requestId]
             );
-            
+
             const helperInfo = await db.query(
                 `SELECT CONCAT(firstname, ' ', lastname) AS name, role, rating FROM users WHERE id = $1`,
                 [helperId]
             );
-            
+
             if (requestInfo.rowCount > 0 && helperInfo.rowCount > 0) {
                 const { title, user_id: seniorId, email: seniorEmail, senior_name } = requestInfo.rows[0];
                 const { name: helperName, role: helperRole, rating: helperRating } = helperInfo.rows[0];
-                
+
                 await axios.post('http://notification-service:5000/notify/offer', {
                     seniorId,
                     seniorEmail,
@@ -434,8 +470,11 @@ app.post("/requests/:id/offer", authMiddleware.authenticateToken, async (req, re
 
         res.json({ message: "Offer submitted successfully!", offer: insert.rows[0] });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error("Offer to help error:", error);
         res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
     }
 });
 
@@ -464,51 +503,62 @@ app.get("/requests/:id/offers", authMiddleware.authenticateToken, async (req, re
 
 // Senior accepts an offer (assign a helper)
 app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res) => {
+    const client = await db.connect();
     try {
         const offerId = req.params.id;
         const seniorId = req.user.id;
 
-        // 1 Get offer info
-        const offer = await db.query(
-            `SELECT o.*, r.user_id AS requester_id
+        await client.query('BEGIN');
+
+        // 1 Get offer info with row lock
+        const offer = await client.query(
+            `SELECT o.*, r.user_id AS requester_id, r.status as request_status
        FROM offers o
        JOIN requests r ON o.request_id = r.id
-       WHERE o.id = $1`,
+       WHERE o.id = $1
+       FOR UPDATE`,
             [offerId]
         );
 
         if (offer.rowCount === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: "Offer not found." });
         }
 
-        const { request_id, helper_id, requester_id } = offer.rows[0];
+        const { request_id, helper_id, requester_id, request_status } = offer.rows[0];
 
         // Ensure only the senior who posted the request can accept
         if (requester_id !== seniorId) {
+            await client.query('ROLLBACK');
             return res.status(403).json({ error: "You are not allowed to accept this offer." });
         }
 
+        // Check if request is still pending
+        if (request_status !== 'pending') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: "This request is no longer available." });
+        }
+
         // 2 Create a match
-        const match = await db.query(
+        const match = await client.query(
             `INSERT INTO matches (request_id, helper_id, matched_at, status)
        VALUES ($1, $2, NOW(), 'active')
        RETURNING *`,
             [request_id, helper_id]
         );
-        // increment when matched
-        messageProcessedNonInstant.inc();
-
         // 3 Update request status
-        await db.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);
+        await client.query(`UPDATE requests SET status = 'matched' WHERE id = $1`, [request_id]);
 
         // 4 Reject other offers for this request
-        await db.query(
+        await client.query(
             `UPDATE offers SET status = 'rejected' WHERE request_id = $1 AND id <> $2`,
             [request_id, offerId]
         );
 
         // 5 Mark accepted offer
-        await db.query(`UPDATE offers SET status = 'accepted' WHERE id = $1`, [offerId]);
+        await client.query(`UPDATE offers SET status = 'accepted' WHERE id = $1`, [offerId]);
+
+        await client.query('COMMIT');
 
         // 6 fetch contact details of both side
         const helper = await db.query(
@@ -527,23 +577,23 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
                 `SELECT title, category, urgency FROM requests WHERE id = $1`,
                 [request_id]
             );
-            
+
             // Get helper role to personalize the email
             const helperDetails = await db.query(
                 `SELECT CONCAT(firstname, ' ', lastname) AS name, email, role FROM users WHERE id = $1`,
                 [helper_id]
             );
-            
+
             if (requestInfo.rowCount > 0 && helperDetails.rowCount > 0 && senior.rowCount > 0) {
                 const { title, category, urgency } = requestInfo.rows[0];
                 const { email: helperEmail, name: helperName, role: helperRole } = helperDetails.rows[0];
                 const { name: seniorName } = senior.rows[0];
-                
+
                 await axios.post('http://notification-service:5000/notify/match', {
                     helperId: helper_id,
                     helperEmail,
                     helperName,
-                    helperRole,  
+                    helperRole,
                     requestTitle: title,
                     seniorName,
                     category,
@@ -555,6 +605,9 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
             console.warn("[request-service] Failed to send match email notification:", err.message);
         }
 
+        // increment when matched
+        messageProcessedNonInstant.inc();
+
         res.json({
             message: "Offer accepted successfully! Helper has been assigned.",
             match: match.rows[0],
@@ -564,8 +617,11 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
             }
         });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error("Accept offer error:", error);
         res.status(500).json({ error: "Internal server error" });
+    } finally {
+        client.release();
     }
 });
 
@@ -745,22 +801,22 @@ app.delete('/requests/:id', authMiddleware.authenticateToken, async (req, res) =
 
 // DEV ONLY: publish malformed message to test DLQ
 app.post("/_dev/publish-bad", async (req, res) => {
-  try {
-    if (!getChannel()) await connectQueue();
-    const ch = getChannel();
+    try {
+        if (!getChannel()) await connectQueue();
+        const ch = getChannel();
 
-    const q = req.query.q || "request_created";
+        const q = req.query.q || "request_created";
 
-    // Example 1: Non-JSON
-    ch.sendToQueue(q, Buffer.from("THIS IS NOT JSON"), { persistent: true });
+        // Example 1: Non-JSON
+        ch.sendToQueue(q, Buffer.from("THIS IS NOT JSON"), { persistent: true });
 
-    // Example 2: JSON but wrong schema
-    ch.sendToQueue(q, Buffer.from(JSON.stringify({ wrongKey: 123 })), { persistent: true });
+        // Example 2: JSON but wrong schema
+        ch.sendToQueue(q, Buffer.from(JSON.stringify({ wrongKey: 123 })), { persistent: true });
 
-    res.json({ ok: true, sentTo: q });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+        res.json({ ok: true, sentTo: q });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 

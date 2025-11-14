@@ -221,15 +221,30 @@
                     // Find conversation details
                     let conv = conversations.find(c => c.other_user_id === otherUserId);
                     if (!conv) {
-                        // Fetch user details if not in conversations
-                        const userResponse = await authManager.authenticatedFetch(`http://localhost:5001/users/${otherUserId}`);
-                        const userData = await userResponse.json();
-                        conv = {
-                            other_user_id: otherUserId,
-                            other_user_firstname: userData.firstname,
-                            other_user_lastname: userData.lastname,
-                            other_user_picture: userData.picture
-                        };
+                        // Fetch user details if not in conversations (use social service)
+                        try {
+                            const userResponse = await authManager.authenticatedFetch(`http://localhost:5008/users/${otherUserId}`);
+                            const userData = await userResponse.json();
+                            
+                            // Handle response structure
+                            const user = userData.user || userData;
+                            
+                            conv = {
+                                other_user_id: otherUserId,
+                                other_user_firstname: user.firstname || 'Unknown',
+                                other_user_lastname: user.lastname || 'User',
+                                other_user_picture: user.picture || `https://ui-avatars.com/api/?name=Unknown+User`
+                            };
+                        } catch (userError) {
+                            console.warn('Could not fetch user details, using fallback:', userError);
+                            // Fallback if user fetch fails
+                            conv = {
+                                other_user_id: otherUserId,
+                                other_user_firstname: 'Unknown',
+                                other_user_lastname: 'User',
+                                other_user_picture: `https://ui-avatars.com/api/?name=Unknown+User`
+                            };
+                        }
                     }
 
                     selectedConversation = conv;

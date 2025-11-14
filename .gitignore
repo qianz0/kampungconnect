@@ -11,5 +11,8 @@ npm-debug.log
 .env
 .env.local
 
+# Kubernetes Secrets (DO NOT COMMIT!)
+k8s/secrets/smtp-secret.yaml
+
 # System
 .DS_Store
