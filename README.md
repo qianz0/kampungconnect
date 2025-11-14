@@ -16,7 +16,6 @@ KampungConnect is a microservices-based web application that facilitates communi
   - Friend requests and friend management
   - Real-time messaging system (gRPC-powered)
   - User profiles with ratings and statistics
-  - Activity planning and social events
   - Leaderboards for top helpers
 - 🤝 **Intelligent Matching** - Smart matching system between seniors and helpers based on:
   - Geographic proximity (postal code-based)
@@ -573,14 +572,6 @@ KampungConnect includes comprehensive social networking features to build commun
 - **Message Notifications**: Email alerts for new messages
 - **REST + gRPC**: REST API for CRUD, gRPC for real-time features
 
-### Activity Planning
-
-- **Create Activities**: Plan social events and gatherings
-- **Invite Friends**: Send activity invitations
-- **RSVP System**: Accept or decline invitations
-- **Activity Feed**: View upcoming and past activities
-- **Participant Management**: Track who's joining
-
 ### User Profiles
 
 - **Profile Viewing**: View khaki (senior) profiles
@@ -929,7 +920,6 @@ activity_participants (
 - **Urgency Levels**: Normal and panic requests with different priority handling
 - **Rating System**: Bidirectional 5-star rating system with comments and helpful votes
 - **Real-Time Messaging**: gRPC-powered messaging with conversation tracking
-- **Activity Management**: Social events with RSVP and participant limits
 - **Email Verification**: OTP-based email verification with attempt limits (3 max)
 - **Data Integrity**: Foreign key constraints, proper indexing, and transaction support
 
