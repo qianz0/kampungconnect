@@ -27,11 +27,22 @@ spec:
       labels:
         app: grafana
     spec:
+      securityContext:
+        fsGroup: 472
+        runAsUser: 472
+        runAsNonRoot: true
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:11.3.0
           ports:
             - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: admin
+            - name: GF_INSTALL_PLUGINS
+              value: ""
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana

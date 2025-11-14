@@ -159,18 +159,41 @@ class HeaderManager {
             
             if (messagesLink) messagesLink.style.display = 'block';
             if (friendsLink) friendsLink.style.display = 'block';
-
-            // Load unread counts
-            this.loadUnreadCounts();
         }
+        
+        // Load unread counts for all users
+        this.loadUnreadCounts();
     }
 
     /**
-     * Load unread messages and friend requests counts
+     * Load unread messages, friend requests, and notification counts
      */
     async loadUnreadCounts() {
         try {
             if (!this.authManager) return;
+
+            // Load notification count
+            try {
+                const notifResponse = await this.authManager.authenticatedFetch('http://localhost:5002/notifications');
+                const notifData = await notifResponse.json();
+                
+                if (notifResponse.ok && notifData.notifications) {
+                    // Count unread notifications (new offers, new responses, status changes)
+                    const unreadCount = this.calculateUnreadNotifications(notifData.notifications);
+                    
+                    const badge = document.getElementById('notificationCount');
+                    if (badge) {
+                        if (unreadCount > 0) {
+                            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                            badge.style.display = 'inline';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading notification count:', error);
+            }
 
             // Load unread messages count
             try {
@@ -208,6 +231,49 @@ class HeaderManager {
             setTimeout(() => this.loadUnreadCounts(), 30000);
         } catch (error) {
             console.error('Error in loadUnreadCounts:', error);
+        }
+    }
+
+    /**
+     * Calculate unread notification count from notification data
+     */
+    calculateUnreadNotifications(notifications) {
+        try {
+            if (!Array.isArray(notifications)) return 0;
+
+            const lastVisit = localStorage.getItem('lastNotificationVisit');
+            const lastVisitDate = lastVisit ? new Date(lastVisit) : new Date(0);
+            
+            let unreadCount = 0;
+
+            for (const notification of notifications) {
+                // Count new offers
+                if (notification.offers && Array.isArray(notification.offers)) {
+                    const newOffers = notification.offers.filter(offer => 
+                        new Date(offer.created_at) > lastVisitDate
+                    );
+                    unreadCount += newOffers.length;
+                }
+
+                // Count new responses
+                if (notification.responses && Array.isArray(notification.responses)) {
+                    const newResponses = notification.responses.filter(response => 
+                        new Date(response.created_at) > lastVisitDate
+                    );
+                    unreadCount += newResponses.length;
+                }
+
+                // Count status changes
+                if (notification.status_changed_at && 
+                    new Date(notification.status_changed_at) > lastVisitDate) {
+                    unreadCount += 1;
+                }
+            }
+
+            return unreadCount;
+        } catch (error) {
+            console.error('Error calculating unread notifications:', error);
+            return 0;
         }
     }
 

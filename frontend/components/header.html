@@ -12,6 +12,15 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="navbar-nav ms-auto align-items-center">
+                <!-- Notifications Icon with Badge -->
+                <a class="nav-link position-relative me-3" href="/notifications.html" id="notificationsLink">
+                    <i class="fas fa-bell fa-lg"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
+                          id="notificationCount" style="display: none; font-size: 0.7rem;">
+                        0
+                    </span>
+                </a>
+                
                 <!-- Messages Icon with Unread Badge -->
                 <a class="nav-link position-relative me-3" href="/messages.html" id="messagesLink" style="display: none;">
                     <i class="fas fa-message fa-lg"></i>

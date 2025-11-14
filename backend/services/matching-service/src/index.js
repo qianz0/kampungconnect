@@ -114,7 +114,11 @@ ORDER BY m.matched_at DESC
         res.json({ matches: rows });
     } catch (err) {
         console.error("Error fetching senior matches:", err);
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ 
+            error: "Internal server error",
+            message: err.message,
+            matches: []
+        });
     }
 });
 

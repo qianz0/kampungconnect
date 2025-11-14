@@ -23,33 +23,6 @@ function waitForAuthManager() {
     });
 }
 
-// Load user information in UI header
-function populateUserInfo(user) {
-    if (!user) return;
-
-    const displayName = user.firstname && user.lastname 
-        ? `${user.firstname} ${user.lastname}` 
-        : user.firstname || user.name || user.email || 'User';
-
-    document.getElementById('userName').textContent = displayName;
-    const avatar = document.getElementById('userAvatar');
-    avatar.src = user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
-    avatar.alt = displayName;
-    
-    // Update email help text based on role
-    const emailHelpText = document.getElementById('emailHelpText');
-    if (emailHelpText) {
-        const role = (user.role || '').toLowerCase();
-        if (role === 'senior') {
-            emailHelpText.textContent = 'You will receive email notification updates when other offer helps to your request.';
-        } else if (role === 'volunteer' || role === 'caregiver') {
-            emailHelpText.textContent = 'You will receive email notification updates when you match with a senior request.';
-        } else {
-            emailHelpText.textContent = 'You will receive email notification updates when you match with a senior request.';
-        }
-    }
-}
-
 // Load notifications from the server
 async function loadNotifications() {
     try {
@@ -1326,7 +1299,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         currentUser = authManager.getCurrentUser();
-        populateUserInfo(currentUser);
 
         await Promise.all([
             loadNotifications(),
@@ -1440,5 +1412,3 @@ window.markAsRead = markAsRead;
 window.markAllAsRead = markAllAsRead; // Commented out - function not defined
 window.acceptOffer = acceptOffer;
 window.replyToResponse = replyToResponse;
-
-
