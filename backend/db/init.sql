@@ -125,7 +125,10 @@ INSERT INTO users (provider_id, email, firstname, lastname, address, password_ha
 (NULL, 'rachel.goh@gmail.com', 'Rachel', 'Goh', '66 Ang Mo Kio Ave 4, #13-444', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'caregiver', 4.8, '560066', TRUE, TRUE, NOW() - INTERVAL '15 days'),
 
 -- New user without role (incomplete registration)
-(NULL, 'newbie@gmail.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days');
+(NULL, 'newbie@gmail.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days'),
+
+-- Admin User
+(NULL, 'kampungconnectsit@gmail.com', 'System', 'Admin', 'Admin Office', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'admin', 5.0, NULL, TRUE, TRUE, NOW());
 
 -- Sample Requests from seniors
 INSERT INTO requests (user_id, title, category, description, urgency, status, created_at) VALUES

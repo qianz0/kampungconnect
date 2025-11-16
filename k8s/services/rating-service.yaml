@@ -16,14 +16,14 @@ spec:
       containers:
         - name: rating-service
           image: kampungconnect-rating-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
           env:
             - name: PORT
               value: "5000"
             - name: JWT_SECRET
-              value: secret
+              value: your-super-secret-jwt-key-change-this-in-production
             - name: AUTH_SERVICE_URL
               value: http://auth-service:5000
             - name: DB_HOST

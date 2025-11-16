@@ -10,6 +10,14 @@
     object-fit: cover;
 }
 
+.user-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
 /* Dropdown menu styling */
 .dropdown-menu {
     min-width: 200px;
@@ -25,6 +33,117 @@
 
 .dropdown-divider {
     margin: 0.5rem 0;
+}
+
+/* Mobile Side Panel */
+.mobile-side-panel {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 320px;
+    height: 100vh;
+    background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+    transition: right 0.3s ease-in-out;
+    z-index: 1050;
+    overflow-y: auto;
+}
+
+.mobile-side-panel.open {
+    right: 0;
+}
+
+.mobile-side-panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    z-index: 1040;
+}
+
+.mobile-side-panel-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.side-panel-header {
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.side-panel-body {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.user-info-section {
+    text-align: center;
+    padding: 1rem 0 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1rem;
+}
+
+.nav-links-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.side-panel-link {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.side-panel-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.side-panel-link i {
+    width: 24px;
+    text-align: center;
+}
+
+.side-panel-link .badge {
+    font-size: 0.7rem;
+}
+
+#mobileMenuBtn {
+    padding: 0.5rem;
+    text-decoration: none;
+}
+
+#mobileMenuBtn:focus {
+    box-shadow: none;
+}
+
+#closePanelBtn {
+    padding: 0.5rem;
+    text-decoration: none;
+}
+
+#closePanelBtn:focus {
+    box-shadow: none;
+}
+
+/* Desktop Navigation */
+@media (min-width: 992px) {
+    .mobile-side-panel,
+    .mobile-side-panel-overlay,
+    #mobileMenuBtn {
+        display: none !important;
+    }
 }
 
 /* Mobile responsive */

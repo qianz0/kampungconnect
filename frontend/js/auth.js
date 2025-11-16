@@ -208,10 +208,10 @@ class AuthManager {
         const button = document.createElement('a');
         button.className = 'oidc-button';
         
-        // Add account selection prompt for Microsoft to force account picker
+        // Add account selection prompt for both Google and Microsoft to force account picker
         let finalAuthUrl = `${this.authServiceUrl}${authUrl}`;
-        if (provider === 'azure') {
-            // Add prompt parameter to force account selection for Microsoft
+        if (provider === 'azure' || provider === 'google') {
+            // Add prompt parameter to force account selection for switching accounts
             const separator = authUrl.includes('?') ? '&' : '?';
             finalAuthUrl += `${separator}prompt=select_account`;
         }

@@ -14,7 +14,7 @@ KampungConnect is a microservices-based web application that facilitates communi
   - JWT-based session management
 - 👥 **Social Networking** - Built-in social features:
   - Friend requests and friend management
-  - Real-time messaging system (gRPC-powered)
+  - Real-time messaging system (WebSocket + gRPC)
   - User profiles with ratings and statistics
   - Leaderboards for top helpers
 - 🤝 **Intelligent Matching** - Smart matching system between seniors and helpers based on:
@@ -95,7 +95,6 @@ kampungconnect/
 │   │   │   │   ├── oidc-providers.js  # Google & Azure AD
 │   │   │   │   ├── otp-service.js     # Email OTP verification
 │   │   │   │   └── password-service.js # Password hashing
-│   │   │   ├── create-admin.js         # Admin creation utility
 │   │   │   ├── start.sh                # Service startup script
 │   │   │   ├── Dockerfile
 │   │   │   └── package.json
@@ -203,7 +202,7 @@ kampungconnect/
 - Passport.js for OIDC integration (Google, Azure AD)
 - NodeMailer for email notifications via Gmail SMTP
 - RabbitMQ for message queuing and async processing
-- gRPC for real-time messaging service communication
+- gRPC for real-time messaging communication (social-service specifically)
 - 8 specialized microservices:
   - **auth-service**: User authentication, registration, OIDC, OTP verification
   - **request-service**: Help request CRUD and management
@@ -211,7 +210,7 @@ kampungconnect/
   - **notification-service**: Email notifications for all events
   - **rating-service**: User ratings and reviews management
   - **admin-service**: Admin dashboard with statistics and management
-  - **social-service**: Friend requests, messaging (REST + gRPC)
+  - **social-service**: Friend requests, real-time messaging (REST + WebSocket + gRPC)
   - **stats-service**: User statistics, leaderboards, achievements
 
 **Infrastructure:**
@@ -569,8 +568,9 @@ KampungConnect includes comprehensive social networking features to build commun
 - **Direct Messages**: One-on-one messaging with friends
 - **Conversation History**: Access full message history
 - **Unread Indicators**: Track unread messages
-- **Message Notifications**: Email alerts for new messages
-- **REST + gRPC**: REST API for CRUD, gRPC for real-time features
+- **Typing Indicators**: See when friends are typing
+- **Read Receipts**: Know when messages are read
+- **Multi-Protocol**: WebSocket for client connections, gRPC for microservice communication
 
 ### User Profiles
 
@@ -769,7 +769,6 @@ kampungconnect/
 │   │   │   │   ├── oidc-providers.js
 │   │   │   │   ├── otp-service.js
 │   │   │   │   └── password-service.js
-│   │   │   ├── create-admin.js  # Admin creation utility
 │   │   │   ├── start.sh         # Service startup script
 │   │   │   ├── Dockerfile
 │   │   │   └── package.json

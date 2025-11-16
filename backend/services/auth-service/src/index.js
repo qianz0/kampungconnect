@@ -77,11 +77,11 @@ availableProviders.forEach(provider => {
 
         // Initiate OIDC authentication for this provider
         app.get(routes.auth, (req, res, next) => {
-            // For Azure, check if prompt parameter is provided for account selection
-            if (provider === 'azure' && req.query.prompt) {
+            // For Azure and Google, check if prompt parameter is provided for account selection
+            if ((provider === 'azure' || provider === 'google') && req.query.prompt) {
                 passport.authenticate(provider, {
                     scope: routes.scope,
-                    prompt: req.query.prompt // Pass through the prompt parameter
+                    prompt: req.query.prompt // Pass through the prompt parameter (select_account, consent, etc.)
                 })(req, res, next);
             } else {
                 passport.authenticate(provider, {

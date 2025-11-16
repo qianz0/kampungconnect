@@ -110,6 +110,7 @@ class HeaderManager {
             ? `${user.firstname} ${user.lastname}`
             : user.firstname || user.email || 'User';
 
+        // Update desktop header
         const userNameElement = document.getElementById('headerUserName');
         if (userNameElement) {
             userNameElement.textContent = displayName;
@@ -117,31 +118,21 @@ class HeaderManager {
 
         const avatarElement = document.getElementById('headerUserAvatar');
         if (avatarElement) {
-            const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
-            
-            // If user has a picture URL and it's valid, use it; otherwise use fallback
-            let avatarUrl = fallbackUrl;
-            if (user.picture && typeof user.picture === 'string' && user.picture.trim().length > 0 && user.picture !== 'null') {
-                avatarUrl = user.picture;
-            }
-            
-            avatarElement.alt = displayName;
-            
-            // Set fallback first to ensure something always displays
-            avatarElement.src = fallbackUrl;
-            
-            // Add error handler before setting the actual URL
-            avatarElement.onerror = function() {
-                console.warn('[Header] Failed to load profile picture, using fallback');
-                this.onerror = null; // Prevent infinite loop
-                this.src = fallbackUrl;
-            };
-            
-            // Now set the actual URL (might be same as fallback)
-            avatarElement.src = avatarUrl;
+            this.setAvatarImage(avatarElement, user.picture, displayName);
         }
 
-        // Role-based visibility
+        // Update mobile side panel
+        const mobileNameElement = document.getElementById('mobileSidePanelName');
+        if (mobileNameElement) {
+            mobileNameElement.textContent = displayName;
+        }
+
+        const mobileAvatarElement = document.getElementById('mobileSidePanelAvatar');
+        if (mobileAvatarElement) {
+            this.setAvatarImage(mobileAvatarElement, user.picture, displayName);
+        }
+
+        // Role-based visibility for desktop
         const myRequestsItem = document.getElementById('headerMyRequestsMenuItem');
         if (myRequestsItem && user.role === 'senior') {
             myRequestsItem.style.display = 'block';
@@ -152,7 +143,7 @@ class HeaderManager {
             adminItem.style.display = 'block';
         }
 
-        // Show messages and friends links for seniors
+        // Show messages and friends links for seniors (desktop)
         if (user.role === 'senior') {
             const messagesLink = document.getElementById('messagesLink');
             const friendsLink = document.getElementById('friendsLink');
@@ -160,9 +151,50 @@ class HeaderManager {
             if (messagesLink) messagesLink.style.display = 'block';
             if (friendsLink) friendsLink.style.display = 'block';
         }
+
+        // Role-based visibility for mobile side panel
+        const mobileMyRequests = document.getElementById('mobileSidePanelMyRequests');
+        if (mobileMyRequests && user.role === 'senior') {
+            mobileMyRequests.style.display = 'flex';
+        }
+
+        const mobileAdmin = document.getElementById('mobileSidePanelAdmin');
+        if (mobileAdmin && user.role === 'admin') {
+            mobileAdmin.style.display = 'flex';
+        }
+
+        const mobileMessages = document.getElementById('mobileSidePanelMessages');
+        const mobileFriends = document.getElementById('mobileSidePanelFriends');
+        if (user.role === 'senior') {
+            if (mobileMessages) mobileMessages.style.display = 'flex';
+            if (mobileFriends) mobileFriends.style.display = 'flex';
+        }
         
         // Load unread counts for all users
         this.loadUnreadCounts();
+    }
+
+    /**
+     * Set avatar image with fallback
+     */
+    setAvatarImage(element, pictureUrl, displayName) {
+        const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
+        
+        let avatarUrl = fallbackUrl;
+        if (pictureUrl && typeof pictureUrl === 'string' && pictureUrl.trim().length > 0 && pictureUrl !== 'null') {
+            avatarUrl = pictureUrl;
+        }
+        
+        element.alt = displayName;
+        element.src = fallbackUrl;
+        
+        element.onerror = function() {
+            console.warn('[Header] Failed to load profile picture, using fallback');
+            this.onerror = null;
+            this.src = fallbackUrl;
+        };
+        
+        element.src = avatarUrl;
     }
 
     /**
@@ -178,9 +210,9 @@ class HeaderManager {
                 const notifData = await notifResponse.json();
                 
                 if (notifResponse.ok && notifData.notifications) {
-                    // Count unread notifications (new offers, new responses, status changes)
                     const unreadCount = this.calculateUnreadNotifications(notifData.notifications);
                     
+                    // Update desktop badge
                     const badge = document.getElementById('notificationCount');
                     if (badge) {
                         if (unreadCount > 0) {
@@ -188,6 +220,17 @@ class HeaderManager {
                             badge.style.display = 'inline';
                         } else {
                             badge.style.display = 'none';
+                        }
+                    }
+
+                    // Update mobile badge
+                    const mobileBadge = document.getElementById('mobileNotificationCount');
+                    if (mobileBadge) {
+                        if (unreadCount > 0) {
+                            mobileBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                            mobileBadge.style.display = 'inline';
+                        } else {
+                            mobileBadge.style.display = 'none';
                         }
                     }
                 }
@@ -201,10 +244,18 @@ class HeaderManager {
                 const messagesData = await messagesResponse.json();
                 
                 if (messagesResponse.ok && messagesData.unreadCount > 0) {
+                    // Update desktop badge
                     const badge = document.getElementById('unreadMessagesCount');
                     if (badge) {
                         badge.textContent = messagesData.unreadCount;
                         badge.style.display = 'inline';
+                    }
+
+                    // Update mobile badge
+                    const mobileBadge = document.getElementById('mobileUnreadMessagesCount');
+                    if (mobileBadge) {
+                        mobileBadge.textContent = messagesData.unreadCount;
+                        mobileBadge.style.display = 'inline';
                     }
                 }
             } catch (error) {
@@ -217,10 +268,18 @@ class HeaderManager {
                 const requestsData = await requestsResponse.json();
                 
                 if (requestsResponse.ok && requestsData.count > 0) {
+                    // Update desktop badge
                     const badge = document.getElementById('friendRequestsCount');
                     if (badge) {
                         badge.textContent = requestsData.count;
                         badge.style.display = 'inline';
+                    }
+
+                    // Update mobile badge
+                    const mobileBadge = document.getElementById('mobileFriendRequestsCount');
+                    if (mobileBadge) {
+                        mobileBadge.textContent = requestsData.count;
+                        mobileBadge.style.display = 'inline';
                     }
                 }
             } catch (error) {
@@ -281,6 +340,7 @@ class HeaderManager {
      * Setup event listeners for header actions
      */
     setupEventListeners() {
+        // Desktop logout
         const logoutBtn = document.getElementById('headerLogoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
@@ -291,6 +351,7 @@ class HeaderManager {
             });
         }
 
+        // Desktop switch account
         const switchAccountBtn = document.getElementById('headerSwitchAccountBtn');
         if (switchAccountBtn) {
             switchAccountBtn.addEventListener('click', async (e) => {
@@ -299,6 +360,82 @@ class HeaderManager {
                     await this.handleSwitchAccount();
                 });
             });
+        }
+
+        // Mobile menu button
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileSidePanel = document.getElementById('mobileSidePanel');
+        const mobileSidePanelOverlay = document.getElementById('mobileSidePanelOverlay');
+        
+        if (mobileMenuBtn && mobileSidePanel && mobileSidePanelOverlay) {
+            mobileMenuBtn.addEventListener('click', () => {
+                this.openMobilePanel();
+            });
+
+            // Close panel button
+            const closePanelBtn = document.getElementById('closePanelBtn');
+            if (closePanelBtn) {
+                closePanelBtn.addEventListener('click', () => {
+                    this.closeMobilePanel();
+                });
+            }
+
+            // Close panel when clicking overlay
+            mobileSidePanelOverlay.addEventListener('click', () => {
+                this.closeMobilePanel();
+            });
+        }
+
+        // Mobile logout
+        const mobileLogoutBtn = document.getElementById('mobileSidePanelLogout');
+        if (mobileLogoutBtn) {
+            mobileLogoutBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                this.closeMobilePanel();
+                this.showConfirmModal('Are you sure you want to log out?', async () => {
+                    await this.handleLogout();
+                });
+            });
+        }
+
+        // Mobile switch account
+        const mobileSwitchAccountBtn = document.getElementById('mobileSidePanelSwitchAccount');
+        if (mobileSwitchAccountBtn) {
+            mobileSwitchAccountBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                this.closeMobilePanel();
+                this.showConfirmModal('Are you sure you want to switch accounts?', async () => {
+                    await this.handleSwitchAccount();
+                });
+            });
+        }
+    }
+
+    /**
+     * Open mobile side panel
+     */
+    openMobilePanel() {
+        const mobileSidePanel = document.getElementById('mobileSidePanel');
+        const mobileSidePanelOverlay = document.getElementById('mobileSidePanelOverlay');
+        
+        if (mobileSidePanel && mobileSidePanelOverlay) {
+            mobileSidePanel.classList.add('open');
+            mobileSidePanelOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    /**
+     * Close mobile side panel
+     */
+    closeMobilePanel() {
+        const mobileSidePanel = document.getElementById('mobileSidePanel');
+        const mobileSidePanelOverlay = document.getElementById('mobileSidePanelOverlay');
+        
+        if (mobileSidePanel && mobileSidePanelOverlay) {
+            mobileSidePanel.classList.remove('open');
+            mobileSidePanelOverlay.classList.remove('active');
+            document.body.style.overflow = '';
         }
     }
 
