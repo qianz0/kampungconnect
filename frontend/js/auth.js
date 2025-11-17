@@ -504,14 +504,49 @@ class AuthManager {
                 return true;
             }
             
+            // Check if account is suspended
+            if (response.status === 403) {
+                const errorData = await response.json().catch(() => ({}));
+                console.log('[AuthManager] Account suspended, removing token');
+                this.removeToken();
+                
+                // Show error message if available
+                if (errorData.message) {
+                    alert(errorData.message);
+                } else {
+                    alert('Your account has been suspended. Please contact the administrator.');
+                }
+                
+                // Redirect to login
+                window.location.href = '/login.html?error=account_suspended';
+                return false;
+            }
+            
             // Token is invalid, remove it
             console.log('[AuthManager] Token invalid (status: ' + response.status + '), removing...');
             this.removeToken();
             return false;
         } catch (error) {
             console.error('[AuthManager] Authentication check error:', error);
-            // On network error, remove token to be safe
-            console.log('[AuthManager] Network error during auth check, removing token');
+            
+            // Only remove token if it's an authentication error, not a network error
+            if (error.message === 'Authentication expired') {
+                console.log('[AuthManager] Authentication expired, removing token');
+                this.removeToken();
+                return false;
+            }
+            
+            // For network errors (timeout or connection), keep the token and assume still authenticated
+            if (error.name === 'AbortError' || 
+                error.name === 'TypeError' || 
+                error.name === 'TimeoutError' ||
+                (error.message && (error.message.includes('timed out') || error.message.includes('aborted')))) {
+                console.warn('[AuthManager] Network/timeout error during auth check, keeping token');
+                return this.currentUser !== null; // Return true if we have cached user
+            }
+            
+            // For other errors, remove token to be safe
+            console.log('[AuthManager] Unknown error during auth check, removing token');
             this.removeToken();
             return false;
         }
@@ -549,19 +584,14 @@ class AuthManager {
         for (let cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
             if (name === 'auth_token') {
-                console.log('[AuthManager] Token found in cookie');
                 return value;
             }
         }
         
-        console.log('[AuthManager] Token not found in cookie, checking localStorage');
         // Fallback to localStorage
         const localToken = localStorage.getItem('auth_token');
-        if (localToken) {
-            console.log('[AuthManager] Token found in localStorage');
-        } else {
+        if (!localToken) {
             console.log('[AuthManager] No token found in cookie or localStorage');
-            console.log('[AuthManager] All cookies:', document.cookie);
         }
         return localToken;
     }
@@ -644,20 +674,40 @@ class AuthManager {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(url, {
-            ...options,
-            headers,
-            credentials: 'include'
-        });
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeout = options.timeout || 10000; // 10 seconds default
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        // Handle token expiration
-        if (response.status === 401 || response.status === 403) {
-            this.removeToken();
-            window.location.href = '/login.html';
-            throw new Error('Authentication expired');
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            // Handle token expiration
+            if (response.status === 401 || response.status === 403) {
+                this.removeToken();
+                window.location.href = '/login.html';
+                throw new Error('Authentication expired');
+            }
+
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            
+            // Don't redirect on timeout or network errors
+            if (error.name === 'AbortError' || error.name === 'TypeError') {
+                console.warn('[AuthManager] Request failed:', error.message);
+                throw error;
+            }
+            
+            throw error;
         }
-
-        return response;
     }
 
     /**

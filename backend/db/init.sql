@@ -74,6 +74,24 @@ CREATE TABLE IF NOT EXISTS offers (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    request_id INT REFERENCES requests(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- offer, match, response, reply, status_update
+    title VARCHAR(255) NOT NULL,
+    message TEXT,
+    read_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for notifications
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_request ON notifications(request_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_at);
+
 -- Notification preferences for users
 CREATE TABLE IF NOT EXISTS notification_preferences (
     id SERIAL PRIMARY KEY,
@@ -128,94 +146,94 @@ INSERT INTO users (provider_id, email, firstname, lastname, address, password_ha
 (NULL, 'newbie@gmail.com', 'New', 'User', NULL, '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', NULL, 5.0, NULL, FALSE, FALSE, NOW() - INTERVAL '2 days'),
 
 -- Admin User
-(NULL, 'kampungconnectsit@gmail.com', 'System', 'Admin', 'Admin Office', '$2b$12$FgW/KkOp9dEhbpoEIYEea.F.8pRsWQeOyZg5GmDuLSf6HVHAhugeu', NULL, 'email', 'admin', 5.0, NULL, TRUE, TRUE, NOW());
+(NULL, 'kampungconnectsit@gmail.com', 'System', 'Admin', 'Admin Office', '$2a$12$BcC1Ctbv25OU0/sx7w/30OPPig3i33UXlM8qbH/O5ZWiA0NN1hwkG', NULL, 'email', 'admin', 5.0, NULL, TRUE, TRUE, NOW());
 
 -- Sample Requests from seniors
 INSERT INTO requests (user_id, title, category, description, urgency, status, created_at) VALUES
--- Requests from Alice Tan (user_id 2)
+-- Requests from Robert Wong (user_id 2)
 (2, 'Help with grocery shopping', 'shopping', 'Need help buying groceries from NTUC. I have a list of about 15 items. Prefer someone who can help this weekend.', 'medium', 'pending', NOW() - INTERVAL '2 days'),
 (2, 'Urgent medical appointment transport', 'transport', 'Need transport to SGH for cardiology appointment tomorrow at 2pm. Very urgent.', 'urgent', 'matched', NOW() - INTERVAL '1 day'),
 
--- Requests from Robert Wong (user_id 3)
+-- Requests from Margaret Lim (user_id 3)
 (3, 'Fix leaking tap', 'home_repair', 'My kitchen tap has been leaking for 3 days. Need someone handy to help fix it.', 'high', 'completed', NOW() - INTERVAL '5 days'),
 (3, 'Companionship for afternoon walk', 'companionship', 'Looking for someone to accompany me for an afternoon walk at the park. I enjoy chatting about gardening.', 'low', 'pending', NOW() - INTERVAL '1 day'),
 
--- Requests from Margaret Lim (user_id 4)
+-- Requests from David Chen (user_id 4)
 (4, 'Help setting up smartphone', 'tech_support', 'Got a new smartphone and need help setting it up and learning how to use WhatsApp and video calls.', 'medium', 'matched', NOW() - INTERVAL '3 days'),
 (4, 'Weekly medication organization', 'healthcare', 'Need help organizing my weekly medication into pill boxes every Sunday morning.', 'high', 'pending', NOW() - INTERVAL '6 hours'),
 
--- Requests from David Chen (user_id 5)
+-- Requests from Siew Lan Ong (user_id 5)
 (5, 'Cooking assistance', 'meal_prep', 'Would like someone to help me cook simple meals twice a week. I have ingredients but struggle with the cooking process.', 'medium', 'pending', NOW() - INTERVAL '4 days'),
 (5, 'Reading newspaper aloud', 'companionship', 'My eyesight is poor. Looking for someone to read the newspaper to me daily for about 30 minutes.', 'low', 'completed', NOW() - INTERVAL '10 days');
 
 -- Sample Matches (linking requests to helpers)
 INSERT INTO matches (request_id, helper_id, matched_at, status) VALUES
--- Alice's urgent transport request matched with volunteer John
-(2, 6, NOW() - INTERVAL '20 hours', 'active'),
+-- Robert's urgent transport request (request_id 2) matched with volunteer John (user_id 15)
+(2, 15, NOW() - INTERVAL '20 hours', 'active'),
 
--- Robert's tap repair completed by caregiver Linda
-(3, 10, NOW() - INTERVAL '4 days', 'completed'),
+-- Margaret's tap repair (request_id 3) completed by caregiver Linda (user_id 19)
+(3, 19, NOW() - INTERVAL '4 days', 'completed'),
 
--- Margaret's smartphone help matched with volunteer Sarah
-(5, 7, NOW() - INTERVAL '2 days', 'active'),
+-- David's smartphone help (request_id 5) matched with volunteer Sarah (user_id 16)
+(5, 16, NOW() - INTERVAL '2 days', 'active'),
 
--- David's newspaper reading completed by volunteer Emily
-(8, 9, NOW() - INTERVAL '9 days', 'completed');
+-- Siew Lan's newspaper reading (request_id 8) completed by volunteer Emily (user_id 18)
+(8, 18, NOW() - INTERVAL '9 days', 'completed');
 
 -- Sample Ratings (seniors rating helpers after completed matches)
 INSERT INTO ratings (match_id, rater_id, ratee_id, score, comment, created_at) VALUES
--- Robert rates Linda for fixing tap
-(2, 3, 10, 5, 'Linda was very professional and fixed the tap quickly. Highly recommend!', NOW() - INTERVAL '4 days'),
+-- Margaret (user_id 3) rates Linda (user_id 19) for fixing tap
+(2, 3, 19, 5, 'Linda was very professional and fixed the tap quickly. Highly recommend!', NOW() - INTERVAL '4 days'),
 
--- David rates Emily for reading newspaper
-(4, 5, 9, 5, 'Emily is patient and reads clearly. Very helpful and friendly.', NOW() - INTERVAL '9 days'),
+-- Siew Lan (user_id 5) rates Emily (user_id 18) for reading newspaper
+(4, 5, 18, 5, 'Emily is patient and reads clearly. Very helpful and friendly.', NOW() - INTERVAL '9 days'),
 
 -- Additional historical ratings to build helper reputations
-(2, 3, 10, 4, 'Good service but arrived slightly late.', NOW() - INTERVAL '20 days'),
-(4, 2, 6, 5, 'John was very helpful and on time!', NOW() - INTERVAL '15 days'),
-(4, 4, 7, 5, 'Sarah explained everything clearly and was very patient.', NOW() - INTERVAL '25 days');
+(2, 3, 19, 4, 'Good service but arrived slightly late.', NOW() - INTERVAL '20 days'),
+(4, 2, 15, 5, 'John was very helpful and on time!', NOW() - INTERVAL '15 days'),
+(4, 4, 16, 5, 'Sarah explained everything clearly and was very patient.', NOW() - INTERVAL '25 days');
 
 -- Sample Responses (comments/questions on requests)
 INSERT INTO responses (request_id, user_id, parent_id, message, created_at) VALUES
--- Comments on Alice's grocery shopping request (request_id 1)
-(1, 6, NULL, 'Hi Alice! I can help with grocery shopping this Saturday morning if that works for you?', NOW() - INTERVAL '1 day'),
+-- Comments on Robert's grocery shopping request (request_id 1)
+(1, 15, NULL, 'Hi Robert! I can help with grocery shopping this Saturday morning if that works for you?', NOW() - INTERVAL '1 day'),
 (1, 2, 1, 'That would be perfect! Saturday at 10am?', NOW() - INTERVAL '23 hours'),
-(1, 6, 2, 'Yes, 10am works great. See you then!', NOW() - INTERVAL '22 hours'),
+(1, 15, 2, 'Yes, 10am works great. See you then!', NOW() - INTERVAL '22 hours'),
 
--- Comments on Robert's companionship request (request_id 4)
-(4, 7, NULL, 'I love gardening too! Would be happy to join you for a walk. When is convenient?', NOW() - INTERVAL '12 hours'),
+-- Comments on Margaret's companionship request (request_id 4)
+(4, 16, NULL, 'I love gardening too! Would be happy to join you for a walk. When is convenient?', NOW() - INTERVAL '12 hours'),
 
--- Comments on Margaret's medication request (request_id 6)
-(6, 10, NULL, 'I have experience with medication management. I can come every Sunday at 9am if that helps.', NOW() - INTERVAL '3 hours'),
-(6, 11, NULL, 'I am also available and can help with this. I am a trained caregiver.', NOW() - INTERVAL '2 hours'),
+-- Comments on David's medication request (request_id 6)
+(6, 19, NULL, 'I have experience with medication management. I can come every Sunday at 9am if that helps.', NOW() - INTERVAL '3 hours'),
+(6, 20, NULL, 'I am also available and can help with this. I am a trained caregiver.', NOW() - INTERVAL '2 hours'),
 
--- Comments on David's cooking assistance request (request_id 7)
-(7, 9, NULL, 'I enjoy cooking and would love to help! What type of meals do you prefer?', NOW() - INTERVAL '3 days'),
+-- Comments on Siew Lan's cooking assistance request (request_id 7)
+(7, 18, NULL, 'I enjoy cooking and would love to help! What type of meals do you prefer?', NOW() - INTERVAL '3 days'),
 (7, 5, 6, 'I like simple Chinese dishes - nothing too spicy. Thanks for offering!', NOW() - INTERVAL '3 days');
 
 -- Sample Offers (helpers offering to help with requests)
 INSERT INTO offers (request_id, helper_id, status, created_at) VALUES
--- Offers for Alice's grocery shopping (request_id 1)
-(1, 6, 'pending', NOW() - INTERVAL '1 day'),
-(1, 8, 'pending', NOW() - INTERVAL '18 hours'),
+-- Offers for Robert's grocery shopping (request_id 1)
+(1, 15, 'pending', NOW() - INTERVAL '1 day'),
+(1, 17, 'pending', NOW() - INTERVAL '18 hours'),
 
--- Offers for Robert's companionship walk (request_id 4)
-(4, 7, 'pending', NOW() - INTERVAL '12 hours'),
-(4, 9, 'pending', NOW() - INTERVAL '8 hours'),
+-- Offers for Margaret's companionship walk (request_id 4)
+(4, 16, 'pending', NOW() - INTERVAL '12 hours'),
+(4, 18, 'pending', NOW() - INTERVAL '8 hours'),
 
--- Offers for Margaret's medication organization (request_id 6)
-(6, 10, 'pending', NOW() - INTERVAL '3 hours'),
-(6, 11, 'pending', NOW() - INTERVAL '2 hours'),
+-- Offers for David's medication organization (request_id 6)
+(6, 19, 'pending', NOW() - INTERVAL '3 hours'),
+(6, 20, 'pending', NOW() - INTERVAL '2 hours'),
 
--- Offers for David's cooking assistance (request_id 7)
-(7, 9, 'accepted', NOW() - INTERVAL '3 days'),
-(7, 10, 'declined', NOW() - INTERVAL '3 days'),
+-- Offers for Siew Lan's cooking assistance (request_id 7)
+(7, 18, 'accepted', NOW() - INTERVAL '3 days'),
+(7, 19, 'declined', NOW() - INTERVAL '3 days'),
 
 -- Historical offers for completed requests
-(2, 6, 'accepted', NOW() - INTERVAL '20 hours'),
-(3, 10, 'accepted', NOW() - INTERVAL '4 days'),
-(5, 7, 'accepted', NOW() - INTERVAL '2 days'),
-(8, 9, 'accepted', NOW() - INTERVAL '9 days');
+(2, 15, 'accepted', NOW() - INTERVAL '20 hours'),
+(3, 19, 'accepted', NOW() - INTERVAL '4 days'),
+(5, 16, 'accepted', NOW() - INTERVAL '2 days'),
+(8, 18, 'accepted', NOW() - INTERVAL '9 days');
 
 -- ========================================
 -- SOCIAL FEATURES TABLES
@@ -283,3 +301,40 @@ CREATE INDEX IF NOT EXISTS idx_activities_creator ON activities(creator_id);
 CREATE INDEX IF NOT EXISTS idx_activities_scheduled ON activities(scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_activity_participants_activity ON activity_participants(activity_id);
 CREATE INDEX IF NOT EXISTS idx_activity_participants_user ON activity_participants(user_id);
+
+-- ========================================
+-- ADMIN AND MODERATION TABLES
+-- ========================================
+
+-- Reports table for user-reported issues
+CREATE TABLE IF NOT EXISTS reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id INT REFERENCES users(id) ON DELETE SET NULL,
+    reported_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    report_type VARCHAR(50) NOT NULL CHECK (report_type IN ('abuse', 'spam', 'inappropriate', 'harassment', 'other')),
+    reason TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'investigating', 'resolved', 'dismissed')),
+    admin_notes TEXT,
+    action_taken TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP
+);
+
+-- Admin actions audit log
+CREATE TABLE IF NOT EXISTS admin_actions (
+    id SERIAL PRIMARY KEY,
+    admin_id INT REFERENCES users(id) ON DELETE SET NULL,
+    action_type VARCHAR(50) NOT NULL,
+    target_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    target_request_id INT REFERENCES requests(id) ON DELETE SET NULL,
+    reason TEXT,
+    duration_days INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for reports and admin actions
+CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_reports_reported_user ON reports(reported_user_id);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_admin ON admin_actions(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_target_user ON admin_actions(target_user_id);

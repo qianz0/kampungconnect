@@ -180,21 +180,27 @@ class HeaderManager {
     setAvatarImage(element, pictureUrl, displayName) {
         const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6c757d&color=fff`;
         
-        let avatarUrl = fallbackUrl;
-        if (pictureUrl && typeof pictureUrl === 'string' && pictureUrl.trim().length > 0 && pictureUrl !== 'null') {
-            avatarUrl = pictureUrl;
-        }
-        
         element.alt = displayName;
-        element.src = fallbackUrl;
         
-        element.onerror = function() {
-            console.warn('[Header] Failed to load profile picture, using fallback');
-            this.onerror = null;
-            this.src = fallbackUrl;
-        };
-        
-        element.src = avatarUrl;
+        // Check if picture URL is valid and not a placeholder
+        if (pictureUrl && typeof pictureUrl === 'string' && pictureUrl.trim().length > 0 && pictureUrl !== 'null') {
+            // Set fallback first to prevent broken image flash
+            element.src = fallbackUrl;
+            
+            // Try to load the actual picture silently
+            const img = new Image();
+            img.onload = function() {
+                element.src = pictureUrl;
+            };
+            img.onerror = function() {
+                // Silently use fallback - this is expected behavior
+                element.src = fallbackUrl;
+            };
+            img.src = pictureUrl;
+        } else {
+            // No picture URL provided, use fallback directly
+            element.src = fallbackUrl;
+        }
     }
 
     /**
@@ -206,36 +212,45 @@ class HeaderManager {
 
             // Load notification count
             try {
-                const notifResponse = await this.authManager.authenticatedFetch('http://localhost:5002/notifications');
-                const notifData = await notifResponse.json();
+                const notifResponse = await this.authManager.authenticatedFetch(
+                    'http://localhost:5002/notifications',
+                    { timeout: 5000 } // 5 second timeout
+                );
                 
-                if (notifResponse.ok && notifData.notifications) {
-                    const unreadCount = this.calculateUnreadNotifications(notifData.notifications);
+                if (notifResponse.ok) {
+                    const notifData = await notifResponse.json();
                     
-                    // Update desktop badge
-                    const badge = document.getElementById('notificationCount');
-                    if (badge) {
-                        if (unreadCount > 0) {
-                            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                            badge.style.display = 'inline';
-                        } else {
-                            badge.style.display = 'none';
+                    if (notifData.notifications) {
+                        const unreadCount = this.calculateUnreadNotifications(notifData.notifications);
+                        
+                        // Update desktop badge
+                        const badge = document.getElementById('notificationCount');
+                        if (badge) {
+                            if (unreadCount > 0) {
+                                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                                badge.style.display = 'inline';
+                            } else {
+                                badge.style.display = 'none';
+                            }
                         }
-                    }
 
-                    // Update mobile badge
-                    const mobileBadge = document.getElementById('mobileNotificationCount');
-                    if (mobileBadge) {
-                        if (unreadCount > 0) {
-                            mobileBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                            mobileBadge.style.display = 'inline';
-                        } else {
-                            mobileBadge.style.display = 'none';
+                        // Update mobile badge
+                        const mobileBadge = document.getElementById('mobileNotificationCount');
+                        if (mobileBadge) {
+                            if (unreadCount > 0) {
+                                mobileBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                                mobileBadge.style.display = 'inline';
+                            } else {
+                                mobileBadge.style.display = 'none';
+                            }
                         }
                     }
                 }
             } catch (error) {
-                console.error('Error loading notification count:', error);
+                // Silently fail - don't spam console on network errors
+                if (error.name !== 'AbortError' && error.name !== 'TypeError') {
+                    console.error('Error loading notification count:', error);
+                }
             }
 
             // Load unread messages count

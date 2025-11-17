@@ -350,16 +350,20 @@ async function handleNewRequest(request) {
                 const helperEmail = helperData.rows[0].email;
                 const helperRole = helperData.rows[0].role;
 
-                // Get senior's name
+                // Get senior's name and email
                 const seniorData = await db.query(
-                    `SELECT CONCAT(firstname, ' ', lastname) AS name FROM users WHERE id = $1`,
+                    `SELECT CONCAT(firstname, ' ', lastname) AS name, email FROM users WHERE id = $1`,
                     [request.user_id]
                 );
 
                 const seniorName = seniorData.rows.length > 0
                     ? seniorData.rows[0].name
                     : 'A community member';
+                const seniorEmail = seniorData.rows.length > 0
+                    ? seniorData.rows[0].email
+                    : null;
 
+                // Notify helper about instant match
                 await axios.post('http://notification-service:5000/notify/instant-match', {
                     helperId: helper.id,
                     helperEmail: helperEmail,
@@ -372,6 +376,22 @@ async function handleNewRequest(request) {
                     urgency: request.urgency,
                     requestId: request.id
                 });
+
+                // Notify senior about instant match
+                if (seniorEmail) {
+                    await axios.post('http://notification-service:5000/notify/senior-match', {
+                        seniorId: request.user_id,
+                        seniorEmail: seniorEmail,
+                        seniorName: seniorName,
+                        helperName: helper.name,
+                        helperRole: helperRole,
+                        requestTitle: request.title,
+                        requestDescription: request.description,
+                        category: request.category,
+                        urgency: request.urgency,
+                        requestId: request.id
+                    });
+                }
 
                 // console.log(` Instant match notification sent to ${helperRole}: ${helperEmail}`);
             }

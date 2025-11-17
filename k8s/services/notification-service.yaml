@@ -4,7 +4,7 @@ metadata:
   name: notification-service
   namespace: kampungconnect
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: notification-service
@@ -18,12 +18,22 @@ spec:
           image: kampungconnect-notification-service
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 5000
+            - containerPort: 5000   # your notification-service listens on 5000
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
           env:
+            # ==== Auth / JWT ====
             - name: JWT_SECRET
-              value: your-super-secret-jwt-key-change-this-in-production
+              value: secret
             - name: AUTH_SERVICE_URL
               value: http://auth-service:5000
+
+            # ==== Database ====
             - name: DB_HOST
               value: postgres
             - name: DB_PORT
@@ -34,6 +44,48 @@ spec:
               value: admin
             - name: DB_PASSWORD
               value: password
+
+            # ==== RabbitMQ (to receive events from request-service) ====
+            - name: RABBITMQ_URL
+              value: amqp://guest:guest@rabbitmq:5672
+            - name: SERVICE_NAME
+              value: notification-service
+
+            # If your notification-service calls request-service via HTTP:
+            - name: REQUEST_SERVICE_URL
+              value: http://request-service:5002
+
+            # ==== SMTP CONFIG ====
+            - name: SMTP_ENABLED
+              value: "true"
+            - name: SMTP_HOST
+              value: "smtp.gmail.com"
+            - name: SMTP_PORT
+              value: "587"
+            - name: SMTP_SECURE
+              value: "false"
+
+            # Use Kubernetes secrets for credentials
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-secret
+                  key: smtp-user
+
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-secret
+                  key: smtp-password
+
+            - name: SMTP_FROM_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: smtp-secret
+                  key: smtp-user
+
+            - name: SMTP_FROM_NAME
+              value: "KampungConnect"
 ---
 apiVersion: v1
 kind: Service
@@ -44,5 +96,33 @@ spec:
   selector:
     app: notification-service
   ports:
-    - port: 5000
+    - name: http
+      port: 5000    
       targetPort: 5000
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: notification-service-hpa
+  namespace: kampungconnect
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notification-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80       

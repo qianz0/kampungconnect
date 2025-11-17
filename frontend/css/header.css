@@ -1,6 +1,38 @@
 /* Common Header Styles */
 .navbar-brand {
     font-weight: bold;
+    color: #ffffff !important;
+}
+
+.navbar-dark .navbar-brand:hover,
+.navbar-dark .navbar-brand:focus {
+    color: #ffffff !important;
+}
+
+.navbar-dark .nav-link {
+    color: #ffffff !important;
+}
+
+.navbar-dark .nav-link:hover,
+.navbar-dark .nav-link:focus {
+    color: #f8f9fa !important;
+}
+
+#headerUserName {
+    color: #ffffff !important;
+}
+
+/* Desktop navigation icons spacing */
+#desktopNav .nav-link {
+    margin-right: 1.5rem !important;
+}
+
+#desktopNav .nav-link:last-child {
+    margin-right: 0 !important;
+}
+
+#desktopNav .dropdown {
+    margin-left: 0.5rem;
 }
 
 .user-avatar {

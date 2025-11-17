@@ -830,7 +830,7 @@ app.get('/api/admin/matches',
             // Get matches
             params.push(parseInt(limit), offset);
             const matches = await pool.query(
-                `SELECT DISTINCT ON (m.id)
+                `SELECT 
                     m.*,
                     r.title as request_title,
                     r.category as request_category,
@@ -844,7 +844,7 @@ app.get('/api/admin/matches',
                 JOIN users u1 ON r.user_id = u1.id
                 JOIN users u2 ON m.helper_id = u2.id
                 ${whereClause}
-                ORDER BY m.id, m.${sort_by || 'matched_at'} ${sort_order === 'ASC' ? 'ASC' : 'DESC'}
+                ORDER BY m.${sort_by || 'matched_at'} ${sort_order === 'ASC' ? 'ASC' : 'DESC'}
                 LIMIT $${paramCount++} OFFSET $${paramCount}`,
                 params
             );

@@ -123,6 +123,13 @@ availableProviders.forEach(provider => {
                     // Store user in database
                     const dbUser = await dbService.findOrCreateUser(req.user);
 
+                    // Check if user account is active
+                    if (!dbUser.is_active) {
+                        console.log(`❌ Login blocked: User account is suspended (${dbUser.email})`);
+                        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+                        return res.redirect(`${frontendUrl}/login.html?error=account_suspended&message=${encodeURIComponent('Your account has been suspended. Please contact the administrator.')}`);
+                    }
+
                     // Update last login timestamp (returns previous login time)
                     const previousLogin = await dbService.updateLastLogin(dbUser.id);
 
@@ -282,6 +289,13 @@ app.post('/verify-email', async (req, res) => {
         // Verify email in database
         await dbService.verifyUserEmail(newUser.id);
 
+        // Check if user account is active (in case it was suspended between registration and verification)
+        if (!newUser.is_active) {
+            return res.status(403).json({
+                error: 'Your account has been suspended. Please contact the administrator.'
+            });
+        }
+
         // Update last login timestamp (returns previous login time, which is null for new users)
         const previousLogin = await dbService.updateLastLogin(newUser.id);
 
@@ -397,6 +411,13 @@ app.post('/login', async (req, res) => {
         if (!user) {
             return res.status(401).json({
                 error: 'Invalid email or password'
+            });
+        }
+
+        // Check if user account is active (double-check since findUserByEmail already filters by is_active)
+        if (!user.is_active) {
+            return res.status(403).json({
+                error: 'Your account has been suspended. Please contact the administrator.'
             });
         }
 
@@ -939,7 +960,7 @@ app.post('/logout', (req, res) => {
 });
 
 // Token validation endpoint (for other services)
-app.post('/validate-token', (req, res) => {
+app.post('/validate-token', async (req, res) => {
     const { token } = req.body;
 
     if (!token) {
@@ -948,6 +969,21 @@ app.post('/validate-token', (req, res) => {
 
     try {
         const decoded = jwtUtils.verifyToken(token);
+        
+        // Verify user still exists and is active
+        const user = await dbService.getUserById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ valid: false, error: 'User not found' });
+        }
+        
+        if (!user.is_active) {
+            return res.status(403).json({ 
+                valid: false, 
+                error: 'Account suspended',
+                message: 'Your account has been suspended. Please contact the administrator.'
+            });
+        }
+        
         res.json({ valid: true, user: decoded });
     } catch (error) {
         res.status(401).json({ valid: false, error: 'Invalid token' });

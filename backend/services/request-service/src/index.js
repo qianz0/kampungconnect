@@ -28,7 +28,7 @@ app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps, curl, postman)
         if (!origin) return callback(null, true);
-        
+
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -270,7 +270,17 @@ app.get('/requests', authMiddleware.authenticateToken, async (req, res) => {
         const userId = req.user.id;
 
         const results = await db.query(
-            "SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC",
+            `SELECT r.*,
+                    CONCAT(helper.firstname, ' ', helper.lastname) AS matched_helper_name,
+                    helper.email AS matched_helper_email,
+                    helper.role AS matched_helper_role,
+                    m.helper_id AS matched_helper_id,
+                    m.matched_at
+             FROM requests r
+             LEFT JOIN matches m ON r.id = m.request_id
+             LEFT JOIN users helper ON m.helper_id = helper.id
+             WHERE r.user_id = $1 
+             ORDER BY r.created_at DESC`,
             [userId]
         );
 
@@ -574,7 +584,7 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
         // Send email notification to helper (volunteer/caregiver) if match
         try {
             const requestInfo = await db.query(
-                `SELECT title, category, urgency FROM requests WHERE id = $1`,
+                `SELECT title, category, urgency, description FROM requests WHERE id = $1`,
                 [request_id]
             );
 
@@ -585,10 +595,11 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
             );
 
             if (requestInfo.rowCount > 0 && helperDetails.rowCount > 0 && senior.rowCount > 0) {
-                const { title, category, urgency } = requestInfo.rows[0];
+                const { title, category, urgency, description } = requestInfo.rows[0];
                 const { email: helperEmail, name: helperName, role: helperRole } = helperDetails.rows[0];
-                const { name: seniorName } = senior.rows[0];
+                const { name: seniorName, email: seniorEmail, id: seniorUserId } = senior.rows[0];
 
+                // Notify helper about the match
                 await axios.post('http://notification-service:5000/notify/match', {
                     helperId: helper_id,
                     helperEmail,
@@ -599,7 +610,21 @@ app.post("/offers/:id/accept", authMiddleware.authenticateToken, async (req, res
                     category,
                     urgency,
                     requestId: request_id
-                }).catch(err => console.warn('[request-service] Failed to send match notification:', err.message));
+                }).catch(err => console.warn('[request-service] Failed to send helper match notification:', err.message));
+
+                // Notify senior about the match
+                await axios.post('http://notification-service:5000/notify/senior-match', {
+                    seniorId: seniorUserId,
+                    seniorEmail,
+                    seniorName,
+                    helperName,
+                    helperRole,
+                    requestTitle: title,
+                    requestDescription: description,
+                    category,
+                    urgency,
+                    requestId: request_id
+                }).catch(err => console.warn('[request-service] Failed to send senior match notification:', err.message));
             }
         } catch (err) {
             console.warn("[request-service] Failed to send match email notification:", err.message);
@@ -837,6 +862,62 @@ app.use((error, req, res, next) => {
         console.error("Failed to connect to RabbitMQ:", err);
     }
 })();
+
+// Get user notifications
+app.get('/notifications', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Get notifications from database
+        const result = await db.query(
+            `SELECT n.*, r.title as request_title
+             FROM notifications n
+             LEFT JOIN requests r ON n.request_id = r.id
+             WHERE n.user_id = $1
+             ORDER BY n.created_at DESC
+             LIMIT 50`,
+            [userId]
+        );
+        
+        res.json({ 
+            success: true, 
+            notifications: result.rows,
+            unreadCount: result.rows.filter(n => !n.read_at).length
+        });
+    } catch (error) {
+        console.error('Get notifications error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Mark notification as read
+app.post('/notifications/:id/read', authMiddleware.authenticateToken, async (req, res) => {
+    try {
+        const notificationId = req.params.id;
+        const userId = req.user.id;
+        
+        // Verify notification belongs to user
+        const check = await db.query(
+            'SELECT * FROM notifications WHERE id = $1 AND user_id = $2',
+            [notificationId, userId]
+        );
+        
+        if (check.rowCount === 0) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+        
+        // Mark as read
+        await db.query(
+            'UPDATE notifications SET read_at = NOW() WHERE id = $1 AND user_id = $2',
+            [notificationId, userId]
+        );
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Mark notification as read error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 const PORT = process.env.PORT || 5002;
 app.listen(PORT, () => {

@@ -23,239 +23,6 @@ function waitForAuthManager() {
     });
 }
 
-// Load notifications from the server
-async function loadNotifications() {
-    try {
-        const authManager = await waitForAuthManager();
-
-        // Get notifications using authenticatedFetch if available
-        let response = null;
-        if (authManager && typeof authManager.authenticatedFetch === 'function') {
-            try {
-                response = await authManager.authenticatedFetch('http://localhost:5002/notifications');
-            } catch (innerErr) {
-                console.warn('[Notifications] authenticatedFetch failed, will try plain fetch as fallback', innerErr);
-                response = null;
-            }
-        }
-
-        // If authenticatedFetch not available or failed, use plain fetch
-        let data = null;
-        let skipJsonParse = false;
-        if (!response) {
-            try {
-                response = await fetch('http://localhost:5002/notifications', { credentials: 'include' });
-            } catch (fetchErr) {
-                console.error('[Notifications] Plain fetch failed:', fetchErr);
-                // If running locally, inject dev mock so UI can still render for development
-                if (window.location && window.location.hostname && window.location.hostname.includes('localhost')) {
-                    console.info('[Notifications] Plain fetch failed — injecting dev mock for local development');
-                    data = {
-                        notifications: [
-                            {
-                                id: 9999,
-                                type: 'request_replied',
-                                category: 'responses',
-                                title: 'Sample community response thread (dev mock)',
-                                message: 'A sample thread for local UI testing',
-                                created_at: new Date().toISOString(),
-                                requestId: 555,
-                                responses: [
-                                    { id: 1, parent_id: null, responder_name: 'Alice', responder_role: 'helper', message: 'I can help with this request', created_at: new Date(Date.now()-1000*60*60).toISOString() },
-                                    { id: 2, parent_id: 1, responder_name: 'Bob', responder_role: 'senior', message: 'Thanks — that would be great!', created_at: new Date(Date.now()-1000*60*30).toISOString() }
-                                ]
-                            }
-                        ]
-                    };
-                    skipJsonParse = true;
-                } else {
-                    throw fetchErr;
-                }
-            }
-        }
-
-        //  Attempt to parse the response body as JSON, catch and log any errors
-        if (!skipJsonParse) {
-            try {
-                data = await response.json();
-            } catch (jsonErr) {
-                console.error('[Notifications] Response JSON parse error:', jsonErr);
-                data = null;
-            }
-        }
-
-        // Handle non-OK responses
-        if (!response.ok) {
-            const statusMsg = `Failed to load notifications (status: ${response.status})`;
-            console.warn('[Notifications] ' + statusMsg, data);
-
-            // Dev fallback: if running on localhost, show a mocked sample so UI can be tested
-            if (window.location && window.location.hostname && window.location.hostname.includes('localhost')) {
-                console.info('[Notifications] Using dev mock notifications because backend returned non-OK');
-                data = {
-                    notifications: [
-                        {
-                            id: 9999,
-                            type: 'request_replied',
-                            category: 'responses',
-                            title: 'Sample community response thread',
-                            message: 'A sample thread for local UI testing',
-                            created_at: new Date().toISOString(),
-                            responses: [
-                                { id: 1, parent_id: null, responder_name: 'Alice', responder_role: 'helper', message: 'I can help with this request', created_at: new Date(Date.now()-1000*60*60).toISOString() },
-                                { id: 2, parent_id: 1, responder_name: 'Bob', responder_role: 'senior', message: 'Thanks — that would be great!', created_at: new Date(Date.now()-1000*60*30).toISOString() }
-                            ]
-                        }
-                    ]
-                };
-            } else {
-                const container = document.getElementById('notificationsList');
-                if (container) {
-                    container.innerHTML = `
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            ${statusMsg}. ${data && data.error ? data.error : ''}
-                        </div>
-                    `;
-                }
-                return;
-            }
-        }
-
-        // If no notifications array present, inject fake data for testing
-        if (!data || !Array.isArray(data.notifications) || data.notifications.length === 0) {
-            if (window.location && window.location.hostname && window.location.hostname.includes('localhost')) {
-                console.info('[Notifications] No notifications returned, injecting dev mock for UI testing');
-                data = {
-                    notifications: [
-                        {
-                            id: 10000,
-                            type: 'new_response',
-                            category: 'responses',
-                            title: 'Dev sample response thread',
-                            message: 'This is a developer mock notification',
-                            created_at: new Date().toISOString(),
-                            responses: [
-                                { id: 11, parent_id: null, responder_name: 'Carol', responder_role: 'helper', message: 'I can pick this up tomorrow', created_at: new Date(Date.now()-1000*60*120).toISOString() },
-                                { id: 12, parent_id: 11, responder_name: 'Dave', responder_role: 'senior', message: 'Appreciate it — please message me', created_at: new Date(Date.now()-1000*60*90).toISOString() }
-                            ]
-                        }
-                    ]
-                };
-            } else {
-                const container = document.getElementById('notificationsList');
-                if (container) {
-                    container.innerHTML = `
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-bell-slash fa-3x mb-3"></i>
-                            <h5>No notifications yet</h5>
-                            <p>We'll notify you when there's new activity</p>
-                        </div>
-                    `;
-                }
-                return;
-            }
-        }
-
-        // Render notifications
-        const notificationsContainer = document.getElementById('notificationsList');
-        const responsesContainer = document.getElementById('response_list');
-        const responsesCard = document.getElementById('communityResponsesCard');
-
-        // Clear containers
-        if (notificationsContainer) notificationsContainer.innerHTML = '';
-        if (responsesContainer) responsesContainer.innerHTML = '';
-
-        // Process all notifications
-        for (const notification of data.notifications) {
-            const item = document.createElement('div');
-            item.className = `notification-item ${notification.read ? '' : 'unread'}`;
-            // Use category if provided, if not infer from type
-            const category = notification.category || (notification.type ? (notification.type.includes('response') || notification.type.includes('replied') ? 'responses' : 'other') : 'other');
-            item.setAttribute('data-type', category);
-
-            // If notification is clearly addressed to another user and is not public, skip it
-            const recipientId = notification.recipient_id || notification.user_id || notification.to_user_id || notification.target_user_id || notification.to;
-            const isPublic = notification.public || notification.is_public || notification.visibility === 'public';
-            try {
-                if (recipientId && currentUser && String(recipientId) !== String(currentUser.id) && !isPublic) {
-                    // Silently skip notifications that are clearly for someone else
-                    // Use to avoids showing other users' chat threads in Community Responses)
-                    continue;
-                }
-            } catch (e) { /* ignore comparison errors */ }
-
-            // Define icon based on notification type
-            let icon = 'fa-bell';
-            let iconColor = 'primary';
-            switch(notification.type) {
-                case 'request_matched': icon = 'fa-handshake'; iconColor = 'success'; break;
-                case 'new_offer': icon = 'fa-hands-helping'; iconColor = 'info'; break;
-                case 'request_completed': icon = 'fa-check-circle'; iconColor = 'success'; break;
-                case 'new_response': icon = 'fa-comment'; iconColor = 'warning'; break;
-                case 'offer_accepted': icon = 'fa-check-double'; iconColor = 'success'; break;
-                case 'request_replied': icon = 'fa-reply'; iconColor = 'info'; break;
-            }
-
-            item.innerHTML = `
-                <div class="d-flex align-items-start">
-                    <div class="notification-icon bg-${iconColor} bg-opacity-10">
-                        <i class="fas ${icon} text-${iconColor}"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <h6 class="mb-0">${notification.title}</h6>
-                            <small class="notification-time">
-                                ${new Date(notification.created_at).toLocaleString()}
-                            </small>
-                        </div>
-                        <p class="mb-2">${notification.message}</p>
-                        ${notification.actionUrl ? `
-                            <a href="${notification.actionUrl}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-external-link-alt me-1"></i>View Details
-                            </a>
-                        ` : ''}
-                    </div>
-                    ${!notification.read ? `
-                        <button class="btn btn-sm btn-link text-muted" 
-                                onclick="markAsRead(${notification.id})">
-                            <i class="fas fa-check"></i>
-                        </button>
-                    ` : ''}
-                </div>
-            `;
-
-            // If this notification includes a responses array, show threaded responses
-            if (category === 'responses') {
-            }
-
-            if (notificationsContainer) notificationsContainer.appendChild(item);
-        }
-
-        // Show/hide the community responses card depending on whether there are response items
-        try {
-            if (responsesCard && responsesContainer) {
-                responsesCard.style.display = (responsesContainer.children.length > 0) ? 'block' : 'none';
-            }
-        } catch(e) { /* ignore */ }
-
-    } catch (err) {
-        console.error('Error loading notifications (final):', err);
-        const container = document.getElementById('notificationsList');
-        if (container) {
-            container.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    Failed to load notifications. Check console for details.
-                </div>
-            `;
-        }
-    } finally {
-        // Always hide the loading overlay so user can see messages
-        try { document.getElementById('loadingOverlay').style.display = 'none'; } catch(e){}
-    }
-}
-
 // Mark a notification as read
 async function markAsRead(notificationId) {
     try {
@@ -762,15 +529,7 @@ function calculateUnreadCounts(requestId, responses, offers, currentStatus, requ
         if (isNewRequest && currentUser) {
             const normalizedCurrentStatus = (currentStatus || '').toLowerCase();
             const isInstantMatch = normalizedCurrentStatus === 'matched' && 
-                                  Array.isArray(offers) && offers.length === 0;
-            
-            // console.log(`[DEBUG] calculateUnreadCounts for request ${requestId}:`, {
-            //     isNewRequest,
-            //     normalizedCurrentStatus,
-            //     offersLength: offers?.length,
-            //     isInstantMatch,
-            //     userRole: currentUser.role
-            // });
+                                  Array.isArray(offers) && offers.length === 0;            
             
             // Show badge for:
             // 1. Helpers/caregivers who received an instant match assignment
@@ -779,12 +538,10 @@ function calculateUnreadCounts(requestId, responses, offers, currentStatus, requ
                 if (currentUser.role === 'volunteer' || currentUser.role === 'caregiver') {
                     // Helper/caregiver: show as "New Instance Request"
                     newRequest = 1;
-                    // console.log(`[DEBUG] Setting newRequest=1 for helper/caregiver`);
                 } else if (currentUser.role === 'senior') {
                     // Senior: show as "Matched" (via statusChanged instead)
                     // Don't set newRequest for seniors, let statusChanged handle it
                     newRequest = 0;
-                    // console.log(`[DEBUG] Senior - using statusChanged instead of newRequest`);
                 }
             }
         }
@@ -903,10 +660,10 @@ async function acceptOffer(offerId) {
         const data = await response.json();
 
         if (response.ok) {
-            alert('✅ Offer accepted! Helper assigned.');
+            alert('Offer accepted! Helper assigned.');
             await refreshMatchedRequests();
         } else {
-            alert(`⚠️ ${data.error || 'Failed to accept offer.'}`);
+            alert(` ${data.error || 'Failed to accept offer.'}`);
         }
     } catch (err) {
         console.error('Error accepting offer:', err);
@@ -1178,13 +935,6 @@ async function refreshMatchedRequests() {
                 fragment.appendChild(compact);
                 fragment.appendChild(responsesDiv);
 
-                // If this request is matched, surface contact info card
-                // try {
-                //     if (String(req.status).toLowerCase() === 'matched') {
-                //         renderContactInfoForRequest(req, responsesDiv);
-                //     }
-                // } catch {}
-
                 // Add click event to mark request as viewed when user clicks on the card
                 compact.addEventListener('click', (e) => {
                     // Don't mark as viewed if clicking on buttons or links
@@ -1208,8 +958,6 @@ async function refreshMatchedRequests() {
                 // Calculate unread counts first, before auto-marking as viewed
                 const { newReplies, newOffers, statusChanged, newRequest } = calculateUnreadCounts(req.id, req.responses, offers, req.status, req.created_at);
                 
-                // console.log(`[Badges] Request ${req.id} status: ${req.status}, badges: replies=${newReplies}, offers=${newOffers}, statusChanged=${statusChanged}, newRequest=${newRequest}`);
-
                 // Auto-mark instant matches as viewed, mafter calculating badges
                 // Instant matches have status='matched', no responses, and no offers
                 // Also auto-mark for seniors viewing their own instant match requests
@@ -1227,18 +975,14 @@ async function refreshMatchedRequests() {
                 // Only auto-mark for seniors viewing their own instant match requests
                 // Helpers/caregivers will keep the badge until they click on the request
                 if (!hasBeenViewed && isInstantMatch && isSenior && isMyOwnRequest) {
-                    // console.log(`[Auto-mark] Marking senior's own instant match ${req.id} as viewed`);
                     // Delay the mark so the badge shows on first render, then clears on next refresh
                     setTimeout(() => markRequestAsViewed(req.id), 1000);
                 }
 
                 // Render notification badges in the header
-                // console.log(`[Badge Render] Request ${req.id}: replies=${newReplies}, offers=${newOffers}, statusChanged=${statusChanged}, newRequest=${newRequest}`);
                 if (newReplies > 0 || newOffers > 0 || statusChanged > 0 || newRequest > 0) {
-                    // console.log(`[Badge Render] Rendering badges for request ${req.id}`);
                     renderNotificationBadges(actionsHost, newReplies, newOffers, statusChanged, req.status, newRequest);
                 } else {
-                    // console.log(`[Badge Render] No badges to render for request ${req.id}`);
                     // If no new items, show Accept Offer button for seniors with pending offers
                     const pendingOffers = offers.filter(o => (o.status || '').toLowerCase() === 'pending');
                     const isOwner = String(req.user_id || req.requester_id) === String(currentUser?.id);
@@ -1300,11 +1044,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         currentUser = authManager.getCurrentUser();
 
-        await Promise.all([
-            loadNotifications(),
-            loadEmailPreferences()
-        ]);
+        // Load email preferences first
+        await loadEmailPreferences();
+        
+        // Hide loading overlay BEFORE fetching requests
+        try { 
+            document.getElementById('loadingOverlay').style.display = 'none'; 
+        } catch(e) {
+            console.warn('Loading overlay not found:', e);
+        }
 
+        // Now load the actual requests data
+        console.log('[Notifications] Calling refreshMatchedRequests for initial load...');
+        await refreshMatchedRequests();
+        
+        // Apply default filter
         filterNotifications('all-requests');
 
         // Email preferences toggle handler
@@ -1354,8 +1108,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn('Error setting role-based preference visibility:', e);
         }
 
-        document.getElementById('loadingOverlay').style.display = 'none';
-
         // Logout handler
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
@@ -1375,26 +1127,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Start auto-refresh polling
+        // Start auto-refresh polling - but ONLY if we're not already polling
+        // Poll every 30 seconds to reduce API load
         if (!notificationsPoller) {
-            refreshMatchedRequests();
             notificationsPoller = setInterval(() => {
-                // console.log('[Auto-refresh] Checking for new replies in matched requests...');
                 refreshMatchedRequests();
-            }, 5000);
+            }, 30000);
         }
     } catch (err) {
         console.error('Error initializing page:', err);
-        document.getElementById('loadingOverlay').innerHTML = `
-            <div class="text-center">
-                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                <h4>Failed to Load</h4>
-                <p class="text-muted">${err.message}</p>
-                <a href="dashboard.html" class="btn btn-primary">
-                    <i class="fas fa-home me-1"></i>Return to Dashboard
-                </a>
-            </div>
-        `;
+        
+        // Show error in loading overlay
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'block';
+            loadingOverlay.innerHTML = `
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h4>Failed to Load</h4>
+                    <p class="text-muted">${err.message}</p>
+                    <a href="dashboard.html" class="btn btn-primary">
+                        <i class="fas fa-home me-1"></i>Return to Dashboard
+                    </a>
+                </div>
+            `;
+        }
     }
 });
 
@@ -1409,6 +1166,5 @@ window.addEventListener('beforeunload', () => {
 // Make functions globally accessible for onclick handlers
 window.filterNotifications = filterNotifications;
 window.markAsRead = markAsRead;
-window.markAllAsRead = markAllAsRead; // Commented out - function not defined
 window.acceptOffer = acceptOffer;
 window.replyToResponse = replyToResponse;
