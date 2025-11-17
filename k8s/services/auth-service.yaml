@@ -31,7 +31,7 @@ spec:
             - name: PORT
               value: "5000"
 
-            # --- PostgreSQL (safe DB__* vars, no collision) ---
+            # --- PostgreSQL ---
             - name: DB_HOST
               value: postgres
             - name: DB_PORT
@@ -121,7 +121,7 @@ spec:
     kind: Deployment
     name: auth-service
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 8
   metrics:
   - type: Resource
     resource:

@@ -8,11 +8,21 @@ class OTPService {
     constructor() {
         // In-memory storage for OTPs (in production, use Redis or database)
         this.otpStore = new Map();
+        
+        // In-memory storage for rate limiting/cooldowns
+        this.cooldownStore = new Map();
 
         // OTP configuration
         this.OTP_LENGTH = 6;
         this.OTP_EXPIRY = 10 * 60 * 1000; // 10 minutes
         this.MAX_ATTEMPTS = 3;
+        
+        // Progressive cooldown configuration (in milliseconds)
+        this.COOLDOWN_PERIODS = [
+            30 * 1000,      // 30 seconds after 1st cooldown trigger
+            60 * 1000,      // 1 minute after 2nd cooldown trigger
+            3 * 60 * 1000   // 3 minutes after 3rd+ cooldown trigger
+        ];
 
         // Email configuration
         this.emailConfig = {
@@ -89,6 +99,66 @@ class OTPService {
     }
 
     /**
+     * Check if user is in cooldown period
+     * @param {string} email - User's email address
+     * @param {string} type - Type of OTP (signup, password_reset)
+     * @returns {Object} - Cooldown status
+     */
+    getCooldownStatus(email, type = 'signup') {
+        const key = `${email}:${type}`;
+        const cooldown = this.cooldownStore.get(key);
+        
+        if (!cooldown) {
+            return { inCooldown: false };
+        }
+        
+        const now = Date.now();
+        if (now < cooldown.expiresAt) {
+            const remainingSeconds = Math.ceil((cooldown.expiresAt - now) / 1000);
+            return {
+                inCooldown: true,
+                remainingSeconds,
+                cooldownLevel: cooldown.level
+            };
+        }
+        
+        // Cooldown expired, clean it up
+        this.cooldownStore.delete(key);
+        return { inCooldown: false };
+    }
+    
+    /**
+     * Set cooldown for user after exceeding attempts
+     * @param {string} email - User's email address
+     * @param {string} type - Type of OTP (signup, password_reset)
+     */
+    setCooldown(email, type = 'signup') {
+        const key = `${email}:${type}`;
+        const existing = this.cooldownStore.get(key);
+        
+        // Determine cooldown level (progressive)
+        let level = 0;
+        if (existing && existing.level !== undefined) {
+            level = Math.min(existing.level + 1, this.COOLDOWN_PERIODS.length - 1);
+        }
+        
+        const cooldownDuration = this.COOLDOWN_PERIODS[level];
+        const expiresAt = Date.now() + cooldownDuration;
+        
+        this.cooldownStore.set(key, {
+            level,
+            expiresAt,
+            setAt: Date.now()
+        });
+        
+        const durationText = level === 0 ? '30 seconds' : 
+                            level === 1 ? '1 minute' : 
+                            '3 minutes';
+        
+        console.log(`[OTP] Cooldown set for ${email} (${type}): Level ${level + 1}, Duration: ${durationText}`);
+    }
+
+    /**
      * Verify OTP code
      * @param {string} email - User's email address
      * @param {string} otp - The OTP code to verify
@@ -97,9 +167,21 @@ class OTPService {
      */
     verifyOTP(email, otp, type = 'signup') {
         const key = `${email}:${type}`;
+        
         const stored = this.otpStore.get(key);
 
         if (!stored) {
+            // Check if user is in cooldown only if no OTP exists
+            const cooldownStatus = this.getCooldownStatus(email, type);
+            if (cooldownStatus.inCooldown) {
+                return {
+                    valid: false,
+                    error: `Too many failed attempts. Please wait ${cooldownStatus.remainingSeconds} seconds before requesting a new code.`,
+                    inCooldown: true,
+                    remainingSeconds: cooldownStatus.remainingSeconds
+                };
+            }
+            
             return {
                 valid: false,
                 error: 'OTP not found or expired. Please request a new code.'
@@ -115,35 +197,46 @@ class OTPService {
             };
         }
 
-        // Check attempts
-        if (stored.attempts >= this.MAX_ATTEMPTS) {
-            this.otpStore.delete(key);
-            return {
-                valid: false,
-                error: 'Too many failed attempts. Please request a new code.'
-            };
-        }
-
-        // Increment attempts
-        stored.attempts++;
-        this.otpStore.set(key, stored);
-
-        // Verify OTP
+        // Verify OTP FIRST before checking attempts or cooldown
+        // This allows correct OTP to work even after failed attempts
         if (stored.otp === otp) {
-            // OTP is valid, remove from store
+            // OTP is valid, remove from store and clear any cooldowns
             this.otpStore.delete(key);
-            console.log(`[OTP] Valid OTP verified for ${email} (${type})`);
+            this.cooldownStore.delete(key);
+            console.log(`[OTP] Valid OTP verified for ${email} (${type}) after ${stored.attempts} failed attempt(s)`);
             return {
                 valid: true
             };
         }
 
+        // OTP is wrong, now check if this exhausts the attempts
+        // Increment attempts for wrong OTP
+        stored.attempts++;
+        
         const attemptsLeft = this.MAX_ATTEMPTS - stored.attempts;
-        console.log(`[OTP] Invalid OTP attempt for ${email} (${type}), ${attemptsLeft} attempts left`);
+        console.log(`[OTP] Invalid OTP attempt for ${email} (${type}), ${attemptsLeft} attempt(s) left`);
+
+        if (attemptsLeft <= 0) {
+            // Last attempt failed, set cooldown and clear OTP
+            this.setCooldown(email, type);
+            this.otpStore.delete(key);
+            
+            const cooldownStatus = this.getCooldownStatus(email, type);
+            return {
+                valid: false,
+                error: `Invalid OTP code. Too many failed attempts. Please wait ${cooldownStatus.remainingSeconds} seconds before requesting a new code.`,
+                inCooldown: true,
+                remainingSeconds: cooldownStatus.remainingSeconds
+            };
+        }
+
+        // Still have attempts left, update the store
+        this.otpStore.set(key, stored);
 
         return {
             valid: false,
-            error: `Invalid OTP code. ${attemptsLeft} attempt(s) remaining.`
+            error: `Invalid OTP code. ${attemptsLeft} attempt(s) remaining.`,
+            attemptsLeft
         };
     }
 
@@ -299,6 +392,17 @@ class OTPService {
      */
     async resendOTP(email, type = 'signup', userData = {}) {
         const key = `${email}:${type}`;
+        
+        // Check if user is in cooldown
+        const cooldownStatus = this.getCooldownStatus(email, type);
+        if (cooldownStatus.inCooldown) {
+            return {
+                success: false,
+                error: `Too many failed attempts. Please wait ${cooldownStatus.remainingSeconds} seconds before requesting a new code.`,
+                inCooldown: true,
+                remainingSeconds: cooldownStatus.remainingSeconds
+            };
+        }
 
         // Check if there's a recent OTP request (prevent spam)
         const stored = this.otpStore.get(key);
@@ -372,10 +476,18 @@ class OTPService {
         const now = Date.now();
         let cleaned = 0;
 
+        // Clean expired OTPs
         for (const [key, value] of this.otpStore.entries()) {
             if (now > value.expiresAt) {
                 this.otpStore.delete(key);
                 cleaned++;
+            }
+        }
+        
+        // Clean expired cooldowns
+        for (const [key, value] of this.cooldownStore.entries()) {
+            if (now > value.expiresAt) {
+                this.cooldownStore.delete(key);
             }
         }
 

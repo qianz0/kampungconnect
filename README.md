@@ -1311,33 +1311,6 @@ deploy-all.bat
 - **Security**: Follow security best practices for authentication and data handling
 - **Observability**: Add appropriate metrics, logs, and traces
 
-### Before Submitting
-
-```bash
-# Build all images
-build-all.bat
-
-# Deploy to test environment
-kubectl create namespace kampungconnect-test
-# Update namespace in commands below
-deploy-to-kuber.bat
-
-# Verify all services are working
-kubectl get pods -n kampungconnect
-kubectl logs deployment/<service-name> -n kampungconnect
-
-# Test endpoints
-curl http://localhost:5001/
-curl http://localhost:5002/
-
-# Check metrics and traces
-# Visit http://localhost:9090 (Prometheus)
-# Visit http://localhost:3000 (Grafana)
-
-# Clean up test environment
-kubectl delete namespace kampungconnect-test
-```
-
 ## 📚 Additional Resources
 
 ### External Documentation
@@ -1367,10 +1340,6 @@ kubectl delete namespace kampungconnect-test
 - **Grafana**: http://localhost:3000 - Dashboards and visualization
 - **Tempo**: http://localhost:3200 - Distributed tracing
 - **RabbitMQ Management**: http://localhost:15672 - Message queue monitoring
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 📞 Support
 
