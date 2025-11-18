@@ -1188,6 +1188,81 @@
         </div>
     </div>
 
+    <!-- Flag Request Modal -->
+    <div id="flagRequestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Flag Request</h2>
+                <button class="close-modal" onclick="adminDashboard.closeModal('flagRequestModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="margin-bottom: 15px; color: #666;">Please select a reason for flagging this request:</p>
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <label for="flagReason" style="display: block; margin-bottom: 8px; font-weight: 600;">Reason:</label>
+                        <select id="flagReason" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0; font-size: 1em;">
+                            <option value="">-- Select a reason --</option>
+                            <option value="spam">Spam or Fake Request</option>
+                            <option value="inappropriate">Inappropriate Content</option>
+                            <option value="duplicate">Duplicate Request</option>
+                            <option value="abuse">Potential Abuse</option>
+                            <option value="violation">Terms of Service Violation</option>
+                            <option value="other">Others</option>
+                        </select>
+                    </div>
+                    <div id="flagOtherReasonContainer" style="display: none;">
+                        <label for="flagOtherReason" style="display: block; margin-bottom: 8px; font-weight: 600;">Please specify:</label>
+                        <textarea id="flagOtherReason" placeholder="Enter specific reason..." style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0; min-height: 100px; font-size: 1em; font-family: inherit; resize: vertical;"></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn" onclick="adminDashboard.confirmFlagRequest()" style="flex: 1;">
+                            <i class="fas fa-flag"></i> Flag Request
+                        </button>
+                        <button class="btn btn-secondary" onclick="adminDashboard.closeModal('flagRequestModal')" style="flex: 1;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Request Modal -->
+    <div id="deleteRequestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete Request</h2>
+                <button class="close-modal" onclick="adminDashboard.closeModal('deleteRequestModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding: 20px 0;">
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #856404; font-weight: 600;">
+                        <i class="fas fa-exclamation-triangle"></i> Warning: This action cannot be undone!
+                    </p>
+                </div>
+                <p style="margin-bottom: 15px; color: #666;">Are you sure you want to delete this request? This will permanently remove it from the system.</p>
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <label for="deleteReason" style="display: block; margin-bottom: 8px; font-weight: 600;">Reason for deletion:</label>
+                        <textarea id="deleteReason" placeholder="Enter reason for deletion..." style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0; min-height: 100px; font-size: 1em; font-family: inherit; resize: vertical;" required></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn btn-delete" onclick="adminDashboard.confirmDeleteRequest()" style="flex: 1;">
+                            <i class="fas fa-trash"></i> Delete Request
+                        </button>
+                        <button class="btn btn-secondary" onclick="adminDashboard.closeModal('deleteRequestModal')" style="flex: 1;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
@@ -1210,6 +1285,29 @@
         // Update time every second
         setInterval(updateTime, 1000);
         updateTime();
+
+        // Handle flag reason dropdown change
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'flagReason') {
+                const otherContainer = document.getElementById('flagOtherReasonContainer');
+                if (e.target.value === 'other') {
+                    otherContainer.style.display = 'block';
+                } else {
+                    otherContainer.style.display = 'none';
+                    document.getElementById('flagOtherReason').value = '';
+                }
+            }
+        });
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                const modalId = e.target.id;
+                if (modalId) {
+                    adminDashboard.closeModal(modalId);
+                }
+            }
+        });
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', async () => {

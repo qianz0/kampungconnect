@@ -1207,7 +1207,7 @@ app.delete('/api/admin/users/:id',
 
 // ============= REQUEST MODERATION =============
 
-// Flag request as inappropriate
+// Flag request as inappropriate - creates a report
 app.post('/api/admin/requests/:id/flag',
     authMiddleware.authenticateToken,
     requireAdmin,
@@ -1216,9 +1216,45 @@ app.post('/api/admin/requests/:id/flag',
             const { id } = req.params;
             const { reason } = req.body;
 
+            if (!reason) {
+                return res.status(400).json({ error: 'Reason is required' });
+            }
+
+            // Get request details
+            const requestResult = await pool.query(
+                'SELECT user_id FROM requests WHERE id = $1',
+                [id]
+            );
+
+            if (requestResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Request not found' });
+            }
+
+            const request = requestResult.rows[0];
+
+            // Update request as flagged
             await pool.query(
                 `UPDATE requests SET is_flagged = true, flag_reason = $1 WHERE id = $2`,
                 [reason, id]
+            );
+
+            // Determine report type from reason
+            let reportType = 'other';
+            const reasonLower = reason.toLowerCase();
+            if (reasonLower.includes('spam') || reasonLower.includes('fake')) {
+                reportType = 'spam';
+            } else if (reasonLower.includes('inappropriate')) {
+                reportType = 'inappropriate';
+            } else if (reasonLower.includes('abuse') || reasonLower.includes('harassment')) {
+                reportType = 'harassment';
+            }
+
+            // Create a report for this flagged request
+            const reportResult = await pool.query(
+                `INSERT INTO reports (reporter_id, reported_user_id, report_type, reason, status, created_at)
+                VALUES ($1, $2, $3, $4, 'investigating', NOW())
+                RETURNING id`,
+                [req.user.userId, request.user_id, reportType, `Admin flagged request #${id}: ${reason}`]
             );
 
             // Create audit log
@@ -1229,12 +1265,13 @@ app.post('/api/admin/requests/:id/flag',
             );
 
             res.json({
-                message: 'Request flagged successfully',
-                request_id: id
+                message: 'Request flagged successfully and report created',
+                request_id: id,
+                report_id: reportResult.rows[0].id
             });
         } catch (error) {
             console.error('Error flagging request:', error);
-            res.status(500).json({ error: 'Failed to flag request' });
+            res.status(500).json({ error: 'Failed to flag request', details: error.message });
         }
     }
 );

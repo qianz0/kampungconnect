@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS requests (
     description TEXT,
     urgency VARCHAR(10) CHECK (urgency IN ('low', 'medium', 'high', 'urgent')) NOT NULL,
     status VARCHAR(20) DEFAULT 'pending',
+    is_flagged BOOLEAN DEFAULT FALSE,
+    flag_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

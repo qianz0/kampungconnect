@@ -28,6 +28,7 @@ class AdminDashboard {
             reports: { column: 'created_at', order: 'DESC' }
         };
         this.currentReportId = null;
+        this.currentRequestId = null;
     }
 
     /**
@@ -1344,14 +1345,25 @@ class AdminDashboard {
      * Open modal
      */
     openModal(modalId) {
-        document.getElementById(modalId).classList.add('active');
+        console.log('[AdminDashboard] Opening modal:', modalId);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+            console.log('[AdminDashboard] Modal classList:', modal.classList.toString());
+        } else {
+            console.error('[AdminDashboard] Modal not found:', modalId);
+        }
     }
 
     /**
      * Close modal
      */
     closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
+        console.log('[AdminDashboard] Closing modal:', modalId);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+        }
     }
 
     /**
@@ -1775,15 +1787,47 @@ class AdminDashboard {
     }
 
     /**
-     * Flag a request
+     * Flag a request - opens modal
      */
-    async flagRequest(requestId) {
-        const reason = prompt('Enter reason for flagging this request:');
-        if (!reason) return;
+    flagRequest(requestId) {
+        console.log('[AdminDashboard] Opening flag modal for request:', requestId);
+        this.currentRequestId = requestId;
+        // Reset form
+        document.getElementById('flagReason').value = '';
+        document.getElementById('flagOtherReason').value = '';
+        document.getElementById('flagOtherReasonContainer').style.display = 'none';
+        this.openModal('flagRequestModal');
+        console.log('[AdminDashboard] Flag modal should be visible now');
+    }
+
+    /**
+     * Confirm and submit flag request
+     */
+    async confirmFlagRequest() {
+        const reasonSelect = document.getElementById('flagReason').value;
+        if (!reasonSelect) {
+            alert('Please select a reason for flagging.');
+            return;
+        }
+
+        let reason = reasonSelect;
+        if (reasonSelect === 'other') {
+            const otherReason = document.getElementById('flagOtherReason').value.trim();
+            if (!otherReason) {
+                alert('Please specify the reason.');
+                return;
+            }
+            reason = `Other: ${otherReason}`;
+        } else {
+            // Use the display text from the option
+            const selectElement = document.getElementById('flagReason');
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            reason = selectedOption.text;
+        }
 
         try {
             const response = await window.AuthManager.authenticatedFetch(
-                `${this.adminServiceUrl}/api/admin/requests/${requestId}/flag`,
+                `${this.adminServiceUrl}/api/admin/requests/${this.currentRequestId}/flag`,
                 {
                     method: 'POST',
                     body: JSON.stringify({ reason })
@@ -1792,6 +1836,7 @@ class AdminDashboard {
 
             if (response.ok) {
                 alert('Request flagged successfully');
+                this.closeModal('flagRequestModal');
                 this.loadRequests(this.currentPage.requests);
             } else {
                 const error = await response.json();
@@ -1804,19 +1849,30 @@ class AdminDashboard {
     }
 
     /**
-     * Delete a request
+     * Delete a request - opens modal
      */
-    async deleteRequest(requestId) {
-        const reason = prompt('Enter reason for deleting this request:');
-        if (!reason) return;
+    deleteRequest(requestId) {
+        console.log('[AdminDashboard] Opening delete modal for request:', requestId);
+        this.currentRequestId = requestId;
+        // Reset form
+        document.getElementById('deleteReason').value = '';
+        this.openModal('deleteRequestModal');
+        console.log('[AdminDashboard] Delete modal should be visible now');
+    }
 
-        if (!confirm('Are you sure you want to DELETE this request? This action cannot be undone!')) {
+    /**
+     * Confirm and submit delete request
+     */
+    async confirmDeleteRequest() {
+        const reason = document.getElementById('deleteReason').value.trim();
+        if (!reason) {
+            alert('Please enter a reason for deletion.');
             return;
         }
 
         try {
             const response = await window.AuthManager.authenticatedFetch(
-                `${this.adminServiceUrl}/api/admin/requests/${requestId}`,
+                `${this.adminServiceUrl}/api/admin/requests/${this.currentRequestId}`,
                 {
                     method: 'DELETE',
                     body: JSON.stringify({ reason })
@@ -1825,6 +1881,7 @@ class AdminDashboard {
 
             if (response.ok) {
                 alert('Request deleted successfully');
+                this.closeModal('deleteRequestModal');
                 this.loadRequests(this.currentPage.requests);
             } else {
                 const error = await response.json();
