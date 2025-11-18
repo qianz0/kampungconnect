@@ -60,7 +60,7 @@ try {
 
     # Start all port forwards
     $processes += Start-PortForward "Frontend" "kampungconnect" "frontend" 8080 80
-    $processes += Start-PortForward "RabbitMQ" "kampungconnect" "rabbitmq" 15672 15672
+    $processes += Start-PortForward "RabbitMQ" "kampungconnect" "rabbitmq" 25672 15672
     $processes += Start-PortForward "Prometheus" "kampungconnect" "prometheus" 9090 9090
     $processes += Start-PortForward "Grafana" "kampungconnect" "grafana" 3000 3000
     $processes += Start-PortForward "Tempo" "kampungconnect" "tempo" 3200 3200
@@ -83,7 +83,7 @@ try {
     Write-Host ""
     Write-Host "FRONTEND & MONITORING:" -ForegroundColor Cyan
     Write-Host "  Frontend:        http://localhost:8080" -ForegroundColor White
-    Write-Host "  RabbitMQ:        http://localhost:15672" -ForegroundColor White
+    Write-Host "  RabbitMQ:        http://localhost:25672" -ForegroundColor White
     Write-Host "  Prometheus:      http://localhost:9090" -ForegroundColor White
     Write-Host "  Grafana:         http://localhost:3000" -ForegroundColor White
     Write-Host "  Tempo:           http://localhost:3200" -ForegroundColor White

@@ -287,7 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Past Ratings Functions
 async function togglePastRatings() {
     const pastRatingsSection = document.getElementById('pastRatingsSection');
-    const pastRatingsContent = document.getElementById('pastRatingsContent');
     const filterSection = document.getElementById('filterSection');
     const toggleBtn = document.querySelector('[onclick="togglePastRatings()"]');
     const currentUser = window.AuthManager.getCurrentUser();

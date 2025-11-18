@@ -4,7 +4,7 @@ metadata:
   name: stats-service
   namespace: kampungconnect
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: stats-service
@@ -16,14 +16,21 @@ spec:
       containers:
         - name: stats-service
           image: kampungconnect-stats-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5009
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
           env:
             - name: PORT
               value: "5009"
             - name: JWT_SECRET
-              value: secret
+              value: your-super-secret-jwt-key-change-this-in-production
             - name: AUTH_SERVICE_URL
               value: http://auth-service:5000
             - name: DB_HOST
@@ -48,3 +55,29 @@ spec:
   ports:
     - port: 5009
       targetPort: 5009
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: stats-service-hpa
+  namespace: kampungconnect
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: stats-service
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

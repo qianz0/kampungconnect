@@ -248,6 +248,81 @@ Making our community stronger, together.`,
     }
 
     /**
+     * Send senior match notification email to senior
+     */
+    async sendSeniorMatchNotification(recipientEmail, data) {
+        if (!this.enabled) {
+            console.log('[SMTP] Email disabled, skipping notification');
+            return { success: false, message: 'Email disabled' };
+        }
+
+        try {
+            const { seniorName, helperName, helperRole, requestTitle, requestDescription, category, urgency, requestId } = data;
+            
+            const roleLabel = helperRole === 'caregiver' ? 'Caregiver' : 'Volunteer';
+            
+            const mailOptions = {
+                from: `"KampungConnect" <${process.env.SMTP_USER}>`,
+                to: recipientEmail,
+                subject: `Great News! Your Request Has Been Matched: ${requestTitle}`,
+                text: `Hello ${seniorName},
+
+Wonderful news! Your request has been matched with a ${roleLabel}.
+
+Request: ${requestTitle}
+
+Category: ${category || 'N/A'}
+
+Urgency: ${urgency || 'N/A'}
+
+${roleLabel}: ${helperName}
+
+Your ${roleLabel.toLowerCase()} will reach out to you soon. You can also view the full details by logging into KampungConnect.
+
+View Request: ${process.env.FRONTEND_URL || 'http://localhost:8080'}/request-details.html?id=${requestId}
+
+Thank you for being part of our caring community!
+
+---
+KampungConnect Team
+Making our community stronger, together.`,
+                html: `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+    <p style="font-size: 16px; line-height: 1.5; color: #333; margin: 0;">
+        Hello ${seniorName},<br><br>
+        Wonderful news! Your request has been matched with a ${roleLabel}.<br><br>
+        Request: ${requestTitle}<br>
+        Category: ${category || 'N/A'}<br>
+        Urgency: ${urgency || 'N/A'}<br>
+        ${roleLabel}: ${helperName}<br><br>
+        Your ${roleLabel.toLowerCase()} will reach out to you soon. You can also view the full details by logging into KampungConnect.<br><br>
+        View Request: <a href="${process.env.FRONTEND_URL || 'http://localhost:8080'}/request-details.html?id=${requestId}" 
+           style="color: #007bff; text-decoration: none;">${process.env.FRONTEND_URL || 'http://localhost:8080'}/request-details.html?id=${requestId}</a><br><br>
+        Thank you for being part of our caring community!<br><br>
+        ---<br>
+        KampungConnect Team<br>
+        Making our community stronger, together.
+    </p>
+</div>
+                `
+            };
+
+            console.log(`[SMTP] Sending senior match notification to ${recipientEmail}`);
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log(`[SMTP] Email sent successfully to ${recipientEmail}. MessageId: ${info.messageId}`);
+            
+            return {
+                success: true,
+                messageId: info.messageId,
+                recipient: recipientEmail
+            };
+        } catch (error) {
+            console.error('[SMTP] Failed to send senior match notification:', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * Send status update notification
      */
     async sendStatusUpdateNotification(recipientEmail, data) {

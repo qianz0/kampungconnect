@@ -6,6 +6,9 @@ const db = require('./db');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
+const http = require('http');
+const WebSocket = require('ws');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 5008;
@@ -55,6 +58,12 @@ const messagingProto = grpc.loadPackageDefinition(packageDefinition).messaging;
 
 // Store for active message streams (for real-time messaging)
 const activeStreams = new Map();
+
+// Store for WebSocket connections (userId -> WebSocket)
+const wsConnections = new Map();
+
+// Store for typing timeouts
+const typingTimeouts = new Map();
 
 // ==================== gRPC SERVICE IMPLEMENTATION ====================
 
@@ -1160,7 +1169,285 @@ app.post('/activities/:activityId/respond', authMiddleware, async (req, res) => 
     }
 });
 
+// ==================== WEBSOCKET SERVER ====================
+
+// Create HTTP server and WebSocket server
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ noServer: true });
+
+// Handle WebSocket upgrade
+server.on('upgrade', (request, socket, head) => {
+    try {
+        // Extract token from query string
+        const url = new URL(request.url, `http://${request.headers.host}`);
+        const token = url.searchParams.get('token');
+
+        if (!token) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+        }
+
+        // Verify JWT token
+        jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production', (err, decoded) => {
+            if (err) {
+                socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+                socket.destroy();
+                return;
+            }
+
+            // Attach user info to request
+            request.userId = decoded.id;
+
+            wss.handleUpgrade(request, socket, head, (ws) => {
+                wss.emit('connection', ws, request);
+            });
+        });
+    } catch (error) {
+        console.error('WebSocket upgrade error:', error);
+        socket.destroy();
+    }
+});
+
+// WebSocket connection handler
+wss.on('connection', (ws, request) => {
+    const userId = request.userId;
+    console.log(`✅ WebSocket connected: User ${userId}`);
+
+    // Store connection
+    wsConnections.set(userId, ws);
+
+    // Send connection confirmation
+    ws.send(JSON.stringify({
+        type: 'connected',
+        userId: userId
+    }));
+
+    // Handle incoming messages
+    ws.on('message', async (data) => {
+        try {
+            const message = JSON.parse(data.toString());
+            await handleWebSocketMessage(ws, userId, message);
+        } catch (error) {
+            console.error('Error handling WebSocket message:', error);
+            ws.send(JSON.stringify({
+                type: 'error',
+                error: 'Invalid message format'
+            }));
+        }
+    });
+
+    // Handle disconnection
+    ws.on('close', () => {
+        console.log(`❌ WebSocket disconnected: User ${userId}`);
+        wsConnections.delete(userId);
+        
+        // Clear any typing timeouts
+        const typingKey = `${userId}_*`;
+        typingTimeouts.forEach((timeout, key) => {
+            if (key.startsWith(`${userId}_`)) {
+                clearTimeout(timeout);
+                typingTimeouts.delete(key);
+            }
+        });
+    });
+
+    ws.on('error', (error) => {
+        console.error(`WebSocket error for user ${userId}:`, error);
+    });
+});
+
+// Handle WebSocket messages
+async function handleWebSocketMessage(ws, userId, message) {
+    switch (message.type) {
+        case 'send_message':
+            await handleSendMessage(userId, message.receiverId, message.content);
+            break;
+        
+        case 'typing_indicator':
+            await handleTypingIndicator(userId, message.receiverId, message.isTyping);
+            break;
+        
+        case 'mark_read':
+            await handleMarkAsRead(userId, message.otherUserId);
+            break;
+        
+        default:
+            ws.send(JSON.stringify({
+                type: 'error',
+                error: 'Unknown message type'
+            }));
+    }
+}
+
+// Handle send message via WebSocket
+async function handleSendMessage(senderId, receiverId, content) {
+    try {
+        // Check if users are friends
+        const friendshipCheck = await db.query(`
+            SELECT * FROM friendships 
+            WHERE ((user_id = $1 AND friend_id = $2) 
+               OR (user_id = $2 AND friend_id = $1))
+            AND status = 'accepted'
+        `, [senderId, receiverId]);
+
+        if (friendshipCheck.rows.length === 0) {
+            const senderWs = wsConnections.get(senderId);
+            if (senderWs) {
+                senderWs.send(JSON.stringify({
+                    type: 'error',
+                    error: 'You can only send messages to your friends'
+                }));
+            }
+            return;
+        }
+
+        // Create conversation ID
+        const conversationId = senderId < receiverId 
+            ? `${senderId}_${receiverId}` 
+            : `${receiverId}_${senderId}`;
+
+        // Insert message
+        const result = await db.query(`
+            INSERT INTO messages (sender_id, receiver_id, conversation_id, content)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [senderId, receiverId, conversationId, content]);
+
+        const messageRow = result.rows[0];
+
+        // Get sender info
+        const senderResult = await db.query(
+            'SELECT id, email, firstname, lastname, picture FROM users WHERE id = $1',
+            [senderId]
+        );
+
+        const messageData = {
+            id: messageRow.id,
+            sender_id: messageRow.sender_id,
+            receiver_id: messageRow.receiver_id,
+            conversation_id: messageRow.conversation_id,
+            content: messageRow.content,
+            read: messageRow.read,
+            created_at: messageRow.created_at.toISOString(),
+            sender: {
+                id: senderResult.rows[0].id,
+                email: senderResult.rows[0].email || '',
+                firstname: senderResult.rows[0].firstname || '',
+                lastname: senderResult.rows[0].lastname || '',
+                picture: senderResult.rows[0].picture || ''
+            }
+        };
+
+        // Send to sender (confirmation)
+        const senderWs = wsConnections.get(senderId);
+        if (senderWs && senderWs.readyState === WebSocket.OPEN) {
+            senderWs.send(JSON.stringify({
+                type: 'new_message',
+                message: messageData
+            }));
+        }
+
+        // Send to receiver (if online)
+        const receiverWs = wsConnections.get(receiverId);
+        if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+                type: 'new_message',
+                message: messageData
+            }));
+        }
+
+    } catch (error) {
+        console.error('Error sending message via WebSocket:', error);
+        const senderWs = wsConnections.get(senderId);
+        if (senderWs) {
+            senderWs.send(JSON.stringify({
+                type: 'error',
+                error: 'Failed to send message'
+            }));
+        }
+    }
+}
+
+// Handle typing indicator
+async function handleTypingIndicator(userId, otherUserId, isTyping) {
+    try {
+        const typingKey = `${userId}_${otherUserId}`;
+        
+        // Clear existing timeout
+        if (typingTimeouts.has(typingKey)) {
+            clearTimeout(typingTimeouts.get(typingKey));
+            typingTimeouts.delete(typingKey);
+        }
+
+        // Send typing indicator to other user
+        const otherUserWs = wsConnections.get(otherUserId);
+        if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+            otherUserWs.send(JSON.stringify({
+                type: isTyping ? 'typing_start' : 'typing_stop',
+                userId: userId
+            }));
+        }
+
+        // Auto-stop typing after 3 seconds
+        if (isTyping) {
+            const timeout = setTimeout(() => {
+                if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+                    otherUserWs.send(JSON.stringify({
+                        type: 'typing_stop',
+                        userId: userId
+                    }));
+                }
+                typingTimeouts.delete(typingKey);
+            }, 3000);
+            
+            typingTimeouts.set(typingKey, timeout);
+        }
+    } catch (error) {
+        console.error('Error handling typing indicator:', error);
+    }
+}
+
+// Handle mark as read
+async function handleMarkAsRead(userId, otherUserId) {
+    try {
+        // Update messages as read
+        const result = await db.query(`
+            UPDATE messages 
+            SET read = true 
+            WHERE receiver_id = $1 AND sender_id = $2 AND read = false
+            RETURNING id
+        `, [userId, otherUserId]);
+
+        if (result.rows.length > 0) {
+            const messageIds = result.rows.map(row => row.id);
+
+            // Notify sender that messages were read
+            const senderWs = wsConnections.get(otherUserId);
+            if (senderWs && senderWs.readyState === WebSocket.OPEN) {
+                senderWs.send(JSON.stringify({
+                    type: 'message_read',
+                    messageIds: messageIds,
+                    userId: userId
+                }));
+            }
+
+            // Confirm to reader
+            const readerWs = wsConnections.get(userId);
+            if (readerWs && readerWs.readyState === WebSocket.OPEN) {
+                readerWs.send(JSON.stringify({
+                    type: 'messages_marked_read',
+                    count: messageIds.length
+                }));
+            }
+        }
+    } catch (error) {
+        console.error('Error marking messages as read:', error);
+    }
+}
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`🚀 Social service running on port ${PORT}`);
+    console.log(`🔌 WebSocket server ready on ws://localhost:${PORT}/ws`);
 });

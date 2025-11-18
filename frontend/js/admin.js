@@ -257,6 +257,7 @@ class AdminDashboard {
                             <button class="btn-icon btn-view" onclick="adminDashboard.viewUser(${user.id})" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            ${user.role !== 'admin' ? `
                             <button class="btn-icon btn-edit" 
                                 onclick="adminDashboard.toggleUserStatus(${user.id}, ${!user.is_active})" 
                                 title="${user.is_active ? 'Suspend' : 'Activate'}">
@@ -267,6 +268,7 @@ class AdminDashboard {
                                 title="Delete User">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>

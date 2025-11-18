@@ -15,6 +15,6 @@ RUN npm config set fetch-retry-mintimeout 20000 && \
 COPY backend/shared ./shared
 
 # Copy the service source
-COPY backend/services/request-service/src ./src
+COPY backend/services/request-service/src/ ./src/
 
 CMD ["npm", "start"]

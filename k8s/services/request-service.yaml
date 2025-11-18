@@ -16,12 +16,19 @@ spec:
       containers:
         - name: request-service
           image: kampungconnect-request-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5002
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
           env:
             - name: JWT_SECRET
-              value: secret
+              value: your-super-secret-jwt-key-change-this-in-production
             - name: AUTH_SERVICE_URL
               value: http://auth-service:5000
             - name: DB_HOST
@@ -52,3 +59,29 @@ spec:
   ports:
     - port: 5002
       targetPort: 5002
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: request-service-hpa
+  namespace: kampungconnect
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: request-service
+  minReplicas: 1
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

@@ -274,9 +274,20 @@
                         window.location.href = '/dashboard.html?authenticated=true';
                     }, 2000);
                 } else {
-                    showError(data.error || 'Verification failed');
-                    markOTPError();
-                    clearOTP();
+                    // Check if in cooldown
+                    if (data.inCooldown && data.remainingSeconds) {
+                        showError(`${data.error || 'Too many failed attempts. Please wait before trying again.'}`);
+                        // Disable inputs during cooldown
+                        otpInputs.forEach(input => input.disabled = true);
+                        document.getElementById('verifyBtn').disabled = true;
+                        
+                        // Start countdown to re-enable inputs
+                        startCooldownTimer(data.remainingSeconds);
+                    } else {
+                        showError(data.error || 'Verification failed');
+                        markOTPError();
+                        clearOTP();
+                    }
                 }
 
             } catch (error) {
@@ -284,8 +295,35 @@
                 showError('Network error. Please try again.');
                 markOTPError();
             } finally {
-                document.getElementById('verifyBtn').disabled = false;
+                if (!document.querySelector('.otp-input').disabled) {
+                    document.getElementById('verifyBtn').disabled = false;
+                }
             }
+        }
+        
+        // Cooldown timer for failed attempts
+        function startCooldownTimer(seconds) {
+            let timeLeft = seconds;
+            const errorMessage = document.getElementById('errorMessage');
+            
+            const cooldownInterval = setInterval(() => {
+                timeLeft--;
+                errorMessage.innerHTML = `<i class="fas fa-clock me-2"></i>Too many failed attempts. Please wait ${timeLeft} seconds before trying again.`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(cooldownInterval);
+                    // Re-enable inputs
+                    otpInputs.forEach(input => input.disabled = false);
+                    document.getElementById('verifyBtn').disabled = false;
+                    clearOTP();
+                    showError('You can now try again. Please request a new code.');
+                    
+                    // Auto-hide error after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('errorAlert').style.display = 'none';
+                    }, 3000);
+                }
+            }, 1000);
         }
 
         // Resend OTP
@@ -310,10 +348,22 @@
                 if (response.ok) {
                     showSuccess(data.message || 'Verification code resent!');
                     clearOTP();
+                    // Re-enable inputs if they were disabled due to cooldown
+                    otpInputs.forEach(input => input.disabled = false);
+                    document.getElementById('verifyBtn').disabled = false;
                     startResendTimer();
                 } else {
-                    showError(data.error || 'Failed to resend code');
-                    document.getElementById('resendBtn').disabled = false;
+                    // Check if in cooldown
+                    if (data.inCooldown && data.remainingSeconds) {
+                        showError(`Too many failed attempts. Please wait ${data.remainingSeconds} seconds before requesting a new code.`);
+                        // Keep resend button disabled during cooldown
+                        setTimeout(() => {
+                            document.getElementById('resendBtn').disabled = false;
+                        }, data.remainingSeconds * 1000);
+                    } else {
+                        showError(data.error || 'Failed to resend code');
+                        document.getElementById('resendBtn').disabled = false;
+                    }
                 }
 
             } catch (error) {

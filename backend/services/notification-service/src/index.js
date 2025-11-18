@@ -287,6 +287,44 @@ app.post('/notify/instant-match', async (req, res) => {
     }
 });
 
+// Endpoint to send senior match notification (called by request-service or matching-service)
+app.post('/notify/senior-match', async (req, res) => {
+    try {
+        const { seniorId, seniorEmail, seniorName, helperName, helperRole, requestTitle, requestDescription, category, urgency, requestId } = req.body;
+        
+        if (!seniorId || (!seniorEmail && !seniorId)) {
+            return res.status(400).json({ error: 'Missing seniorId or seniorEmail' });
+        }
+
+        // Check if senior has notifications enabled for matches
+        const { shouldSend, email } = await shouldSendNotification(seniorId, 'match');
+        
+        if (!shouldSend) {
+            console.log(`[Notification] User ${seniorId} has disabled senior match notifications`);
+            return res.json({ message: 'Notification disabled by user preferences' });
+        }
+        
+        const targetEmail = email || seniorEmail;
+        console.log(`[Notification] Sending senior match notification to ${targetEmail}`);
+        
+        const result = await emailService.sendSeniorMatchNotification(targetEmail, {
+            seniorName,
+            helperName,
+            helperRole,
+            requestTitle,
+            requestDescription: requestDescription || '',
+            category,
+            urgency,
+            requestId
+        });
+
+        res.json({ message: 'Senior match notification sent', messageId: result.messageId });
+    } catch (error) {
+        console.error('[Notification] Error sending senior match notification:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
 // Endpoint to send status update notification
 app.post('/notify/status-update', async (req, res) => {
     try {
