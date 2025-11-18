@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
       - name: social-service
-        image: kampungconnect-social-service:latest
-        imagePullPolicy: IfNotPresent
+        image: aliciatws/kampungconnect-social-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5008
           name: http

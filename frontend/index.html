@@ -4,16 +4,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KampungConnect</title>
+    <title>KampungConnect - Connecting Our Community</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #f59e0b;
+            --accent-color: #10b981;
+            --warm-bg: #fef3e2;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fef3e2 0%, #fff 100%);
+            min-height: 100vh;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%);
+            color: white;
+            padding: 4rem 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            margin-bottom: 3rem;
+        }
+
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .hero-section p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .feature-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--secondary-color), #f97316);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-large {
+            padding: 1rem 2.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-large:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-color), #1e40af);
+            color: white;
+        }
+
+        .btn-secondary-custom {
+            background: linear-gradient(135deg, var(--secondary-color), #f97316);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 2rem;
+            }
+
+            .hero-section p {
+                font-size: 1.1rem;
+            }
+
+            .btn-large {
+                padding: 0.9rem 2rem;
+                font-size: 1.1rem;
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
 </head>
 
-<body class="container py-5">
-    <h1 class="mb-4">KampungConnect</h1>
-    <p>A platform for seniors to request help and urgent support.</p>
+<body>
+    <div class="container py-5">
+        <!-- Hero Section -->
+        <div class="hero-section text-center">
+            <h1>🏘️ KampungConnect</h1>
+            <p class="mb-4">Bringing our community together - where neighbors help neighbors</p>
+            <p class="lead">A caring platform for seniors to request help and connect with volunteers ready to assist</p>
+        </div>
 
-    <a href="login.html" class="btn btn-primary me-2">Login/Register</a>
-    <a href="requests.html" class="btn btn-warning">Post Request</a>
+        <!-- Action Buttons -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-10">
+                <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                    <a href="login.html" class="btn btn-large btn-primary-custom">
+                        👤 Login / Register
+                    </a>
+                    <a href="requests.html" class="btn btn-large btn-secondary-custom">
+                        📢 Post a Request
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <h2 class="text-center mb-4" style="color: var(--primary-color); font-weight: 700;">How We Help</h2>
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">🤝</div>
+                    <h3 class="h5 mb-3">Easy Help Requests</h3>
+                    <p class="text-muted">Post your needs in seconds - from grocery shopping to tech support, our community is here to help.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">🚨</div>
+                    <h3 class="h5 mb-3">Urgent Support</h3>
+                    <p class="text-muted">Need immediate assistance? Mark requests as urgent and get priority responses from nearby volunteers.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">💚</div>
+                    <h3 class="h5 mb-3">Safe & Verified</h3>
+                    <p class="text-muted">All volunteers are verified community members, ensuring safe and trustworthy assistance.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="text-center py-4">
+            <p class="lead text-muted">Join our growing community of caring neighbors</p>
+            <p class="text-muted">No request is too small - we're all here to help each other!</p>
+        </div>
+    </div>
 </body>
 
 </html>

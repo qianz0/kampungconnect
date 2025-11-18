@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: rating-service
-          image: kampungconnect-rating-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-rating-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:

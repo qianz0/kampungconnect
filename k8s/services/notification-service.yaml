@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: kampungconnect-notification-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-notification-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000   # your notification-service listens on 5000
           resources:

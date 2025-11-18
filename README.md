@@ -1024,7 +1024,7 @@ kubectl exec -it deployment/rabbitmq -n kampungconnect -- \
 **1. Build Docker Images**
 
 ```bash
-build-all.bat
+docker compose pull
 ```
 
 **2. Deploy to Kubernetes**

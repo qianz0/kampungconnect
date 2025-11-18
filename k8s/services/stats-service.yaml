@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: stats-service
-          image: kampungconnect-stats-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-stats-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5009
           resources:

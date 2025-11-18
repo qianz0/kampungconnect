@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: request-service
-          image: kampungconnect-request-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-request-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5002
           resources:

@@ -1,0 +1,26 @@
+services:
+  auth-service:
+    image: aliciatws/kampungconnect-auth-service
+  request-service:
+    image: aliciatws/kampungconnect-request-service
+  matching-service:
+    image: aliciatws/kampungconnect-matching-service
+  notification-service:
+    image: aliciatws/kampungconnect-notification-service
+  rating-service:
+    image: aliciatws/kampungconnect-rating-service
+  admin-service:
+    image: aliciatws/kampungconnect-admin-service
+  stats-service:
+    image: aliciatws/kampungconnect-stats-service
+  social-service:
+    image: aliciatws/kampungconnect-social-service
+  frontend:
+    image: aliciatws/kampungconnect-frontend
+
+# run "docker compose pull" to pull the latest images
+
+# Every time when there's code changes:
+# 1. docker build (E.g. docker build -t aliciatws/kampungconnect-admin-service:latest ./k8s/services/admin-service)
+# 2. docker tag (only sometimes -- if you want to change the tag)
+# 3. docker push

@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: kampungconnect-auth-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-auth-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           resources:

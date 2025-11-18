@@ -1,8 +1,7 @@
 FROM nginx:alpine
-WORKDIR /usr/share/nginx/html
 
-# Copy nginx configuration for development (no caching)
+# Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy application files
-COPY . .
+# Copy all frontend files
+COPY . /usr/share/nginx/html/

@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: kampungconnect-frontend
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           resources:

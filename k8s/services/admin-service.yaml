@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: admin-service
-          image: kampungconnect-admin-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-admin-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           resources:

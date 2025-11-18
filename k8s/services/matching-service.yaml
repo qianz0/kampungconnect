@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: matching-service
-          image: kampungconnect-matching-service
-          imagePullPolicy: IfNotPresent
+          image: aliciatws/kampungconnect-matching-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5003
           resources:
