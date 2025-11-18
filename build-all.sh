@@ -6,31 +6,31 @@ echo "========================================"
 echo
 
 echo "Building auth-service..."
-docker build -t kampungconnect-auth-service -f backend/services/auth-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-auth-service:latest -f backend/services/auth-service/Dockerfile .
 
 echo "Building request-service..."
-docker build -t kampungconnect-request-service -f backend/services/request-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-request-service:latest -f backend/services/request-service/Dockerfile .
 
 echo "Building matching-service..."
-docker build -t kampungconnect-matching-service -f backend/services/matching-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-matching-service:latest -f backend/services/matching-service/Dockerfile .
 
 echo "Building notification-service..."
-docker build -t kampungconnect-notification-service -f backend/services/notification-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-notification-service:latest -f backend/services/notification-service/Dockerfile .
 
 echo "Building rating-service..."
-docker build -t kampungconnect-rating-service -f backend/services/rating-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-rating-service:latest -f backend/services/rating-service/Dockerfile .
 
 echo "Building admin-service..."
-docker build -t kampungconnect-admin-service -f backend/services/admin-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-admin-service:latest -f backend/services/admin-service/Dockerfile .
 
 echo "Building stats-service..."
-docker build -t kampungconnect-stats-service -f backend/services/stats-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-stats-service:latest -f backend/services/stats-service/Dockerfile .
 
 echo "Building social-service..."
-docker build -t kampungconnect-social-service -f backend/services/social-service/Dockerfile .
+docker build -t aliciatws/kampungconnect-social-service:latest -f backend/services/social-service/Dockerfile .
 
 echo "Building frontend..."
-docker build -t kampungconnect-frontend ./frontend
+docker docker build -t aliciatws/kampungconnect-frontend:latest ./frontend
 
 echo
 echo "========================================"
